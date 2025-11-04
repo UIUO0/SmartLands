@@ -1,7 +1,7 @@
 fastapi
 uvicorn[standard]
 pydantic
-SQLAlchemy
+SQLAlchemy>=2.0
 alembic
 asyncmy
 python-dotenv
