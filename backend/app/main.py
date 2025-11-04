@@ -4,6 +4,7 @@ from app.db.database import ping_database
 from app.routers.lands import router as lands_router
 from app.routers.auth import router as auth_router
 from app.routers.users import router as users_router
+from app.routers.debug import router as debug_router
 
 app = FastAPI(title="Smart Lands API", version="1.0")
 
@@ -27,6 +28,5 @@ async def health_db():
 # Include routers
 app.include_router(auth_router)
 app.include_router(users_router)
-app.include_router(auth_router)
-app.include_router(users_router)
 app.include_router(lands_router) 
+app.include_router(debug_router)
