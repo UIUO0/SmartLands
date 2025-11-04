@@ -7,6 +7,7 @@ asyncmy
 pymysql
 python-dotenv
 httpx
-passlib[bcrypt]
+passlib[bcrypt]==1.7.4
 PyJWT
 email-validator
+bcrypt==3.2.2
