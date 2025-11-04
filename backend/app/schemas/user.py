@@ -1,0 +1,27 @@
+from pydantic import BaseModel, EmailStr
+
+# ===== Responses =====
+class UserOut(BaseModel):
+    user_id: int
+    email: EmailStr
+    full_name: str
+    picture_url: str | None = None
+    role: str
+
+    class Config:
+        from_attributes = True  # Pydantic v2: لتحويل SQLAlchemy models إلى Pydantic
+
+# ===== Requests =====
+class SignupIn(BaseModel):
+    email: EmailStr
+    full_name: str
+    password: str
+
+class LoginIn(BaseModel):
+    email: EmailStr
+    password: str
+
+class TokenOut(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
+    user: UserOut
