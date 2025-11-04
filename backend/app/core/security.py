@@ -10,6 +10,17 @@ import jwt
 from app.db.database import get_db
 from app.models.user import User, AuthIdentity
 
+# app/core/security.py
+from passlib.context import CryptContext
+pwd_ctx = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+def hash_password(raw: str) -> str:
+    # bcrypt يقص عند 72 بايت تلقائيًا؛ passlib يتعامل معها، لكن هذا يضمن عدم رمي ValueError
+    return pwd_ctx.hash(raw)
+
+def verify_password(raw: str, hashed: str) -> bool:
+    return pwd_ctx.verify(raw, hashed)
+
 JWT_SECRET = os.getenv("JWT_SECRET", "dev_secret_change_me")
 JWT_EXPIRES_MIN = int(os.getenv("JWT_EXPIRES_MIN", "60"))
 
