@@ -1,4 +1,7 @@
-from fastapi import APIRouter, Depends, HTTPException, Query
+from decimal import Decimal
+import traceback
+
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import select, func, or_
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -16,15 +19,37 @@ async def create_land(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    land = Land(
-        owner_id=current_user.user_id,
-        **payload.model_dump(),
-        status="available",
-    )
-    db.add(land)
-    await db.commit()
-    await db.refresh(land)
-    return LandOut.model_validate(land)
+    try:
+        land = Land(
+            owner_id=current_user.user_id,
+            title=payload.title,
+            description=payload.description,
+            price_amount=Decimal(str(payload.price_amount)),
+            currency_code=(payload.currency_code or "SAR")[:3],
+            status="available",
+            area_sq_m=Decimal(str(payload.area_sq_m)) if payload.area_sq_m is not None else None,
+            address_line=payload.address_line,
+            city=payload.city,
+            region=payload.region,
+            country=(payload.country[:2].upper() if payload.country else None),
+            postal_code=payload.postal_code,
+            latitude=Decimal(str(payload.latitude)) if payload.latitude is not None else None,
+            longitude=Decimal(str(payload.longitude)) if payload.longitude is not None else None,
+            google_place_id=payload.google_place_id,
+        )
+
+        db.add(land)
+        await db.commit()
+        await db.refresh(land)
+        return LandOut.model_validate(land)
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        print("CREATE_LAND_ERROR:", repr(e))
+        traceback.print_exc()
+        await db.rollback()
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="create land failed")
 
 @router.get("", response_model=LandListOut)
 async def list_lands(
@@ -42,6 +67,7 @@ async def list_lands(
         stmt = stmt.where(Land.city == city)
     if q:
         like = f"%{q}%"
+        # NOTE: MySQL ilike قد لا يعمل حسب الـ dialect؛ استخدم lower() لو احتجت
         stmt = stmt.where(or_(Land.title.ilike(like), Land.description.ilike(like)))
 
     total_stmt = select(func.count()).select_from(stmt.subquery())

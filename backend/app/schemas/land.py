@@ -1,7 +1,7 @@
 from pydantic import BaseModel, Field
 from typing import Optional
 
-# --------- Requests ----------
+# ---------- Requests ----------
 class LandCreate(BaseModel):
     title: str
     description: Optional[str] = None
@@ -12,7 +12,7 @@ class LandCreate(BaseModel):
     address_line: Optional[str] = None
     city: Optional[str] = None
     region: Optional[str] = None
-    country: Optional[str] = None  # ISO-2 لو تبغى
+    country: Optional[str] = None  # ISO-2
     postal_code: Optional[str] = None
 
     latitude: Optional[float] = None
@@ -26,7 +26,7 @@ class LandListQuery(BaseModel):
     limit: int = 20
     offset: int = 0
 
-# --------- Responses ----------
+# ---------- Responses ----------
 class LandOut(BaseModel):
     land_id: int
     owner_id: int | None
@@ -36,11 +36,14 @@ class LandOut(BaseModel):
     currency_code: str
     status: str
     area_sq_m: float | None
+    address_line: str | None = None
     city: str | None
     region: str | None
     country: str | None
+    postal_code: str | None = None
     latitude: float | None
     longitude: float | None
+    google_place_id: str | None = None
     cover_image_id: int | None
 
     class Config:
