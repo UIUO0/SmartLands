@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.db.database import ping_database
-
+from app.routers.lands import router as lands_router
 from app.routers.auth import router as auth_router
 from app.routers.users import router as users_router
 
@@ -27,3 +27,6 @@ async def health_db():
 # Include routers
 app.include_router(auth_router)
 app.include_router(users_router)
+app.include_router(auth_router)
+app.include_router(users_router)
+app.include_router(lands_router) 
