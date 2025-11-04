@@ -10,6 +10,36 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 
 @router.post("/signup", response_model=TokenOut, status_code=201)
 async def signup(payload: SignupIn, db: AsyncSession = Depends(get_db)):
+    try:
+        existing = await get_user_by_email(db, payload.email)
+        if existing:
+            raise HTTPException(status_code=409, detail="Email already registered")
+
+        user = User(email=payload.email, full_name=payload.full_name, role="user", is_active=1)
+        db.add(user)
+        await db.flush()
+
+        identity = AuthIdentity(
+            user_id=user.user_id,
+            provider="password",
+            password_hash=hash_password(payload.password),
+            email_verified=0,
+        )
+        db.add(identity)
+        await db.commit()
+        await db.refresh(user)
+
+        token = create_access_token(user.user_id)
+        return TokenOut(access_token=token, user=UserOut.model_validate(user))
+    except HTTPException:
+        raise
+    except Exception as e:
+        # DEBUG ONLY: اطبع الخطأ في اللوجز وارمي 500
+        import traceback
+        print("SIGNUP_ERROR:", e)
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail="Signup failed")
+
     # هل الإيميل موجود؟
     existing = await get_user_by_email(db, payload.email)
     if existing:
