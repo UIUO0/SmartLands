@@ -1,24 +1,27 @@
-// middleware.ts
+// middleware.ts (في جذر المشروع)
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { COOKIE_NAME } from "@/lib/config";
+
+const COOKIE_NAME = "sl_token";
 
 export function middleware(req: NextRequest) {
   const token = req.cookies.get(COOKIE_NAME)?.value;
   const path = req.nextUrl.pathname;
 
-  const isAuthPage = path.startsWith("/login") || path.startsWith("/signup");
-  const isProtectedPage =
-    path.startsWith("/dashboard") ||
+  // صفحات تتطلب تسجيل الدخول (اترك dashboard عام)
+  const isProtected =
     path.startsWith("/lands") ||
     path.startsWith("/requests") ||
     path.startsWith("/transactions") ||
-    path.startsWith("/assistant");
+    path.startsWith("/assistant") ||
+    path.startsWith("/profile"); // لو تبغى صفحة بروفايل مستقبلًا
 
-  if (!token && isProtectedPage) {
+  const isAuthPage = path.startsWith("/login");
+
+  if (!token && isProtected) {
     const url = req.nextUrl.clone();
     url.pathname = "/login";
-    url.search = `?next=${path}`;
+    url.search = `?next=${encodeURIComponent(path)}`;
     return NextResponse.redirect(url);
   }
 
@@ -32,11 +35,10 @@ export function middleware(req: NextRequest) {
 export const config = {
   matcher: [
     "/login",
-    "/signup",
-    "/dashboard/:path*",
     "/lands/:path*",
     "/requests/:path*",
     "/transactions/:path*",
     "/assistant/:path*",
+    "/profile/:path*", // اختياري
   ],
 };
