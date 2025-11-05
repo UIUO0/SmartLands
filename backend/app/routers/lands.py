@@ -1,7 +1,7 @@
 # app/routers/lands.py
 from decimal import Decimal
 import traceback
-from typing import Optional
+from typing import Optional, List
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status, Response
 from sqlalchemy import select, func, or_, update, delete
@@ -10,10 +10,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.database import get_db
 from app.models.land import Land
 from app.models.user import User
-from app.models.land_image import LandImage  # تأكد الملف موجود
+from app.models.land_image import LandImage
 from app.schemas.land import (
     LandCreate,
-    LandUpdate,
+    LandUpdate,        # تأكد أنه موجود في app/schemas/land.py
     LandOut,
     LandListOut,
     LandImageCreate,
@@ -67,8 +67,7 @@ async def create_land(
 
 
 # ---------------------------
-# Browse (عام بدون توكن)
-# الافتراضي status=available
+# Browse (عام بدون توكن) — الافتراضي status=available
 # يدعم فلاتر city و q + pagination
 # ---------------------------
 @router.get("", response_model=LandListOut)
@@ -111,7 +110,7 @@ async def list_lands(
 
 # ---------------------------
 # أراضي المستخدم (محمي بالتوكن)
-# (لازم تجي قبل /{land_id} عشان ما يتعارض المسار)
+# ملاحظة: لازم يسبق /{land_id}
 # ---------------------------
 @router.get("/me/mine", response_model=LandListOut)
 async def my_lands(
@@ -150,7 +149,7 @@ async def get_land(land_id: int, db: AsyncSession = Depends(get_db)):
 @router.patch("/{land_id}", response_model=LandOut)
 async def update_land(
     land_id: int,
-    payload: "LandUpdate",
+    payload: LandUpdate,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -163,6 +162,8 @@ async def update_land(
             raise HTTPException(status_code=403, detail="Not owner")
 
         data = payload.model_dump(exclude_unset=True)
+
+        # تحويل الحقول الرقمية لـ Decimal
         for k in ("price_amount", "area_sq_m", "latitude", "longitude"):
             if k in data:
                 val = data[k]
@@ -177,38 +178,14 @@ async def update_land(
         res = await db.execute(select(Land).where(Land.land_id == land_id))
         land = res.scalar_one()
         return LandOut.model_validate(land)
+
+    except HTTPException:
+        raise
     except Exception as e:
         print("UPDATE_LAND_ERROR:", repr(e))
         traceback.print_exc()
         await db.rollback()
         raise HTTPException(status_code=500, detail="internal update error")
-
-    land_id: int,
-    payload: "LandUpdate",  # forward ref لو ترتيب الاستيراد يسبب مشكلة
-    db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
-):
-    res = await db.execute(select(Land).where(Land.land_id == land_id))
-    land = res.scalar_one_or_none()
-    if not land:
-        raise HTTPException(status_code=404, detail="Land not found")
-    if land.owner_id != current_user.user_id:
-        raise HTTPException(status_code=403, detail="Not owner")
-
-    data = payload.model_dump(exclude_unset=True)
-
-    # تحويل الحقول الرقمية إلى Decimal بحسب سكيمة DB
-    for k in ("price_amount", "area_sq_m", "latitude", "longitude"):
-        if k in data and data[k] is not None:
-            data[k] = Decimal(str(data[k]))
-
-    await db.execute(update(Land).where(Land.land_id == land_id).values(**data))
-    await db.commit()
-
-    res = await db.execute(select(Land).where(Land.land_id == land_id))
-    land = res.scalar_one()
-    return LandOut.model_validate(land)
-
 
 # ---------------------------
 # Delete (محمي - المالك فقط)
@@ -236,7 +213,7 @@ async def delete_land(
 # ---------------------------
 
 # قائمة الصور (عام)
-@router.get("/{land_id}/images", response_model=list[LandImageOut])
+@router.get("/{land_id}/images", response_model=List[LandImageOut])
 async def list_land_images(land_id: int, db: AsyncSession = Depends(get_db)):
     res = await db.execute(
         select(LandImage)
@@ -255,7 +232,6 @@ async def add_land_image(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    # تحقق الملكية
     res = await db.execute(select(Land).where(Land.land_id == land_id))
     land = res.scalar_one_or_none()
     if not land:
@@ -283,7 +259,6 @@ async def set_cover_image(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    # تحقق الملكية
     res = await db.execute(select(Land).where(Land.land_id == land_id))
     land = res.scalar_one_or_none()
     if not land:
@@ -291,7 +266,6 @@ async def set_cover_image(
     if land.owner_id != current_user.user_id:
         raise HTTPException(status_code=403, detail="Not owner")
 
-    # الصورة تابعة للأرض؟
     res = await db.execute(
         select(LandImage).where(
             LandImage.image_id == image_id, LandImage.land_id == land_id
@@ -301,7 +275,6 @@ async def set_cover_image(
     if not img:
         raise HTTPException(status_code=404, detail="Image not found")
 
-    # صفّر is_cover لكل الصور واضبط الـ cover_image_id
     await db.execute(
         update(LandImage).where(LandImage.land_id == land_id).values(is_cover=False)
     )
