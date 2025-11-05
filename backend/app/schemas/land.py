@@ -1,65 +1,38 @@
-from pydantic import BaseModel, Field
-from typing import Optional
+from pydantic import BaseModel, Field, HttpUrl
+from typing import Optional, List
+from enum import Enum
+
+
+# ---------- ENUM ----------
+class LandStatus(str, Enum):
+    available = "available"
+    reserved = "reserved"
+    sold = "sold"
+    archived = "archived"
+
 
 # ---------- Requests ----------
 class LandCreate(BaseModel):
     title: str
     description: Optional[str] = None
     price_amount: float
-    currency_code: str = Field(default="SAR", min_length=3, max_length=3)
     area_sq_m: Optional[float] = None
 
     address_line: Optional[str] = None
     city: Optional[str] = None
     region: Optional[str] = None
-    country: Optional[str] = None  # ISO-2
+    country: Optional[str] = None  # ISO-2 code (e.g. SA)
     postal_code: Optional[str] = None
 
     latitude: Optional[float] = None
     longitude: Optional[float] = None
     google_place_id: Optional[str] = None
 
-class LandListQuery(BaseModel):
-    status: Optional[str] = None
-    city: Optional[str] = None
-    q: Optional[str] = None
-    limit: int = 20
-    offset: int = 0
-
-# ---------- Responses ----------
-class LandOut(BaseModel):
-    land_id: int
-    owner_id: int | None
-    title: str
-    description: str | None
-    price_amount: float
-    currency_code: str
-    status: str
-    area_sq_m: float | None
-    address_line: str | None = None
-    city: str | None
-    region: str | None
-    country: str | None
-    postal_code: str | None = None
-    latitude: float | None
-    longitude: float | None
-    google_place_id: str | None = None
-    cover_image_id: int | None
-
-    class Config:
-        from_attributes = True
-
-class LandListOut(BaseModel):
-    total: int
-    items: list[LandOut]
-from pydantic import BaseModel, HttpUrl
-from typing import Optional
 
 class LandUpdate(BaseModel):
     title: Optional[str] = None
     description: Optional[str] = None
     price_amount: Optional[float] = None
-    currency_code: Optional[str] = None
     area_sq_m: Optional[float] = None
     address_line: Optional[str] = None
     city: Optional[str] = None
@@ -68,12 +41,50 @@ class LandUpdate(BaseModel):
     postal_code: Optional[str] = None
     latitude: Optional[float] = None
     longitude: Optional[float] = None
-    status: Optional[str] = None  # available/reserved/sold/archived
+    status: Optional[LandStatus] = None  # ✅ Enum يحمي من القيم الغلط
 
-# ------- Images -------
+
+class LandListQuery(BaseModel):
+    status: Optional[LandStatus] = None
+    city: Optional[str] = None
+    q: Optional[str] = None
+    limit: int = 20
+    offset: int = 0
+
+
+# ---------- Responses ----------
+class LandOut(BaseModel):
+    land_id: int
+    owner_id: Optional[int]
+    title: str
+    description: Optional[str]
+    price_amount: float
+    status: LandStatus
+    area_sq_m: Optional[float]
+    address_line: Optional[str]
+    city: Optional[str]
+    region: Optional[str]
+    country: Optional[str]
+    postal_code: Optional[str]
+    latitude: Optional[float]
+    longitude: Optional[float]
+    google_place_id: Optional[str]
+    cover_image_id: Optional[int]
+
+    class Config:
+        from_attributes = True
+
+
+class LandListOut(BaseModel):
+    total: int
+    items: List[LandOut]
+
+
+# ---------- Images ----------
 class LandImageCreate(BaseModel):
     file_url: HttpUrl
     sort_order: int = 0
+
 
 class LandImageOut(BaseModel):
     image_id: int
