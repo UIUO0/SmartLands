@@ -21,7 +21,6 @@ class Land(Base):
 
     # لو سكيمتك فيها اسم عمود مختلف عدّله هنا
     price_amount: Mapped[float] = mapped_column(DECIMAL(12, 2), nullable=False)
-    currency_code: Mapped[str] = mapped_column(CHAR(3), nullable=False, default="SAR")
 
     status: Mapped[str] = mapped_column(
         Enum("available", "reserved", "sold", "archived", name="land_status_enum"),
