@@ -13,7 +13,7 @@ from app.models.user import User
 from app.models.land_image import LandImage
 from app.schemas.land import (
     LandCreate,
-    LandUpdate,        # تأكد أنه موجود في app/schemas/land.py
+    LandUpdate,
     LandOut,
     LandListOut,
     LandImageCreate,
@@ -39,7 +39,6 @@ async def create_land(
             title=payload.title,
             description=payload.description,
             price_amount=Decimal(str(payload.price_amount)),
-            currency_code=(payload.currency_code or "SAR")[:3],
             status="available",
             area_sq_m=Decimal(str(payload.area_sq_m)) if payload.area_sq_m is not None else None,
             address_line=payload.address_line,
@@ -67,8 +66,7 @@ async def create_land(
 
 
 # ---------------------------
-# Browse (عام بدون توكن) — الافتراضي status=available
-# يدعم فلاتر city و q + pagination
+# Browse (عام) — الافتراضي status=available
 # ---------------------------
 @router.get("", response_model=LandListOut)
 async def list_lands(
@@ -109,8 +107,7 @@ async def list_lands(
 
 
 # ---------------------------
-# أراضي المستخدم (محمي بالتوكن)
-# ملاحظة: لازم يسبق /{land_id}
+# أراضي المستخدم (محمي) — يجب أن يسبق /{land_id}
 # ---------------------------
 @router.get("/me/mine", response_model=LandListOut)
 async def my_lands(
@@ -154,6 +151,7 @@ async def update_land(
     current_user: User = Depends(get_current_user),
 ):
     try:
+        # تحقق من وجود الأرض والملكية
         res = await db.execute(select(Land).where(Land.land_id == land_id))
         land = res.scalar_one_or_none()
         if not land:
@@ -161,37 +159,35 @@ async def update_land(
         if land.owner_id != current_user.user_id:
             raise HTTPException(status_code=403, detail="Not owner")
 
-# داخل update_land قبل تنفيذ UPDATE
-# ...
-data = payload.model_dump(exclude_unset=True)
+        data = payload.model_dump(exclude_unset=True)
 
-# ✅ ثبّت status على القيم المسموحة
-if "status" in data and data["status"] is not None:
-    st = str(data["status"]).strip().lower()
-    allowed = {"available", "reserved", "sold", "archived"}
-    if st not in allowed:
-        raise HTTPException(status_code=422, detail=f"invalid status '{st}', allowed: {sorted(allowed)}")
-    data["status"] = st
+        # ثبّت status على القيم المسموحة (لو مرّرت)
+        if "status" in data and data["status"] is not None:
+            st = str(data["status"]).strip().lower()
+            allowed = {"available", "reserved", "sold", "archived"}
+            if st not in allowed:
+                raise HTTPException(status_code=422, detail=f"invalid status '{st}', allowed: {sorted(allowed)}")
+            data["status"] = st
 
-# 🔢 حوّل الأرقام إلى Decimal (مع التعامل مع القيم الفارغة)
-for k in ("price_amount", "area_sq_m", "latitude", "longitude"):
-    if k in data:
-        val = data[k]
-        if val is None or val == "":
-            data[k] = None
-        else:
-            data[k] = Decimal(str(val))
+        # country إلى ISO-2 upper (لو مرّرت)
+        if "country" in data and data["country"] is not None:
+            ctry = str(data["country"]).strip().upper()
+            data["country"] = ctry[:2] if ctry else None
 
-# لو عندك country وتبغاه ثابت حرفين:
-if "country" in data and data["country"] is not None:
-    ctry = str(data["country"]).strip().upper()
-    data["country"] = ctry[:2] if ctry else None
+        # تحويل الأرقام إلى Decimal (مع التعامل مع القيم الفارغة)
+        for k in ("price_amount", "area_sq_m", "latitude", "longitude"):
+            if k in data:
+                val = data[k]
+                if val is None or val == "":
+                    data[k] = None
+                else:
+                    data[k] = Decimal(str(val))
 
-await db.execute(update(Land).where(Land.land_id == land_id).values(**data))
-await db.commit()
-# ...
+        # تنفيذ التحديث
+        await db.execute(update(Land).where(Land.land_id == land_id).values(**data))
+        await db.commit()
 
-
+        # رجّع النسخة المحدثة
         res = await db.execute(select(Land).where(Land.land_id == land_id))
         land = res.scalar_one()
         return LandOut.model_validate(land)
@@ -203,6 +199,7 @@ await db.commit()
         traceback.print_exc()
         await db.rollback()
         raise HTTPException(status_code=500, detail="internal update error")
+
 
 # ---------------------------
 # Delete (محمي - المالك فقط)
