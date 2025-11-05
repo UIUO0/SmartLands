@@ -25,3 +25,9 @@ class TokenOut(BaseModel):
     access_token: str
     token_type: str = "bearer"
     user: UserOut
+from pydantic import BaseModel
+from typing import Optional
+
+class UserUpdate(BaseModel):
+    full_name: Optional[str] = None
+    picture_url: Optional[str] = None
