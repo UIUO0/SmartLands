@@ -1,32 +1,27 @@
-// middleware.ts (root)
+// middleware.ts
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
+import { COOKIE_NAME } from "@/lib/config";
 
-const COOKIE_NAME = "sl_token";
-
-// هذه الدالة تنفّذ على كل الطلبات (الماتشر تحت)
 export function middleware(req: NextRequest) {
-  const { pathname } = req.nextUrl;
-  const token = req.cookies.get(COOKIE_NAME)?.value ?? "";
+  const token = req.cookies.get(COOKIE_NAME)?.value;
+  const path = req.nextUrl.pathname;
 
-  // الداشبورد عام حسب طلبك
-  const isProtected =
-    pathname.startsWith("/lands") ||
-    pathname.startsWith("/requests") ||
-    pathname.startsWith("/transactions") ||
-    pathname.startsWith("/assistant") ||
-    pathname.startsWith("/profile");
+  const isAuthPage = path.startsWith("/login") || path.startsWith("/signup");
+  const isProtectedPage =
+    path.startsWith("/dashboard") ||
+    path.startsWith("/lands") ||
+    path.startsWith("/requests") ||
+    path.startsWith("/transactions") ||
+    path.startsWith("/assistant");
 
-  const isAuthPage = pathname.startsWith("/login");
-
-  // لو الصفحة محمية وما فيه توكن → روح للّوجين
-  if (!token && isProtected) {
-    const url = new URL("/login", req.url);
-    url.searchParams.set("next", pathname);
+  if (!token && isProtectedPage) {
+    const url = req.nextUrl.clone();
+    url.pathname = "/login";
+    url.search = `?next=${path}`;
     return NextResponse.redirect(url);
   }
 
-  // لو معك توكن وحاولت تروح /login → رجعك للداشبورد
   if (token && isAuthPage) {
     return NextResponse.redirect(new URL("/dashboard", req.url));
   }
@@ -34,10 +29,14 @@ export function middleware(req: NextRequest) {
   return NextResponse.next();
 }
 
-// طابق كل شيء ما عدا ملفات Next الثابتة و API
 export const config = {
   matcher: [
-    // استبعد API وملفات الستاتك والصور والفافيكون
-    "/((?!api|_next/static|_next/image|favicon.ico|robots.txt|sitemap.xml).*)",
+    "/login",
+    "/signup",
+    "/dashboard/:path*",
+    "/lands/:path*",
+    "/requests/:path*",
+    "/transactions/:path*",
+    "/assistant/:path*",
   ],
 };
