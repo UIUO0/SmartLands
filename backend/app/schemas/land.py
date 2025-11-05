@@ -52,3 +52,35 @@ class LandOut(BaseModel):
 class LandListOut(BaseModel):
     total: int
     items: list[LandOut]
+from pydantic import BaseModel, HttpUrl
+from typing import Optional
+
+class LandUpdate(BaseModel):
+    title: Optional[str] = None
+    description: Optional[str] = None
+    price_amount: Optional[float] = None
+    currency_code: Optional[str] = None
+    area_sq_m: Optional[float] = None
+    address_line: Optional[str] = None
+    city: Optional[str] = None
+    region: Optional[str] = None
+    country: Optional[str] = None
+    postal_code: Optional[str] = None
+    latitude: Optional[float] = None
+    longitude: Optional[float] = None
+    status: Optional[str] = None  # available/reserved/sold/archived
+
+# ------- Images -------
+class LandImageCreate(BaseModel):
+    file_url: HttpUrl
+    sort_order: int = 0
+
+class LandImageOut(BaseModel):
+    image_id: int
+    land_id: int
+    file_url: str
+    is_cover: bool
+    sort_order: int
+
+    class Config:
+        from_attributes = True
