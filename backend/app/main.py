@@ -30,3 +30,8 @@ app.include_router(auth_router)
 app.include_router(users_router)
 app.include_router(lands_router) 
 app.include_router(debug_router)
+from app.routers.lands import router as lands_router
+from app.routers.users import router as users_router
+# ...
+app.include_router(lands_router)
+app.include_router(users_router)
