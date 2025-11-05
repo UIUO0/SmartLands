@@ -150,6 +150,40 @@ async def get_land(land_id: int, db: AsyncSession = Depends(get_db)):
 @router.patch("/{land_id}", response_model=LandOut)
 async def update_land(
     land_id: int,
+    payload: "LandUpdate",
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    try:
+        res = await db.execute(select(Land).where(Land.land_id == land_id))
+        land = res.scalar_one_or_none()
+        if not land:
+            raise HTTPException(status_code=404, detail="Land not found")
+        if land.owner_id != current_user.user_id:
+            raise HTTPException(status_code=403, detail="Not owner")
+
+        data = payload.model_dump(exclude_unset=True)
+        for k in ("price_amount", "area_sq_m", "latitude", "longitude"):
+            if k in data:
+                val = data[k]
+                if val is None or val == "":
+                    data[k] = None
+                else:
+                    data[k] = Decimal(str(val))
+
+        await db.execute(update(Land).where(Land.land_id == land_id).values(**data))
+        await db.commit()
+
+        res = await db.execute(select(Land).where(Land.land_id == land_id))
+        land = res.scalar_one()
+        return LandOut.model_validate(land)
+    except Exception as e:
+        print("UPDATE_LAND_ERROR:", repr(e))
+        traceback.print_exc()
+        await db.rollback()
+        raise HTTPException(status_code=500, detail="internal update error")
+
+    land_id: int,
     payload: "LandUpdate",  # forward ref لو ترتيب الاستيراد يسبب مشكلة
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
