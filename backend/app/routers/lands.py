@@ -3,7 +3,7 @@ from decimal import Decimal
 import traceback
 from typing import Optional, List
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status, Response
+from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from sqlalchemy import select, func, or_, update, delete
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -18,6 +18,7 @@ from app.schemas.land import (
     LandListOut,
     LandImageCreate,
     LandImageOut,
+    LandStatus,  # Enum
 )
 from app.core.security import get_current_user
 
@@ -62,7 +63,7 @@ async def create_land(
         print("CREATE_LAND_ERROR:", repr(e))
         traceback.print_exc()
         await db.rollback()
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="create land failed")
+        raise HTTPException(status_code=500, detail="create land failed")
 
 
 # ---------------------------
@@ -71,7 +72,7 @@ async def create_land(
 @router.get("", response_model=LandListOut)
 async def list_lands(
     db: AsyncSession = Depends(get_db),
-    status: Optional[str] = Query(default=None, description="available/reserved/sold/archived"),
+    status: Optional[LandStatus] = Query(default=None, description="available/reserved/sold/archived"),
     city: Optional[str] = Query(default=None),
     q: Optional[str] = Query(default=None, description="search in title/description"),
     limit: int = Query(default=20, ge=1, le=100),
@@ -79,7 +80,8 @@ async def list_lands(
 ):
     stmt = select(Land)
     if status:
-        stmt = stmt.where(Land.status == status)
+        status_value = status.value if hasattr(status, "value") else str(status)
+        stmt = stmt.where(Land.status == status_value)
     else:
         stmt = stmt.where(Land.status == "available")
 
@@ -163,7 +165,8 @@ async def update_land(
 
         # ثبّت status على القيم المسموحة (لو مرّرت)
         if "status" in data and data["status"] is not None:
-            st = str(data["status"]).strip().lower()
+            raw = data["status"]
+            st = (raw.value if hasattr(raw, "value") else str(raw)).strip().lower()
             allowed = {"available", "reserved", "sold", "archived"}
             if st not in allowed:
                 raise HTTPException(status_code=422, detail=f"invalid status '{st}', allowed: {sorted(allowed)}")
