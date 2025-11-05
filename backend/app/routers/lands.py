@@ -161,19 +161,36 @@ async def update_land(
         if land.owner_id != current_user.user_id:
             raise HTTPException(status_code=403, detail="Not owner")
 
-        data = payload.model_dump(exclude_unset=True)
+# داخل update_land قبل تنفيذ UPDATE
+# ...
+data = payload.model_dump(exclude_unset=True)
 
-        # تحويل الحقول الرقمية لـ Decimal
-        for k in ("price_amount", "area_sq_m", "latitude", "longitude"):
-            if k in data:
-                val = data[k]
-                if val is None or val == "":
-                    data[k] = None
-                else:
-                    data[k] = Decimal(str(val))
+# ✅ ثبّت status على القيم المسموحة
+if "status" in data and data["status"] is not None:
+    st = str(data["status"]).strip().lower()
+    allowed = {"available", "reserved", "sold", "archived"}
+    if st not in allowed:
+        raise HTTPException(status_code=422, detail=f"invalid status '{st}', allowed: {sorted(allowed)}")
+    data["status"] = st
 
-        await db.execute(update(Land).where(Land.land_id == land_id).values(**data))
-        await db.commit()
+# 🔢 حوّل الأرقام إلى Decimal (مع التعامل مع القيم الفارغة)
+for k in ("price_amount", "area_sq_m", "latitude", "longitude"):
+    if k in data:
+        val = data[k]
+        if val is None or val == "":
+            data[k] = None
+        else:
+            data[k] = Decimal(str(val))
+
+# لو عندك country وتبغاه ثابت حرفين:
+if "country" in data and data["country"] is not None:
+    ctry = str(data["country"]).strip().upper()
+    data["country"] = ctry[:2] if ctry else None
+
+await db.execute(update(Land).where(Land.land_id == land_id).values(**data))
+await db.commit()
+# ...
+
 
         res = await db.execute(select(Land).where(Land.land_id == land_id))
         land = res.scalar_one()
