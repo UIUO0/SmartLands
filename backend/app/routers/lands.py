@@ -2,8 +2,7 @@
 from decimal import Decimal
 import traceback
 from typing import Optional, List
-
-from fastapi import APIRouter, Depends, HTTPException, Query, Response
+from fastapi import APIRouter, Depends, HTTPException, Query, status, Response, UploadFile, File
 from sqlalchemy import select, func, or_, update, delete
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -269,6 +268,107 @@ async def add_land_image(
 
 
 # تعيين الغلاف (محمي - المالك فقط)
+@router.patch("/{land_id}/cover/{image_id}", status_code=200)
+async def set_cover_image(
+    land_id: int,
+    image_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    res = await db.execute(select(Land).where(Land.land_id == land_id))
+    land = res.scalar_one_or_none()
+    if not land:
+        raise HTTPException(status_code=404, detail="Land not found")
+    if land.owner_id != current_user.user_id:
+        raise HTTPException(status_code=403, detail="Not owner")
+
+    res = await db.execute(
+        select(LandImage).where(
+            LandImage.image_id == image_id, LandImage.land_id == land_id
+        )
+    )
+    img = res.scalar_one_or_none()
+    if not img:
+        raise HTTPException(status_code=404, detail="Image not found")
+
+    await db.execute(
+        update(LandImage).where(LandImage.land_id == land_id).values(is_cover=False)
+    )
+    await db.execute(
+        update(LandImage).where(LandImage.image_id == image_id).values(is_cover=True)
+    )
+    await db.execute(
+        update(Land).where(Land.land_id == land_id).values(cover_image_id=image_id)
+    )
+    await db.commit()
+    return {"ok": True, "cover_image_id": image_id}
+# === Cloudinary Upload Support ===
+from fastapi import UploadFile, File
+import cloudinary
+import cloudinary.uploader
+
+# Cloudinary auto-config will read CLOUDINARY_URL from env.
+# لو حبيت تثبّت الاسم يدويًا:
+# cloudinary.config(cloud_name="djmo9vioc")
+
+# ... باقي الاستيرادات كما هي ...
+
+# (2) رفع صورة كـ ملف إلى Cloudinary ثم التخزين في DB
+@router.post("/{land_id}/images/upload", response_model=LandImageOut, status_code=201)
+async def upload_land_image(
+    land_id: int,
+    file: UploadFile = File(..., description="image file (jpeg/png/webp)"),
+    sort_order: int = 0,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    # تحقق من الأرض والملكية
+    res = await db.execute(select(Land).where(Land.land_id == land_id))
+    land = res.scalar_one_or_none()
+    if not land:
+        raise HTTPException(status_code=404, detail="Land not found")
+    if land.owner_id != current_user.user_id:
+        raise HTTPException(status_code=403, detail="Not owner")
+
+    # تأكد من نوع الملف
+    allowed = {"image/jpeg", "image/png", "image/webp", "image/gif"}
+    if file.content_type not in allowed:
+        raise HTTPException(status_code=415, detail="unsupported media type")
+
+    try:
+        # رفع إلى Cloudinary (يقرأ CLOUDINARY_URL تلقائيًا)
+        upload_res = cloudinary.uploader.upload(
+            file.file,              # stream
+            folder=f"smartlands/lands/{land_id}",
+            resource_type="image",
+            overwrite=False,
+        )
+        secure_url = upload_res.get("secure_url")
+        if not secure_url:
+            raise RuntimeError("cloudinary upload failed: no secure_url")
+
+        # خزّن في DB
+        img = LandImage(
+            land_id=land_id,
+            file_url=secure_url,
+            sort_order=sort_order,
+            is_cover=False,
+        )
+        db.add(img)
+        await db.commit()
+        await db.refresh(img)
+        return LandImageOut.model_validate(img)
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        print("CLOUDINARY_UPLOAD_ERROR:", repr(e))
+        traceback.print_exc()
+        await db.rollback()
+        raise HTTPException(status_code=500, detail="image upload failed")
+
+
+# (3) تعيين الغلاف — لا يحتاج Cloudinary (يبقى كما هو)
 @router.patch("/{land_id}/cover/{image_id}", status_code=200)
 async def set_cover_image(
     land_id: int,
