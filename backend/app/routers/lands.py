@@ -80,10 +80,8 @@ async def list_lands(
 
     return {"total": total, "items": [LandOut.model_validate(x) for x in items]}
 
-@router.get("/{land_id}", response_model=LandOut)
-async def get_land(land_id: int, db: AsyncSession = Depends(get_db)):
-    res = await db.execute(select(Land).where(Land.land_id == land_id))
-    land = res.scalar_one_or_none()
-    if not land:
-        raise HTTPException(status_code=404, detail="Land not found")
-    return LandOut.model_validate(land)
+@router.get("/lands", response_model=List[LandOut])
+def get_lands(db: Session = Depends(get_db)):
+    lands = db.query(Land).filter(Land.status == "available").all()
+    return lands
+
