@@ -1,16 +1,16 @@
 # app/routers/lands.py
 from decimal import Decimal
 import traceback
-from typing import Optional
+from typing import Optional, List
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status, Response
+from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from sqlalchemy import select, func, or_, update, delete
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.database import get_db
 from app.models.land import Land
 from app.models.user import User
-from app.models.land_image import LandImage  # تأكد الملف موجود
+from app.models.land_image import LandImage
 from app.schemas.land import (
     LandCreate,
     LandUpdate,
@@ -18,6 +18,7 @@ from app.schemas.land import (
     LandListOut,
     LandImageCreate,
     LandImageOut,
+    LandStatus,  # Enum
 )
 from app.core.security import get_current_user
 
@@ -39,7 +40,6 @@ async def create_land(
             title=payload.title,
             description=payload.description,
             price_amount=Decimal(str(payload.price_amount)),
-            currency_code=(payload.currency_code or "SAR")[:3],
             status="available",
             area_sq_m=Decimal(str(payload.area_sq_m)) if payload.area_sq_m is not None else None,
             address_line=payload.address_line,
@@ -63,18 +63,16 @@ async def create_land(
         print("CREATE_LAND_ERROR:", repr(e))
         traceback.print_exc()
         await db.rollback()
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="create land failed")
+        raise HTTPException(status_code=500, detail="create land failed")
 
 
 # ---------------------------
-# Browse (عام بدون توكن)
-# الافتراضي status=available
-# يدعم فلاتر city و q + pagination
+# Browse (عام) — الافتراضي status=available
 # ---------------------------
 @router.get("", response_model=LandListOut)
 async def list_lands(
     db: AsyncSession = Depends(get_db),
-    status: Optional[str] = Query(default=None, description="available/reserved/sold/archived"),
+    status: Optional[LandStatus] = Query(default=None, description="available/reserved/sold/archived"),
     city: Optional[str] = Query(default=None),
     q: Optional[str] = Query(default=None, description="search in title/description"),
     limit: int = Query(default=20, ge=1, le=100),
@@ -82,7 +80,8 @@ async def list_lands(
 ):
     stmt = select(Land)
     if status:
-        stmt = stmt.where(Land.status == status)
+        status_value = status.value if hasattr(status, "value") else str(status)
+        stmt = stmt.where(Land.status == status_value)
     else:
         stmt = stmt.where(Land.status == "available")
 
@@ -110,8 +109,7 @@ async def list_lands(
 
 
 # ---------------------------
-# أراضي المستخدم (محمي بالتوكن)
-# (لازم تجي قبل /{land_id} عشان ما يتعارض المسار)
+# أراضي المستخدم (محمي) — يجب أن يسبق /{land_id}
 # ---------------------------
 @router.get("/me/mine", response_model=LandListOut)
 async def my_lands(
@@ -150,11 +148,12 @@ async def get_land(land_id: int, db: AsyncSession = Depends(get_db)):
 @router.patch("/{land_id}", response_model=LandOut)
 async def update_land(
     land_id: int,
-    payload: "LandUpdate",
+    payload: LandUpdate,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
     try:
+        # تحقق من وجود الأرض والملكية
         res = await db.execute(select(Land).where(Land.land_id == land_id))
         land = res.scalar_one_or_none()
         if not land:
@@ -163,6 +162,22 @@ async def update_land(
             raise HTTPException(status_code=403, detail="Not owner")
 
         data = payload.model_dump(exclude_unset=True)
+
+        # ثبّت status على القيم المسموحة (لو مرّرت)
+        if "status" in data and data["status"] is not None:
+            raw = data["status"]
+            st = (raw.value if hasattr(raw, "value") else str(raw)).strip().lower()
+            allowed = {"available", "reserved", "sold", "archived"}
+            if st not in allowed:
+                raise HTTPException(status_code=422, detail=f"invalid status '{st}', allowed: {sorted(allowed)}")
+            data["status"] = st
+
+        # country إلى ISO-2 upper (لو مرّرت)
+        if "country" in data and data["country"] is not None:
+            ctry = str(data["country"]).strip().upper()
+            data["country"] = ctry[:2] if ctry else None
+
+        # تحويل الأرقام إلى Decimal (مع التعامل مع القيم الفارغة)
         for k in ("price_amount", "area_sq_m", "latitude", "longitude"):
             if k in data:
                 val = data[k]
@@ -171,43 +186,22 @@ async def update_land(
                 else:
                     data[k] = Decimal(str(val))
 
+        # تنفيذ التحديث
         await db.execute(update(Land).where(Land.land_id == land_id).values(**data))
         await db.commit()
 
+        # رجّع النسخة المحدثة
         res = await db.execute(select(Land).where(Land.land_id == land_id))
         land = res.scalar_one()
         return LandOut.model_validate(land)
+
+    except HTTPException:
+        raise
     except Exception as e:
         print("UPDATE_LAND_ERROR:", repr(e))
         traceback.print_exc()
         await db.rollback()
         raise HTTPException(status_code=500, detail="internal update error")
-
-    land_id: int,
-    payload: "LandUpdate",  # forward ref لو ترتيب الاستيراد يسبب مشكلة
-    db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user),
-):
-    res = await db.execute(select(Land).where(Land.land_id == land_id))
-    land = res.scalar_one_or_none()
-    if not land:
-        raise HTTPException(status_code=404, detail="Land not found")
-    if land.owner_id != current_user.user_id:
-        raise HTTPException(status_code=403, detail="Not owner")
-
-    data = payload.model_dump(exclude_unset=True)
-
-    # تحويل الحقول الرقمية إلى Decimal بحسب سكيمة DB
-    for k in ("price_amount", "area_sq_m", "latitude", "longitude"):
-        if k in data and data[k] is not None:
-            data[k] = Decimal(str(data[k]))
-
-    await db.execute(update(Land).where(Land.land_id == land_id).values(**data))
-    await db.commit()
-
-    res = await db.execute(select(Land).where(Land.land_id == land_id))
-    land = res.scalar_one()
-    return LandOut.model_validate(land)
 
 
 # ---------------------------
@@ -236,7 +230,7 @@ async def delete_land(
 # ---------------------------
 
 # قائمة الصور (عام)
-@router.get("/{land_id}/images", response_model=list[LandImageOut])
+@router.get("/{land_id}/images", response_model=List[LandImageOut])
 async def list_land_images(land_id: int, db: AsyncSession = Depends(get_db)):
     res = await db.execute(
         select(LandImage)
@@ -255,7 +249,6 @@ async def add_land_image(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    # تحقق الملكية
     res = await db.execute(select(Land).where(Land.land_id == land_id))
     land = res.scalar_one_or_none()
     if not land:
@@ -283,7 +276,6 @@ async def set_cover_image(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    # تحقق الملكية
     res = await db.execute(select(Land).where(Land.land_id == land_id))
     land = res.scalar_one_or_none()
     if not land:
@@ -291,7 +283,6 @@ async def set_cover_image(
     if land.owner_id != current_user.user_id:
         raise HTTPException(status_code=403, detail="Not owner")
 
-    # الصورة تابعة للأرض؟
     res = await db.execute(
         select(LandImage).where(
             LandImage.image_id == image_id, LandImage.land_id == land_id
@@ -301,7 +292,6 @@ async def set_cover_image(
     if not img:
         raise HTTPException(status_code=404, detail="Image not found")
 
-    # صفّر is_cover لكل الصور واضبط الـ cover_image_id
     await db.execute(
         update(LandImage).where(LandImage.land_id == land_id).values(is_cover=False)
     )
