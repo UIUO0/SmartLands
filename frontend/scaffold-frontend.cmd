@@ -24,7 +24,7 @@ mkdir "app\api\proxy\[...path]" 2>nul
 mkdir "components\ui" 2>nul
 mkdir "lib" 2>nul
 
-:: Files (no FOR: use a helper to avoid parsing issues)
+:: Files (no FOR; helper label to avoid parsing issues)
 call :touch "app\(auth)\layout.tsx"
 call :touch "app\(auth)\login\page.tsx"
 call :touch "app\(auth)\signup\page.tsx"
