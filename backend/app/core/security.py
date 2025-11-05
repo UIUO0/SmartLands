@@ -1,10 +1,9 @@
-# app/core/security.py
 from datetime import datetime, timedelta, timezone
 import os
 from typing import Optional
 
 import jwt  # PyJWT
-from fastapi import Depends, HTTPException, status
+from fastapi import HTTPException, status, Security
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from passlib.context import CryptContext
 from sqlalchemy import select
@@ -17,10 +16,10 @@ from app.models.user import User
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 def hash_password(raw: str) -> str:
-    # ملاحظة: bcrypt يقص كلمات المرور > 72 بايت؛ الأفضل قصّها احترازياً
     if raw is None:
         raise ValueError("password is required")
     raw = str(raw)
+    # bcrypt يقص > 72 بايت؛ نقصّها احترازياً
     if len(raw.encode("utf-8")) > 72:
         raw = raw[:72]
     return pwd_context.hash(raw)
@@ -51,29 +50,27 @@ def decode_token(token: str) -> dict:
     except jwt.InvalidTokenError:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="invalid token")
 
-# ===== Security (هذا هو المهم لعودة زر Authorize) =====
-# وجود هذا الـ dependency في أي endpoint أو dependency يجعل FastAPI يضيف
-# securitySchemes: HTTP bearer إلى OpenAPI -> يظهر زر Authorize في Swagger
+# ===== Security (المهم لظهور زر Authorize) =====
 security = HTTPBearer(auto_error=False)
 
 async def get_current_user(
-    credentials: HTTPAuthorizationCredentials = Depends(security),
-    db: AsyncSession = Depends(get_db),
-) -> User:
+    credentials: HTTPAuthorizationCredentials = Security(security),  # ← هنا الفرق
+    db: AsyncSession = get_db,  # سيُحقن تلقائيًا بواسطة FastAPI
+):
     if credentials is None:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="not authenticated")
 
     token = credentials.credentials
     payload = decode_token(token)
 
-    # نتوقع user_id في الـ sub
     user_id = payload.get("sub")
     if user_id is None:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="invalid token payload")
 
-    res = await db.execute(select(User).where(User.user_id == int(user_id)))
-    user = res.scalar_one_or_none()
-    if not user:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="user not found")
+    async with db() as session:  # نتأكد من الـ session
+        res = await session.execute(select(User).where(User.user_id == int(user_id)))
+        user = res.scalar_one_or_none()
+        if not user:
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="user not found")
 
     return user
