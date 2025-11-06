@@ -21,13 +21,13 @@ from app.core.security import (
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
-# ------- Logging (Railway يلتقط STDOUT/ERR) -------
+# --- Logging config (يرسل أي خطأ إلى Railway logs) ---
 logger = logging.getLogger("smartlands.auth")
-if not logger.handlers:
-    logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.INFO)
 
 COOKIE_NAME = "access_token"
 COOKIE_PATH = "/"
+
 
 def _set_auth_cookie(response: Response, access_token: str) -> None:
     # نخزن داخل الكوكي "Bearer <token>"
@@ -35,11 +35,12 @@ def _set_auth_cookie(response: Response, access_token: str) -> None:
         key=COOKIE_NAME,
         value=f"Bearer {access_token}",
         httponly=True,
-        secure=True,        # فعّل HTTPS بالإنتاج
-        samesite="lax",     # أو "none" إذا الـ frontend دومين مختلف + HTTPS
+        secure=True,        # فعّلها على الإنتاج (HTTPS)
+        samesite="lax",     # أو "none" إذا الـ frontend على دومين مختلف + HTTPS
         max_age=60 * ACCESS_TOKEN_EXPIRE_MINUTES,
         path=COOKIE_PATH,
     )
+
 
 def _clear_auth_cookie(response: Response) -> None:
     response.delete_cookie(key=COOKIE_NAME, path=COOKIE_PATH)
@@ -48,18 +49,16 @@ def _clear_auth_cookie(response: Response) -> None:
 @router.post("/signup", response_model=TokenOut, status_code=201)
 async def signup(payload: SignupIn, response: Response, db: AsyncSession = Depends(get_db)):
     try:
-        email = payload.email.lower()
-
         # موجود؟
-        res = await db.execute(select(User).where(User.email == email))
+        res = await db.execute(select(User).where(User.email == payload.email))
         existing = res.scalar_one_or_none()
         if existing:
             raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Email already registered")
 
         user = User(
-            email=email,
+            email=payload.email,
             full_name=payload.full_name,
-            password_hash=hash_password(payload.password),
+            password_hash=hash_password(payload.password),  # مهم: يستخدم password_hash
             role="user",
             picture_url=None,
         )
@@ -67,7 +66,6 @@ async def signup(payload: SignupIn, response: Response, db: AsyncSession = Depen
         await db.commit()
         await db.refresh(user)
 
-        # أنشئ توكِن وخزّنه ككوكي
         access_token = create_access_token({"sub": str(user.user_id)})
         _set_auth_cookie(response, access_token)
 
@@ -76,27 +74,35 @@ async def signup(payload: SignupIn, response: Response, db: AsyncSession = Depen
             "token_type": "bearer",
             "user": UserOut.model_validate(user),
         }
-
     except HTTPException:
-        # أخطاء متوقعة ما نطبع لها traceback
         raise
     except Exception as e:
-        # اطبع تفاصيل واضحة للّوجز
         logger.exception("SIGNUP_ERROR: %s", repr(e))
         traceback.print_exc()
-        await db.rollback()
         raise HTTPException(status_code=500, detail="signup failed")
 
 
 @router.post("/login", response_model=TokenOut)
 async def login(payload: LoginIn, response: Response, db: AsyncSession = Depends(get_db)):
     try:
-        email = payload.email.lower()
-
-        res = await db.execute(select(User).where(User.email == email))
+        res = await db.execute(select(User).where(User.email == payload.email))
         user = res.scalar_one_or_none()
-        if not user or not verify_password(payload.password, user.password_hash):
-            logger.info("LOGIN_FAIL: email=%s invalid credentials", email)
+
+        if not user:
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
+
+        # اقرأ الهاش مع fallback لو كان الاسم تغيّر بالغلط
+        pwd_hash = getattr(user, "password_hash", None)
+        if pwd_hash is None:
+            # fallback على اسم بديل شائع
+            pwd_hash = getattr(user, "password", None)
+
+        if not pwd_hash:
+            # خطأ في تهيئة المودل/الجدول – نرسل لوق واضح
+            logger.error("LOGIN_ERROR: password hash field missing on User model/row for email=%s", payload.email)
+            raise HTTPException(status_code=500, detail="server misconfigured: password hash missing")
+
+        if not verify_password(payload.password, pwd_hash):
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
 
         access_token = create_access_token(
@@ -110,9 +116,7 @@ async def login(payload: LoginIn, response: Response, db: AsyncSession = Depends
             "token_type": "bearer",
             "user": UserOut.model_validate(user),
         }
-
     except HTTPException:
-        # مرر الأخطاء المتوقعة كما هي (401 مثلاً)
         raise
     except Exception as e:
         logger.exception("LOGIN_ERROR: %s", repr(e))
@@ -122,5 +126,10 @@ async def login(payload: LoginIn, response: Response, db: AsyncSession = Depends
 
 @router.post("/logout", status_code=204)
 async def logout(response: Response):
-    _clear_auth_cookie(response)
-    return Response(status_code=204)
+    try:
+        _clear_auth_cookie(response)
+        return Response(status_code=204)
+    except Exception as e:
+        logger.exception("LOGOUT_ERROR: %s", repr(e))
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail="logout failed")
