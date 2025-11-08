@@ -11,7 +11,6 @@ from sqlalchemy import (
     Enum,
     Boolean,
     DateTime,
-    Text,
     text,
     ForeignKey,
 )
@@ -36,7 +35,6 @@ class LandImage(Base):
         index=True,
     )
 
-    # في الـ dump كان فيه enum storage_kind ('db','url') default 'url'
     storage_kind: Mapped[str] = mapped_column(
         Enum("db", "url", name="land_image_storage_kind"),
         nullable=False,
@@ -55,7 +53,6 @@ class LandImage(Base):
         nullable=True,
     )
 
-    # هذين هم الأعمدة اللي سببوا الخطأ (NOT NULL في الداتا بيس)
     file_name: Mapped[str] = mapped_column(
         String(255),
         nullable=False,
@@ -109,8 +106,8 @@ class LandImage(Base):
         server_default=text("CURRENT_TIMESTAMP"),
     )
 
-    # علاقة اختيارية لو حاب تستخدمها
-    land = relationship("Land", back_populates="images", lazy="joined", viewonly=True)
+    # ✅ العلاقة العكسية مع Land (بدون viewonly)
+    land = relationship("Land", back_populates="images")
 
     def __repr__(self) -> str:
         return f"<LandImage id={self.image_id} land_id={self.land_id} file_name={self.file_name!r}>"
