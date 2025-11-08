@@ -331,10 +331,20 @@ async def upload_land_image(
 
         img = LandImage(
             land_id=land_id,
+            storage_kind="url",                         # نخزن كرابط
             file_url=secure_url,
-            sort_order=sort_order,
+            file_data=None,                             # ما نستخدم التخزين الباينري الآن
+            file_name=file.filename or "image",         # مهم: NOT NULL
+            mime_type=file.content_type or "image/jpeg",# مهم: NOT NULL
+            size_bytes=len(data) if data else None,
+            width=result.get("width"),
+            height=result.get("height"),
+            sha256_hex=None,
             is_cover=False,
+            sort_order=sort_order,
+            alt_text=None,
         )
+
         db.add(img)
         await db.commit()
         await db.refresh(img)
