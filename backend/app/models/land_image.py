@@ -1,18 +1,70 @@
+# app/models/land_image.py
+from __future__ import annotations
+
+from datetime import datetime
+from typing import Optional
+
+from sqlalchemy import (
+    Integer,
+    String,
+    Boolean,
+    DateTime,
+    ForeignKey,
+    text,
+)
 from sqlalchemy.orm import Mapped, mapped_column
-from sqlalchemy import BigInteger, ForeignKey, String, Integer, TIMESTAMP, text, Boolean
+
 from app.db.database import Base
+
 
 class LandImage(Base):
     __tablename__ = "land_images"
 
-    image_id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
-    land_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("lands.land_id", onupdate="CASCADE", ondelete="CASCADE"), nullable=False)
+    image_id: Mapped[int] = mapped_column(
+        Integer, primary_key=True, index=True
+    )
 
-    # نخزن رابط الصورة (أو مسار التخزين لاحقًا)
-    file_url: Mapped[str] = mapped_column(String(1024), nullable=False)
+    land_id: Mapped[int] = mapped_column(
+        Integer,
+        ForeignKey("lands.land_id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
 
-    storage_key: Mapped[str | None] = mapped_column(String(255), nullable=True)  # اختياري
-    is_cover: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
-    sort_order: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    # URL stored in DB (Cloudinary secure_url)
+    file_url: Mapped[str] = mapped_column(
+        String(500),
+        nullable=False,
+    )
 
-    created_at: Mapped[str] = mapped_column(TIMESTAMP, server_default=text("CURRENT_TIMESTAMP"))
+    # tinyint(1) in MySQL → Boolean في SQLAlchemy
+    is_cover: Mapped[bool] = mapped_column(
+        Boolean,
+        nullable=False,
+        server_default=text("0"),
+    )
+
+    sort_order: Mapped[int] = mapped_column(
+        Integer,
+        nullable=False,
+        server_default=text("0"),
+    )
+
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime,
+        nullable=False,
+        server_default=text("CURRENT_TIMESTAMP"),
+    )
+
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime,
+        nullable=False,
+        server_default=text("CURRENT_TIMESTAMP"),
+        server_onupdate=text("CURRENT_TIMESTAMP"),
+    )
+
+    def __repr__(self) -> str:
+        return (
+            f"<LandImage id={self.image_id} land_id={self.land_id} "
+            f"is_cover={self.is_cover} sort_order={self.sort_order}>"
+        )
