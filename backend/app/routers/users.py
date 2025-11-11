@@ -4,7 +4,7 @@ import logging
 from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
-
+from fastapi.concurrency import run_in_threadpool
 from app.db.database import get_db, get_async_session
 from app.core.security import get_current_user
 from app.schemas.user import UserOut, UserUpdate
@@ -55,7 +55,6 @@ async def get_user_public(user_id: int, db: AsyncSession = Depends(get_db)):
 
 @router.post("/me/send-code")
 async def send_code_to_me(
-    background_tasks: BackgroundTasks,
     session: AsyncSession = Depends(get_async_session),
     current_user: User = Depends(get_current_user),
 ):
@@ -72,15 +71,24 @@ async def send_code_to_me(
         # 2) بناء محتوى الإيميل
         subject, body = build_verification_email(ev.token, ttl_minutes=10)
 
-        # 3) إرسال الإيميل في background
-        background_tasks.add_task(
+        # 3) إرسال الإيميل فعليًا (synchronous) في threadpool
+        await run_in_threadpool(
             send_email_smtp,
             current_user.email,
             subject,
             body,
         )
 
-        return {"detail": "Verification code sent to your email."}
+        logging.info(
+            "Verification email sent successfully to %s (user_id=%s)",
+            current_user.email,
+            getattr(current_user, "user_id", None),
+        )
+
+        return {
+            "detail": "Verification code sent to your email.",
+            "email_sent": True,
+        }
 
     except Exception as exc:
         logging.error(
@@ -89,6 +97,7 @@ async def send_code_to_me(
             exc,
             exc_info=True,
         )
+        # نرجع أن الإيميل ما انرسل + نرمي 500 للـ client
         raise HTTPException(
             status_code=500,
             detail="Failed to send verification code",
