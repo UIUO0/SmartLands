@@ -81,12 +81,12 @@ export default function DashboardPage() {
         </div>
 
         {/* Actions */}
-        <div className="flex items-center gap-2 md:ml-auto">
+        <div className="flex items-center gap-2 md:ml-auto shrink-0">
           <a href="/lands" className="rounded-xl bg-black text-white px-4 py-2">
             My Lands
-            </a>
-            <a href="/profile" className="rounded-xl border px-4 py-2">
-              My Account
+          </a>
+          <a href="/profile" className="rounded-xl border px-4 py-2">
+            My Account
           </a>
         </div>
       </header>
