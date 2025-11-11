@@ -1,27 +1,32 @@
-// middleware.ts
+// middleware.ts (root)
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { COOKIE_NAME } from "@/lib/config";
+
+const COOKIE_NAME = "sl_token";
 
 export function middleware(req: NextRequest) {
-  const token = req.cookies.get(COOKIE_NAME)?.value;
-  const path = req.nextUrl.pathname;
+  const { pathname } = req.nextUrl;
+  const token = req.cookies.get(COOKIE_NAME)?.value ?? "";
 
-  const isAuthPage = path.startsWith("/login") || path.startsWith("/signup");
-  const isProtectedPage =
-    path.startsWith("/dashboard") ||
-    path.startsWith("/lands") ||
-    path.startsWith("/requests") ||
-    path.startsWith("/transactions") ||
-    path.startsWith("/assistant");
+  // الداشبورد عام
+  const isProtected =
+    pathname.startsWith("/lands") ||
+    pathname.startsWith("/requests") ||
+    pathname.startsWith("/transactions") ||
+    pathname.startsWith("/assistant") ||
+    pathname.startsWith("/profile");
 
-  if (!token && isProtectedPage) {
+  const isAuthPage = pathname.startsWith("/login");
+
+  // مو مسجّل وتحاول صفحة محمية → روح للّوجين
+  if (!token && isProtected) {
     const url = req.nextUrl.clone();
     url.pathname = "/login";
-    url.search = `?next=${path}`;
+    url.searchParams.set("next", pathname);
     return NextResponse.redirect(url);
   }
 
+  // معك توكن وتحاول /login → رجّعك للداشبورد
   if (token && isAuthPage) {
     return NextResponse.redirect(new URL("/dashboard", req.url));
   }
@@ -29,14 +34,9 @@ export function middleware(req: NextRequest) {
   return NextResponse.next();
 }
 
+// طابق فقط الصفحات، واستبعد الـ API وملفات البناء
 export const config = {
   matcher: [
-    "/login",
-    "/signup",
-    "/dashboard/:path*",
-    "/lands/:path*",
-    "/requests/:path*",
-    "/transactions/:path*",
-    "/assistant/:path*",
+    "/((?!api|_next/static|_next/image|favicon.ico|robots.txt|sitemap.xml).*)",
   ],
 };
