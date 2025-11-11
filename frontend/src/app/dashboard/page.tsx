@@ -80,7 +80,7 @@ export default function DashboardPage() {
           <p className="text-zinc-600">الأراضي المتاحة الآن (Public)</p>
         </div>
 
-        {/* Actions */}
+       {/* Actions (debug-friendly) */}
         <div className="flex flex-wrap items-center gap-2 md:ml-auto shrink-0">
           {/* ثابت دائمًا */}
           <a href="/lands" className="rounded-xl bg-black text-white px-4 py-2 whitespace-nowrap">
@@ -90,31 +90,43 @@ export default function DashboardPage() {
             My Account
           </a>
 
-          {/* لغير المسجّل: تظهر */}
+          {/* Debug: أزرار وهمية للتأكد من اللف/المسافات */}
+          <a href="#" className="rounded-xl border px-4 py-2 whitespace-nowrap">
+            Debug A
+          </a>
+          <a href="#" className="rounded-xl border px-4 py-2 whitespace-nowrap">
+            Debug B
+          </a>
+
+          {/* لغير المسجّل: Log in + Sign up (نخفيها بالـ inline style لو me موجود) */}
           <a
             href="/login"
-            className={`rounded-xl bg-black text-white px-4 py-2 whitespace-nowrap ${me ? "hidden" : ""}`}
+            style={{ display: me ? "none" as const : undefined }}
+            className="rounded-xl bg-black text-white px-4 py-2 whitespace-nowrap"
+            data-testid="btn-login"
           >
             Log in
           </a>
           <a
             href="/signup"
-            className={`rounded-xl border px-4 py-2 whitespace-nowrap ${me ? "hidden" : ""}`}
+            style={{ display: me ? "none" as const : undefined }}
+            className="rounded-xl border px-4 py-2 whitespace-nowrap"
+            data-testid="btn-signup"
           >
             Sign up
           </a>
 
-          {/* للمسجّل: زر Logout بدلهم */}
+          {/* للمسجّل: زر Logout بدلهم (نظهره فقط إذا me موجود) */}
           <form
             action="/api/auth/logout"
             method="POST"
-            className={`${me ? "" : "hidden"} whitespace-nowrap`}
+            style={{ display: me ? undefined : "none" }}
+            className="whitespace-nowrap"
+            data-testid="btn-logout-form"
           >
             <button className="rounded-xl border px-4 py-2">Logout</button>
           </form>
         </div>
-
-
       </header>
 
       {/* FILTERS */}
