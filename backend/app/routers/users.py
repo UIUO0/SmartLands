@@ -13,7 +13,7 @@ from app.models.email_verification import VerificationPurpose
 from app.utils.email import (
     create_email_code,
     build_verification_email,
-    send_email_smtp,
+    send_email_sendgrid,
 )
 
 router = APIRouter(prefix="/users", tags=["users"])
@@ -71,9 +71,9 @@ async def send_code_to_me(
         # 2) بناء محتوى الإيميل
         subject, body = build_verification_email(ev.token, ttl_minutes=10)
 
-        # 3) إرسال الإيميل فعليًا (synchronous) في threadpool
+        # 3) إرسال الإيميل فعليًا عبر SendGrid في threadpool
         await run_in_threadpool(
-            send_email_smtp,
+            send_email_sendgrid,
             current_user.email,
             subject,
             body,
@@ -97,7 +97,6 @@ async def send_code_to_me(
             exc,
             exc_info=True,
         )
-        # نرجع أن الإيميل ما انرسل + نرمي 500 للـ client
         raise HTTPException(
             status_code=500,
             detail="Failed to send verification code",

@@ -12,8 +12,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.user import User
 from app.models.email_verification import EmailVerification, VerificationPurpose
 
+from sendgrid import SendGridAPIClient
+from sendgrid.helpers.mail import Mail
 
-# إعدادات SMTP من environment variables
+# إعدادات SendGrid من environment variables
+SENDGRID_API_KEY = os.getenv("SENDGRID_API_KEY")
+SENDGRID_FROM_EMAIL = os.getenv("SENDGRID_FROM_EMAIL")
+
+# إعدادات SMTP من environment variables (ممكن نستخدمها محليًا لو حبيت)
 SMTP_HOST = os.getenv("SMTP_HOST", "smtp.gmail.com")
 SMTP_PORT = int(os.getenv("SMTP_PORT", "587"))
 SMTP_USER = os.getenv("SMTP_USER")      # الإيميل اللي يرسل منه
@@ -76,7 +82,7 @@ def build_verification_email(code: str, ttl_minutes: int = 10) -> tuple[str, str
 def send_email_smtp(to_email: str, subject: str, body: str) -> None:
     """
     دالة sync بسيطة ترسل الإيميل عبر SMTP
-    (نستدعيها في BackgroundTasks عشان ما توقف request)
+    (مفيدة للاستخدام المحلي لو حاب تجرب بعيد عن Railway)
     """
     try:
         if not SMTP_USER or not SMTP_PASS:
@@ -101,6 +107,48 @@ def send_email_smtp(to_email: str, subject: str, body: str) -> None:
     except Exception as exc:
         logging.error(
             "Error in send_email_smtp to %s: %s",
+            to_email,
+            exc,
+            exc_info=True,
+        )
+        raise
+
+
+def send_email_sendgrid(to_email: str, subject: str, body: str) -> None:
+    """
+    إرسال إيميل عن طريق SendGrid Web API.
+    هذه الدالة هي اللي بنستخدمها في الإنتاج على Railway.
+    """
+    try:
+        if not SENDGRID_API_KEY or not SENDGRID_FROM_EMAIL:
+            logging.error(
+                "SendGrid credentials are not configured (SENDGRID_API_KEY or SENDGRID_FROM_EMAIL missing)"
+            )
+            raise RuntimeError("SendGrid is not configured")
+
+        message = Mail(
+            from_email=SENDGRID_FROM_EMAIL,
+            to_emails=to_email,
+            subject=subject,
+            plain_text_content=body,
+        )
+
+        sg = SendGridAPIClient(SENDGRID_API_KEY)
+        response = sg.send(message)
+
+        status_code = getattr(response, "status_code", None)
+        logging.info(
+            "SendGrid email sent to %s: status=%s",
+            to_email,
+            status_code,
+        )
+
+        if status_code is None or status_code >= 400:
+            raise RuntimeError(f"SendGrid returned bad status {status_code}")
+
+    except Exception as exc:
+        logging.error(
+            "Error in send_email_sendgrid to %s: %s",
             to_email,
             exc,
             exc_info=True,
