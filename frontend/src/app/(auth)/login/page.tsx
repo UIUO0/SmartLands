@@ -1,71 +1,57 @@
+// src/app/(auth)/login/page.tsx
 "use client";
 
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import Button from "@/components/ui/Button";
-import Input from "@/components/ui/Input";
-import { Card } from "@/components/ui/Card";
 
-export default function LoginPage() {
+export const dynamic = "force-dynamic"; // منع الـ prerender الثابت على Vercel
+
+function LoginForm() {
   const router = useRouter();
-  const params = useSearchParams();
-  const next = params.get("next") || "/dashboard";
-
+  const next = useSearchParams().get("next") || "/dashboard";
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
 
-  async function handleLogin(e: any) {
+  async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
-
     const r = await fetch("/api/auth/login", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ email, password }),
     });
-
     setLoading(false);
     if (r.ok) router.push(next);
-    else alert("Invalid email or password");
+    else alert("Invalid credentials");
   }
 
   return (
-    <Card>
-      <h1 className="text-2xl font-bold mb-6">Login</h1>
-
-      <form onSubmit={handleLogin} className="grid gap-4">
+    <main className="min-h-screen grid place-items-center p-6">
+      <form onSubmit={onSubmit} className="w-full max-w-md grid gap-3 border p-6 rounded-2xl">
+        <h1 className="text-2xl font-semibold">Login</h1>
         <div>
-          <label className="text-sm">Email</label>
-          <Input
-            required
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-          />
+          <label className="block text-sm mb-1">Email</label>
+          <input className="w-full border rounded-xl px-3 py-2" type="email" required
+                 value={email} onChange={e=>setEmail(e.target.value)} />
         </div>
-
         <div>
-          <label className="text-sm">Password</label>
-          <Input
-            required
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-          />
+          <label className="block text-sm mb-1">Password</label>
+          <input className="w-full border rounded-xl px-3 py-2" type="password" required
+                 value={password} onChange={e=>setPassword(e.target.value)} />
         </div>
-
-        <Button loading={loading} type="submit">
-          Login
-        </Button>
+        <button className="rounded-xl bg-black text-white py-2" disabled={loading}>
+          {loading ? "..." : "Login"}
+        </button>
       </form>
+    </main>
+  );
+}
 
-      <p className="text-sm mt-4">
-        Don't have an account?{" "}
-        <a className="underline" href="/signup">
-          Sign up
-        </a>
-      </p>
-    </Card>
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<div className="p-6 text-zinc-600">Loading…</div>}>
+      <LoginForm />
+    </Suspense>
   );
 }
