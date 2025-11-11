@@ -1,6 +1,6 @@
 import os
 from typing import AsyncGenerator
-
+import logging
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import (
     AsyncSession,
@@ -41,6 +41,17 @@ Base = declarative_base()
 async def get_db() -> AsyncGenerator[AsyncSession, None]:
     async with AsyncSessionLocal() as session:
         yield session
+async def get_async_session() -> AsyncGenerator[AsyncSession, None]:
+    """
+    Dependency شبيهة بـ get_db لكن بالاسم اللي تستخدمه في باقي المشروع.
+    أي خطأ هنا راح يطلع في Railway logs عن طريق logging.
+    """
+    try:
+        async with AsyncSessionLocal() as session:
+            yield session
+    except Exception as exc:
+        logging.error("Error in get_async_session: %s", exc, exc_info=True)
+        raise
 
 # الدالة المطلوبة في main.py
 async def ping_database() -> bool:
