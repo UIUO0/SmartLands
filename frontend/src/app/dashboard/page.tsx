@@ -82,13 +82,38 @@ export default function DashboardPage() {
 
         {/* Actions */}
         <div className="flex items-center gap-2 md:ml-auto shrink-0">
+          {/* أزرار تظهر دائمًا */}
           <a href="/lands" className="rounded-xl bg-black text-white px-4 py-2">
             My Lands
           </a>
           <a href="/profile" className="rounded-xl border px-4 py-2">
             My Account
           </a>
+
+          {/* لو المستخدم غير مسجّل */}
+          {!me && (
+            <>
+              <a href="/login" className="rounded-xl bg-black text-white px-4 py-2">
+                Log in
+              </a>
+              <a href="/signup" className="rounded-xl border px-4 py-2">
+                Sign up
+              </a>
+            </>
+          )}
+
+          {/* لو المستخدم مسجّل */}
+          {me && (
+            <form action="/api/auth/logout" method="POST">
+              <button
+                className="rounded-xl border px-4 py-2"
+              >
+                Logout
+              </button>
+            </form>
+          )}
         </div>
+
       </header>
 
       {/* FILTERS */}
