@@ -50,9 +50,22 @@ export default function DashboardPage() {
     }
     setLoading(false);
   }
-
-  useEffect(() => { load(); }, [qs]);
-
+  const [me, setMe] = useState<{ user_id: number; full_name?: string } | null>(null);
+  useEffect(() => {
+    (async () => {
+      try {
+        const r = await fetch("/api/users/me", { cache: "no-store" });
+        if (r.ok) {
+          const j = await r.json();
+          if (j?.authenticated && j?.user) setMe(j.user);
+        } else {
+          setMe(null);
+        }
+      } catch {
+        setMe(null);
+      }
+    })();
+  }, []);
   return (
     <main className="p-6 space-y-5">
       <header className="flex flex-col md:flex-row md:items-end md:justify-between gap-3">
@@ -62,13 +75,26 @@ export default function DashboardPage() {
         </div>
         {/* Actions: auth entry points */}
         <div className="flex items-center gap-2 md:ml-auto">
-          <a href="/login" className="rounded-xl bg-black text-white px-4 py-2">
-            Log in
-          </a>
-          <a href="/signup" className="rounded-xl border px-4 py-2">
-            Sign up
-          </a>
-        </div>
+        {me ? (
+          <>
+            <a href="/lands" className="rounded-xl bg-black text-white px-4 py-2">
+              My Lands
+            </a>
+            <a href="/profile" className="rounded-xl border px-4 py-2">
+              My Account
+            </a>
+          </>
+        ) : (
+          <>
+            <a href="/login" className="rounded-xl bg-black text-white px-4 py-2">
+              Log in
+            </a>
+            <a href="/signup" className="rounded-xl border px-4 py-2">
+              Sign up
+            </a>
+          </>
+        )}
+      </div>
 
         <form
           onSubmit={(e) => { e.preventDefault(); setOffset(0); load(); }}
