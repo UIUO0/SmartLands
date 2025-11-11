@@ -36,20 +36,39 @@ export default function DashboardPage() {
     return p.toString();
   }, [city, q, limit, offset]);
 
-  async function load() {
+    async function load() {
     setLoading(true);
     setErr(null);
     try {
-      const r = await fetch(`/api/lands?${qs}`, { cache: "no-store" });
-      if (!r.ok) throw new Error(`HTTP ${r.status}`);
-      const j = await r.json();
+      const url = `/api/lands?${qs}`;
+      console.log("Fetching:", url);
+
+      const r = await fetch(url, { cache: "no-store" });
+      const rawText = await r.text();
+      console.log("Response status:", r.status, "body:", rawText);
+
+      if (!r.ok) {
+        // حاول نفك JSON وإلا نعرض النص
+        try {
+          const j = JSON.parse(rawText);
+          throw new Error(j?.error?.message || j?.message || rawText || `HTTP ${r.status}`);
+        } catch {
+          throw new Error(rawText || `HTTP ${r.status}`);
+        }
+      }
+
+      const j = JSON.parse(rawText);
       setItems(Array.isArray(j?.items) ? j.items : []);
       setTotal(Number(j?.total ?? 0));
     } catch (e: any) {
-      setErr(e.message || "Failed");
+      setErr(e?.message || "Failed");
+      setItems([]);
+      setTotal(0);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   }
+
 
   
   const [me, setMe] = useState<{ user_id: number; full_name?: string } | null>(null);
@@ -145,7 +164,12 @@ export default function DashboardPage() {
           </nav>
         </div>
       </header>
-
+       {err && (
+        <div className="mt-3 p-3 rounded-xl border border-red-300 text-red-700 bg-red-50">
+          خطأ أثناء جلب الأراضي: {err}
+        </div>
+        )}
+         
       {/* Debug line - مؤقت لفحص الحالة */}
       <div style={{ fontSize: 12, color: "#666", marginTop: 6 }}>
         auth state: <code>{String(!!me)}</code>
