@@ -1,13 +1,15 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation"; // ⬅️ أضف useSearchParams
 import Button from "@/components/ui/Button";
 import Input from "@/components/ui/Input";
 import { Card } from "@/components/ui/Card";
 
 export default function SignupPage() {
   const router = useRouter();
+  const sp = useSearchParams();                     // ⬅️ جديد
+  const next = sp.get("next") || "/dashboard";     // ⬅️ جديد
 
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -26,8 +28,12 @@ export default function SignupPage() {
 
     setLoading(false);
 
-    if (r.ok) router.push("/login");
-    else alert("Signup failed");
+    if (r.ok) {
+      // ⬅️ بدل إعادة التوجيه: نحافظ على next
+      router.push(`/login?next=${encodeURIComponent(next)}`);
+    } else {
+      alert("Signup failed");
+    }
   }
 
   return (
@@ -67,7 +73,7 @@ export default function SignupPage() {
 
       <p className="text-sm mt-4">
         Already have an account?{" "}
-        <a className="underline" href="/login">
+        <a className="underline" href={`/login?next=${encodeURIComponent(next)}`}>
           Login
         </a>
       </p>
