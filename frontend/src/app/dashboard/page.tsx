@@ -50,11 +50,16 @@ export default function DashboardPage() {
     }
     setLoading(false);
   }
+
+  
   const [me, setMe] = useState<{ user_id: number; full_name?: string } | null>(null);
   useEffect(() => {
     (async () => {
       try {
-        const r = await fetch("/api/users/me", { cache: "no-store" });
+        const r = await fetch("/api/users/me", {
+        cache: "no-store",
+        credentials: "include", // يضمن إرسال كوكي sl_token للـ API route
+        });
         if (r.ok) {
           const j = await r.json();
           if (j?.authenticated && j?.user) setMe(j.user);
@@ -67,56 +72,50 @@ export default function DashboardPage() {
     })();
   }, []);
   return (
-    <main className="p-6 space-y-5">
+      <main className="p-6 space-y-5">
+      {/* HEADER */}
       <header className="flex flex-col md:flex-row md:items-end md:justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold">Dashboard</h1>
           <p className="text-zinc-600">الأراضي المتاحة الآن (Public)</p>
         </div>
-        {/* Actions: auth entry points */}
+
+        {/* Actions */}
         <div className="flex items-center gap-2 md:ml-auto">
-        {me ? (
-          <>
-            <a href="/lands" className="rounded-xl bg-black text-white px-4 py-2">
-              My Lands
+          <a href="/lands" className="rounded-xl bg-black text-white px-4 py-2">
+            My Lands
             </a>
             <a href="/profile" className="rounded-xl border px-4 py-2">
               My Account
-            </a>
-          </>
-        ) : (
-          <>
-            <a href="/login" className="rounded-xl bg-black text-white px-4 py-2">
-              Log in
-            </a>
-            <a href="/signup" className="rounded-xl border px-4 py-2">
-              Sign up
-            </a>
-          </>
-        )}
-      </div>
-
-        <form
-          onSubmit={(e) => { e.preventDefault(); setOffset(0); load(); }}
-          className="flex flex-wrap gap-2"
-        >
-          <input
-            placeholder="مدينة (مثال: Riyadh)"
-            className="border rounded-xl px-3 py-2"
-            value={city}
-            onChange={(e) => setCity(e.target.value)}
-          />
-          <input
-            placeholder="بحث في العنوان/الوصف"
-            className="border rounded-xl px-3 py-2"
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-          />
-          <button className="rounded-xl bg-black text-white px-4 py-2">
-            بحث
-          </button>
-        </form>
+          </a>
+        </div>
       </header>
+
+      {/* FILTERS */}
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          setOffset(0);
+          load();
+        }}
+        className="flex flex-wrap gap-2"
+      >
+        <input
+          placeholder="مدينة (مثال: Riyadh)"
+          className="border rounded-xl px-3 py-2"
+          value={city}
+          onChange={(e) => setCity(e.target.value)}
+        />
+        <input
+          placeholder="بحث في العنوان/الوصف"
+          className="border rounded-xl px-3 py-2"
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+        />
+        <button className="rounded-xl bg-black text-white px-4 py-2">
+          بحث
+        </button>
+      </form>
 
       {loading && <div className="text-zinc-500">…جارِ التحميل</div>}
       {err && <div className="text-red-600">خطأ: {err}</div>}
