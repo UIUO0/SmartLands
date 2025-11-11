@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 
 export const dynamic = "force-dynamic"; // منع الـ prerender الثابت على Vercel
 
+
 function LoginForm() {
   const router = useRouter();
   const next = useSearchParams().get("next") || "/dashboard";
@@ -43,6 +44,15 @@ function LoginForm() {
         <button className="rounded-xl bg-black text-white py-2" disabled={loading}>
           {loading ? "..." : "Login"}
         </button>
+          <div className="text-sm text-gray-600 text-center mt-2">
+          ما عندك حساب؟{" "}
+          <a
+            href={`/signup?next=${encodeURIComponent(next)}`}
+            className="underline text-black"
+          >
+            إنشاء حساب
+          </a>
+        </div>
       </form>
     </main>
   );

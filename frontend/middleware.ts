@@ -43,7 +43,7 @@ export function middleware(req: NextRequest) {
   if (isProtected && !token) {
     const url = req.nextUrl.clone();
     url.pathname = "/login";
-    url.searchParams.set("next", pathname);
+    url.searchParams.set("next", pathname + req.nextUrl.search);
     return NextResponse.redirect(url);
   }
 
