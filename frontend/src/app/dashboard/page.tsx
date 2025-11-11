@@ -60,6 +60,15 @@ export default function DashboardPage() {
           <h1 className="text-2xl font-semibold">Dashboard</h1>
           <p className="text-zinc-600">الأراضي المتاحة الآن (Public)</p>
         </div>
+        {/* Actions: auth entry points */}
+        <div className="flex items-center gap-2 md:ml-auto">
+          <a href="/login" className="rounded-xl bg-black text-white px-4 py-2">
+            Log in
+          </a>
+          <a href="/signup" className="rounded-xl border px-4 py-2">
+            Sign up
+          </a>
+        </div>
 
         <form
           onSubmit={(e) => { e.preventDefault(); setOffset(0); load(); }}
