@@ -4,11 +4,34 @@ import type { NextRequest } from "next/server";
 
 const COOKIE_NAME = "sl_token";
 
+// صفحات عامة بشكل صريح
+const PUBLIC_PATHS = new Set<string>(["/", "/dashboard", "/login"]);
+
+// مسارات نحتاج نتجاهلها دومًا (ستايل/صور…)
+function isStaticOrSystem(pathname: string) {
+  return (
+    pathname.startsWith("/_next") ||
+    pathname.startsWith("/favicon.ico") ||
+    pathname.startsWith("/robots.txt") ||
+    pathname.startsWith("/sitemap.xml")
+  );
+}
+
 export function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
   const token = req.cookies.get(COOKIE_NAME)?.value ?? "";
 
-  // صفحات محمية فقط (dashboard عام)
+  // لا تلمس الـ API ولا الملفات الثابتة
+  if (pathname.startsWith("/api") || isStaticOrSystem(pathname)) {
+    return NextResponse.next();
+  }
+
+  // مرّر الصفحات العامة دائمًا
+  if (PUBLIC_PATHS.has(pathname)) {
+    return NextResponse.next();
+  }
+
+  // الصفحات المحمية (أي شيء غير العامة التالية)
   const isProtected =
     pathname.startsWith("/lands") ||
     pathname.startsWith("/requests") ||
@@ -16,25 +39,23 @@ export function middleware(req: NextRequest) {
     pathname.startsWith("/assistant") ||
     pathname.startsWith("/profile");
 
-  const isAuthPage = pathname.startsWith("/login");
-
-  if (!token && isProtected) {
+  // لو محمية وما عندك توكن → إلى /login
+  if (isProtected && !token) {
     const url = req.nextUrl.clone();
     url.pathname = "/login";
     url.searchParams.set("next", pathname);
     return NextResponse.redirect(url);
   }
 
-  if (token && isAuthPage) {
+  // لو عندك توكن ودخلت /login → رجّعك للداشبورد
+  if (token && pathname === "/login") {
     return NextResponse.redirect(new URL("/dashboard", req.url));
   }
 
   return NextResponse.next();
 }
 
-// استبعد /api وملفات الستاتك
+// نطابق كل شيء (نستثني API والستايتك داخل الكود نفسه)
 export const config = {
-  matcher: [
-    "/((?!api|_next/static|_next/image|favicon.ico|robots.txt|sitemap.xml).*)",
-  ],
+  matcher: ["/:path*"],
 };
