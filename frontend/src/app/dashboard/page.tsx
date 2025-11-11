@@ -75,8 +75,9 @@ export default function DashboardPage() {
   useEffect(() => {
     load();
   }, [qs]);
-  
+
   return (
+    
       <main className="p-6 space-y-5">
       {/* DEBUG: اطبع حالة المصادقة */}
       <pre style={{fontSize:12, color:"#666", margin:"4px 0"}}>me = {JSON.stringify(me)}</pre>
@@ -149,6 +150,106 @@ export default function DashboardPage() {
       <div style={{ fontSize: 12, color: "#666", marginTop: 6 }}>
         auth state: <code>{String(!!me)}</code>
       </div>
+
+          {/* FILTERS */}
+    <form
+      onSubmit={(e) => {
+        e.preventDefault();
+        setOffset(0);
+        load();
+      }}
+      className="flex flex-wrap gap-2 mt-4"
+    >
+      <input
+        placeholder="مدينة (مثال: Riyadh)"
+        className="border rounded-xl px-3 py-2"
+        value={city}
+        onChange={(e) => setCity(e.target.value)}
+      />
+      <input
+        placeholder="بحث في العنوان/الوصف"
+        className="border rounded-xl px-3 py-2"
+        value={q}
+        onChange={(e) => setQ(e.target.value)}
+      />
+      <button className="rounded-xl bg-black text-white px-4 py-2">
+        بحث
+      </button>
+    </form>
+
+    {loading && <div className="text-zinc-500 mt-3">…جارِ التحميل</div>}
+    {err && <div className="text-red-600 mt-3">خطأ: {err}</div>}
+
+    {!loading && !err && (
+      <>
+        <div className="text-sm text-zinc-600 mt-3">النتائج: {total}</div>
+
+        <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 mt-2">
+          {items.map((x) => (
+            <article key={x.land_id} className="rounded-2xl border p-4">
+              <div className="flex items-center justify-between">
+                <h3 className="font-semibold truncate">{x.title}</h3>
+                {x.price_amount != null && (
+                  <div className="text-sm font-medium">
+                    {Intl.NumberFormat("ar-SA", { maximumFractionDigits: 0 }).format(
+                      x.price_amount
+                    )} ر.س
+                  </div>
+                )}
+              </div>
+
+              <div className="text-sm text-zinc-600 mt-1">
+                {x.city || "—"} {x.region ? `• ${x.region}` : ""}{" "}
+                {x.country ? `• ${x.country}` : ""}
+              </div>
+
+              {x.area_sq_m != null && (
+                <div className="text-sm mt-1">المساحة: {x.area_sq_m} م²</div>
+              )}
+
+              <div className="text-xs text-zinc-500 mt-2 line-clamp-2">
+                {x.description || "—"}
+              </div>
+
+              <div className="mt-3 flex gap-2">
+                <a href={`/lands/${x.land_id}`} className="text-sm underline">
+                  تفاصيل
+                </a>
+                <a
+                  href={`/lands?status=available&city=${encodeURIComponent(x.city || "")}`}
+                  className="text-sm text-zinc-600"
+                >
+                  مشابهة في {x.city || "—"}
+                </a>
+              </div>
+            </article>
+          ))}
+        </section>
+
+        {items.length === 0 && (
+          <div className="text-zinc-600 mt-2">لا توجد أراضٍ متاحة بهذه الفلاتر.</div>
+        )}
+
+        {/* تنقّل بسيط */}
+        <div className="flex items-center gap-2 mt-3">
+          <button
+            disabled={offset === 0}
+            onClick={() => setOffset((o) => Math.max(0, o - limit))}
+            className="rounded-xl border px-3 py-1 disabled:opacity-50"
+          >
+            السابق
+          </button>
+          <button
+            disabled={offset + limit >= total}
+            onClick={() => setOffset((o) => o + limit)}
+            className="rounded-xl border px-3 py-1 disabled:opacity-50"
+          >
+            التالي
+          </button>
+        </div>
+      </>
+    )}
+
 
     </main>
   );
