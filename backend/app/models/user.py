@@ -1,10 +1,10 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Optional
+from typing import Optional, List
 
 from sqlalchemy import String, Enum, text, DateTime, Integer, Boolean
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.database import Base
 
@@ -13,12 +13,14 @@ class User(Base):
     __tablename__ = "users"
 
     user_id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+
     email: Mapped[str] = mapped_column(
         String(255),
         unique=True,
         index=True,
         nullable=False,
     )
+
     full_name: Mapped[str] = mapped_column(
         String(255),
         nullable=False,
@@ -57,21 +59,11 @@ class User(Base):
         server_onupdate=text("CURRENT_TIMESTAMP"),
     )
 
-    def __repr__(self) -> str:
-        return f"<User id={self.user_id} email={self.email} role={self.role}>"
-# app/models/user.py
-email_verifications = relationship("EmailVerification", back_populates="user")
-# app/models/user.py
-from sqlalchemy.orm import relationship
-
-class User(Base):
-    __tablename__ = "users"
-
-    # ... الأعمدة الموجودة أصلاً ...
-
-    email_verifications = relationship(
+    email_verifications: Mapped[List["EmailVerification"]] = relationship(
         "EmailVerification",
         back_populates="user",
-        lazy="selectin"
+        lazy="selectin",
     )
 
+    def __repr__(self) -> str:
+        return f"<User id={self.user_id} email={self.email} role={self.role}>"
