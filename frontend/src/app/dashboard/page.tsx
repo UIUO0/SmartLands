@@ -50,11 +50,16 @@ export default function DashboardPage() {
     }
     setLoading(false);
   }
+
+  
   const [me, setMe] = useState<{ user_id: number; full_name?: string } | null>(null);
   useEffect(() => {
     (async () => {
       try {
-        const r = await fetch("/api/users/me", { cache: "no-store" });
+        const r = await fetch("/api/users/me", {
+        cache: "no-store",
+        credentials: "include", // يضمن إرسال كوكي sl_token للـ API route
+        });
         if (r.ok) {
           const j = await r.json();
           if (j?.authenticated && j?.user) setMe(j.user);
@@ -124,7 +129,7 @@ export default function DashboardPage() {
           بحث
         </button>
       </form>
-      
+
       {loading && <div className="text-zinc-500">…جارِ التحميل</div>}
       {err && <div className="text-red-600">خطأ: {err}</div>}
 
