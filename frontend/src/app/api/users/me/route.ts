@@ -7,6 +7,11 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ authenticated: false }, { status: 401 });
   }
 
+    const r = await fetch("/api/users/me", {
+    cache: "no-store",
+    credentials: "include", // مهم في بعض البيئات
+    });
+
   const upstream = await fetch(`${API_URL}/users/me`, {
     method: "GET",
     headers: { Authorization: `Bearer ${token}` },
@@ -20,4 +25,6 @@ export async function GET(req: NextRequest) {
   }
 
   return NextResponse.json({ authenticated: true, user: data }, { status: 200 });
+
+  
 }

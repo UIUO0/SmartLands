@@ -67,35 +67,34 @@ export default function DashboardPage() {
     })();
   }, []);
   return (
-    <main className="p-6 space-y-5">
-      <header className="flex flex-col md:flex-row md:items-end md:justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-semibold">Dashboard</h1>
-          <p className="text-zinc-600">الأراضي المتاحة الآن (Public)</p>
+      <main className="p-6 space-y-5">
+        <header className="flex flex-col md:flex-row md:items-end md:justify-between gap-3">
+          <div>
+            <h1 className="text-2xl font-semibold">Dashboard</h1>
+            <p className="text-zinc-600">الأراضي المتاحة الآن (Public)</p>
+          </div>
+          {/* Actions: auth entry points */}
+          <div className="flex items-center gap-2 md:ml-auto">
+          {me ? (
+            <>
+              <a href="/lands" className="rounded-xl bg-black text-white px-4 py-2">
+                My Lands
+              </a>
+              <a href="/profile" className="rounded-xl border px-4 py-2">
+                My Account
+              </a>
+            </>
+          ) : (
+            <>
+              <a href="/login" className="rounded-xl bg-black text-white px-4 py-2">
+                Log in
+              </a>
+              <a href="/signup" className="rounded-xl border px-4 py-2">
+                Sign up
+              </a>
+            </>
+          )}
         </div>
-        {/* Actions: auth entry points */}
-        <div className="flex items-center gap-2 md:ml-auto">
-        {me ? (
-          <>
-            <a href="/lands" className="rounded-xl bg-black text-white px-4 py-2">
-              My Lands
-            </a>
-            <a href="/profile" className="rounded-xl border px-4 py-2">
-              My Account
-            </a>
-          </>
-        ) : (
-          <>
-            <a href="/login" className="rounded-xl bg-black text-white px-4 py-2">
-              Log in
-            </a>
-            <a href="/signup" className="rounded-xl border px-4 py-2">
-              Sign up
-            </a>
-          </>
-        )}
-      </div>
-
         <form
           onSubmit={(e) => { e.preventDefault(); setOffset(0); load(); }}
           className="flex flex-wrap gap-2"
