@@ -1,4 +1,4 @@
-// middleware.ts (root)
+// middleware.ts
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
@@ -8,7 +8,7 @@ export function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
   const token = req.cookies.get(COOKIE_NAME)?.value ?? "";
 
-  // الداشبورد عام
+  // صفحات محمية فقط (dashboard عام)
   const isProtected =
     pathname.startsWith("/lands") ||
     pathname.startsWith("/requests") ||
@@ -18,7 +18,6 @@ export function middleware(req: NextRequest) {
 
   const isAuthPage = pathname.startsWith("/login");
 
-  // مو مسجّل وتحاول صفحة محمية → روح للّوجين
   if (!token && isProtected) {
     const url = req.nextUrl.clone();
     url.pathname = "/login";
@@ -26,7 +25,6 @@ export function middleware(req: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  // معك توكن وتحاول /login → رجّعك للداشبورد
   if (token && isAuthPage) {
     return NextResponse.redirect(new URL("/dashboard", req.url));
   }
@@ -34,7 +32,7 @@ export function middleware(req: NextRequest) {
   return NextResponse.next();
 }
 
-// طابق فقط الصفحات، واستبعد الـ API وملفات البناء
+// استبعد /api وملفات الستاتك
 export const config = {
   matcher: [
     "/((?!api|_next/static|_next/image|favicon.ico|robots.txt|sitemap.xml).*)",
