@@ -15,20 +15,25 @@ type Land = {
 };
 
 export default function DashboardPage() {
+  // ---------- State ----------
   const [items, setItems] = useState<Land[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
 
-  // فلاتر بسيطة
+  // Filters
   const [city, setCity] = useState("");
   const [q, setQ] = useState("");
   const [limit] = useState(12);
   const [offset, setOffset] = useState(0);
 
+  // Auth (فقط لمعرفة إن كان مسجّل)
+  const [me, setMe] = useState<{ user_id: number; full_name?: string } | null>(null);
+
+  // ---------- QueryString ----------
   const qs = useMemo(() => {
     const p = new URLSearchParams();
-    p.set("status", "available");
+    p.set("status", "available"); // الداشبورد يعرض العامة فقط
     if (city.trim()) p.set("city", city.trim());
     if (q.trim()) p.set("q", q.trim());
     p.set("limit", String(limit));
@@ -36,31 +41,35 @@ export default function DashboardPage() {
     return p.toString();
   }, [city, q, limit, offset]);
 
-    async function load() {
+  // ---------- Data Loader ----------
+  async function load() {
     setLoading(true);
     setErr(null);
     try {
       const url = `/api/lands?${qs}`;
-      console.log("Fetching:", url);
+      console.log("[Dashboard] fetch:", url);
 
       const r = await fetch(url, { cache: "no-store" });
-      const rawText = await r.text();
-      console.log("Response status:", r.status, "body:", rawText);
+      const raw = await r.text();
+      console.log("[Dashboard] status:", r.status, "raw:", raw);
 
       if (!r.ok) {
-        // حاول نفك JSON وإلا نعرض النص
+        // جرّب نفكّ JSON، وإلا اعرض النص
         try {
-          const j = JSON.parse(rawText);
-          throw new Error(j?.error?.message || j?.message || rawText || `HTTP ${r.status}`);
+          const j = JSON.parse(raw);
+          throw new Error(
+            j?.error?.message || j?.message || `HTTP ${r.status}`
+          );
         } catch {
-          throw new Error(rawText || `HTTP ${r.status}`);
+          throw new Error(raw || `HTTP ${r.status}`);
         }
       }
 
-      const j = JSON.parse(rawText);
+      const j = JSON.parse(raw);
       setItems(Array.isArray(j?.items) ? j.items : []);
       setTotal(Number(j?.total ?? 0));
     } catch (e: any) {
+      console.error("[Dashboard] load error:", e);
       setErr(e?.message || "Failed");
       setItems([]);
       setTotal(0);
@@ -69,39 +78,42 @@ export default function DashboardPage() {
     }
   }
 
-
-  
-  const [me, setMe] = useState<{ user_id: number; full_name?: string } | null>(null);
+  // ---------- Effects ----------
+  // جلب حالة المستخدم (للهيدر فقط)
   useEffect(() => {
     (async () => {
       try {
         const r = await fetch("/api/users/me", {
-        cache: "no-store",
-        credentials: "include", // يضمن إرسال كوكي sl_token للـ API route
+          cache: "no-store",
+          credentials: "include",
         });
-        if (r.ok) {
-          const j = await r.json();
-          if (j?.authenticated && j?.user) setMe(j.user);
-        } else {
+        if (!r.ok) {
           setMe(null);
+          return;
         }
+        const j = await r.json();
+        if (j?.authenticated && j?.user) setMe(j.user);
+        else setMe(null);
       } catch {
         setMe(null);
       }
     })();
   }, []);
 
+  // تحميل الأراضي عند تغيّر الفلاتر/الـqs
   useEffect(() => {
     load();
-  }, [qs]);
+  }, [qs]); // لا تضف load هنا كـ dep
 
+  // ---------- Render ----------
   return (
-    
-      <main className="p-6 space-y-5">
-      {/* DEBUG: اطبع حالة المصادقة */}
-      <pre style={{fontSize:12, color:"#666", margin:"4px 0"}}>me = {JSON.stringify(me)}</pre>
+    <main className="p-6 space-y-5">
+      {/* DEBUG auth state */}
+      <pre style={{ fontSize: 12, color: "#666", margin: "4px 0" }}>
+        me = {JSON.stringify(me)}
+      </pre>
 
-      {/* HEADER (نسخة ديبَغ بدون تايلويند) */}
+      {/* HEADER */}
       <header
         style={{
           display: "flex",
@@ -115,166 +127,206 @@ export default function DashboardPage() {
       >
         <div>
           <h1 style={{ fontSize: 28, fontWeight: 700, margin: 0 }}>Dashboard</h1>
-          <p style={{ color: "#666", margin: "4px 0 0" }}>الأراضي المتاحة الآن (Public)</p>
+          <p style={{ color: "#666", margin: "4px 0 0" }}>
+            الأراضي المتاحة الآن (Public)
+          </p>
         </div>
-          
-        <div style={{ display: "flex", flexDirection: "column", gap: 8, flexShrink: 0 }}>
-          {/* ========== 1) STATIC GROUP: يجب أن تراها دائماً 6 أزرار ========== */}
-          <nav style={{ display: "flex", flexWrap: "wrap", gap: 8, border: "1px solid #ddd", padding: 6, background:"#fff" }}>
-            <a href="/lands"   style={{ display:"inline-block", background:"#000", color:"#fff", padding:"8px 12px", borderRadius:8, textDecoration:"none" }}>My Lands (static)</a>
-            <a href="/profile" style={{ display:"inline-block", background:"#fff", color:"#000", padding:"8px 12px", border:"1px solid #000", borderRadius:8, textDecoration:"none" }}>My Account (static)</a>
-            <a href="/login"   style={{ display:"inline-block", background:"#0ea5e9", color:"#fff", padding:"8px 12px", borderRadius:8, textDecoration:"none" }}>Log in (static)</a>
-            <a href="/signup"  style={{ display:"inline-block", background:"#22c55e", color:"#fff", padding:"8px 12px", borderRadius:8, textDecoration:"none" }}>Sign up (static)</a>
-            <a href="#"        style={{ display:"inline-block", background:"#f59e0b", color:"#fff", padding:"8px 12px", borderRadius:8, textDecoration:"none" }}>Debug A</a>
-            <a href="#"        style={{ display:"inline-block", background:"#a855f7", color:"#fff", padding:"8px 12px", borderRadius:8, textDecoration:"none" }}>Debug B</a>
-          </nav>
 
-          {/* ========== 2) AUTH GROUP: المنطق الفعلي (٤ لغير المسجل، ٣ للمسجل) ========== */}
-          <nav style={{ display: "flex", flexWrap: "wrap", gap: 8, border: "1px solid #ddd", padding: 6, background:"#fff" }}>
-            {/* دائمًا */}
-            <a href="/lands"   style={{ display:"inline-block", background:"#111827", color:"#fff", padding:"8px 12px", borderRadius:8, textDecoration:"none" }}>My Lands</a>
-            <a href="/profile" style={{ display:"inline-block", background:"#fff", color:"#111827", padding:"8px 12px", border:"1px solid #111827", borderRadius:8, textDecoration:"none" }}>My Account</a>
+        {/* Actions */}
+        <nav style={{ display: "flex", flexWrap: "wrap", gap: 8, flexShrink: 0 }}>
+          {/* دائمًا */}
+          <a
+            href="/lands"
+            style={{
+              display: "inline-block",
+              padding: "8px 12px",
+              background: "black",
+              color: "white",
+              textDecoration: "none",
+              borderRadius: 10,
+              whiteSpace: "nowrap",
+            }}
+          >
+            My Lands
+          </a>
+          <a
+            href="/profile"
+            style={{
+              display: "inline-block",
+              padding: "8px 12px",
+              border: "1px solid #000",
+              color: "#000",
+              textDecoration: "none",
+              borderRadius: 10,
+              whiteSpace: "nowrap",
+            }}
+          >
+            My Account
+          </a>
 
-            {/* لغير المسجل */}
-            <a href="/login"
-              style={{ display: me ? "none" : "inline-block", background:"#111827", color:"#fff", padding:"8px 12px", borderRadius:8, textDecoration:"none" }}
-              data-testid="login-auth"
-            >
-              Log in
-            </a>
-            <a href="/signup"
-              style={{ display: me ? "none" : "inline-block", background:"#fff", color:"#111827", padding:"8px 12px", border:"1px solid #111827", borderRadius:8, textDecoration:"none" }}
-              data-testid="signup-auth"
-            >
-              Sign up
-            </a>
+          {/* لغير المسجّل */}
+          <a
+            href="/login"
+            style={{
+              display: me ? "none" : "inline-block",
+              padding: "8px 12px",
+              background: "black",
+              color: "white",
+              textDecoration: "none",
+              borderRadius: 10,
+              whiteSpace: "nowrap",
+            }}
+          >
+            Log in
+          </a>
+          <a
+            href="/signup"
+            style={{
+              display: me ? "none" : "inline-block",
+              padding: "8px 12px",
+              border: "1px solid #000",
+              color: "#000",
+              textDecoration: "none",
+              borderRadius: 10,
+              whiteSpace: "nowrap",
+            }}
+          >
+            Sign up
+          </a>
 
-            {/* للمسجل */}
-            <form action="/api/auth/logout" method="POST" style={{ display: me ? "inline-block" : "none" }}>
-              <button
-              onClick={async () => {
-                await fetch("/api/auth/logout", { method: "POST" });
-                location.reload(); // حدّث الصفحة لتعيد فحص /api/users/me وتختفي أزرار login/signup
-              }}
-              className="rounded-xl border px-4 py-2 whitespace-nowrap"
-            >
-              Logout
-            </button>
-            </form>
-          </nav>
-        </div>
+          {/* للمسجّل */}
+          <button
+            type="button"
+            onClick={async () => {
+              await fetch("/api/auth/logout", { method: "POST" });
+              location.reload();
+            }}
+            style={{
+              display: me ? "inline-block" : "none",
+              padding: "8px 12px",
+              border: "1px solid #000",
+              color: "#000",
+              background: "white",
+              borderRadius: 10,
+              whiteSpace: "nowrap",
+              cursor: "pointer",
+            }}
+          >
+            Logout
+          </button>
+        </nav>
       </header>
-       {err && (
+
+      {/* FILTERS */}
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          setOffset(0);
+          load();
+        }}
+        className="flex flex-wrap gap-2"
+      >
+        <input
+          placeholder="مدينة (مثال: Riyadh)"
+          className="border rounded-xl px-3 py-2"
+          value={city}
+          onChange={(e) => setCity(e.target.value)}
+        />
+        <input
+          placeholder="بحث في العنوان/الوصف"
+          className="border rounded-xl px-3 py-2"
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+        />
+        <button className="rounded-xl bg-black text-white px-4 py-2">
+          بحث
+        </button>
+      </form>
+
+      {/* Messages */}
+      {loading && <div className="text-zinc-500 mt-3">…جارِ التحميل</div>}
+
+      {err && (
         <div className="mt-3 p-3 rounded-xl border border-red-300 text-red-700 bg-red-50">
           خطأ أثناء جلب الأراضي: {err}
         </div>
-        )}
-         
-      {/* Debug line - مؤقت لفحص الحالة */}
-      <div style={{ fontSize: 12, color: "#666", marginTop: 6 }}>
-        auth state: <code>{String(!!me)}</code>
-      </div>
+      )}
 
-          {/* FILTERS */}
-    <form
-      onSubmit={(e) => {
-        e.preventDefault();
-        setOffset(0);
-        load();
-      }}
-      className="flex flex-wrap gap-2 mt-4"
-    >
-      <input
-        placeholder="مدينة (مثال: Riyadh)"
-        className="border rounded-xl px-3 py-2"
-        value={city}
-        onChange={(e) => setCity(e.target.value)}
-      />
-      <input
-        placeholder="بحث في العنوان/الوصف"
-        className="border rounded-xl px-3 py-2"
-        value={q}
-        onChange={(e) => setQ(e.target.value)}
-      />
-      <button className="rounded-xl bg-black text-white px-4 py-2">
-        بحث
-      </button>
-    </form>
+      {/* Results */}
+      {!loading && !err && (
+        <>
+          <div className="text-sm text-zinc-600 mt-1">النتائج: {total}</div>
 
-    {loading && <div className="text-zinc-500 mt-3">…جارِ التحميل</div>}
-    {err && <div className="text-red-600 mt-3">خطأ: {err}</div>}
+          <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 mt-2">
+            {items.map((x) => (
+              <article key={x.land_id} className="rounded-2xl border p-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="font-semibold truncate">{x.title}</h3>
+                  {x.price_amount != null && (
+                    <div className="text-sm font-medium">
+                      {Intl.NumberFormat("ar-SA", {
+                        maximumFractionDigits: 0,
+                      }).format(x.price_amount)}{" "}
+                      ر.س
+                    </div>
+                  )}
+                </div>
 
-    {!loading && !err && (
-      <>
-        <div className="text-sm text-zinc-600 mt-3">النتائج: {total}</div>
+                <div className="text-sm text-zinc-600 mt-1">
+                  {x.city || "—"} {x.region ? `• ${x.region}` : ""}{" "}
+                  {x.country ? `• ${x.country}` : ""}
+                </div>
 
-        <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 mt-2">
-          {items.map((x) => (
-            <article key={x.land_id} className="rounded-2xl border p-4">
-              <div className="flex items-center justify-between">
-                <h3 className="font-semibold truncate">{x.title}</h3>
-                {x.price_amount != null && (
-                  <div className="text-sm font-medium">
-                    {Intl.NumberFormat("ar-SA", { maximumFractionDigits: 0 }).format(
-                      x.price_amount
-                    )} ر.س
-                  </div>
+                {x.area_sq_m != null && (
+                  <div className="text-sm mt-1">المساحة: {x.area_sq_m} م²</div>
                 )}
-              </div>
 
-              <div className="text-sm text-zinc-600 mt-1">
-                {x.city || "—"} {x.region ? `• ${x.region}` : ""}{" "}
-                {x.country ? `• ${x.country}` : ""}
-              </div>
+                <div className="text-xs text-zinc-500 mt-2 line-clamp-2">
+                  {x.description || "—"}
+                </div>
 
-              {x.area_sq_m != null && (
-                <div className="text-sm mt-1">المساحة: {x.area_sq_m} م²</div>
-              )}
+                <div className="mt-3 flex gap-2">
+                  <a href={`/lands/${x.land_id}`} className="text-sm underline">
+                    تفاصيل
+                  </a>
+                  <a
+                    href={`/lands?status=available&city=${encodeURIComponent(
+                      x.city || ""
+                    )}`}
+                    className="text-sm text-zinc-600"
+                  >
+                    مشابهة في {x.city || "—"}
+                  </a>
+                </div>
+              </article>
+            ))}
+          </section>
 
-              <div className="text-xs text-zinc-500 mt-2 line-clamp-2">
-                {x.description || "—"}
-              </div>
+          {items.length === 0 && (
+            <div className="text-zinc-600 mt-2">
+              لا توجد أراضٍ متاحة بهذه الفلاتر.
+            </div>
+          )}
 
-              <div className="mt-3 flex gap-2">
-                <a href={`/lands/${x.land_id}`} className="text-sm underline">
-                  تفاصيل
-                </a>
-                <a
-                  href={`/lands?status=available&city=${encodeURIComponent(x.city || "")}`}
-                  className="text-sm text-zinc-600"
-                >
-                  مشابهة في {x.city || "—"}
-                </a>
-              </div>
-            </article>
-          ))}
-        </section>
-
-        {items.length === 0 && (
-          <div className="text-zinc-600 mt-2">لا توجد أراضٍ متاحة بهذه الفلاتر.</div>
-        )}
-
-        {/* تنقّل بسيط */}
-        <div className="flex items-center gap-2 mt-3">
-          <button
-            disabled={offset === 0}
-            onClick={() => setOffset((o) => Math.max(0, o - limit))}
-            className="rounded-xl border px-3 py-1 disabled:opacity-50"
-          >
-            السابق
-          </button>
-          <button
-            disabled={offset + limit >= total}
-            onClick={() => setOffset((o) => o + limit)}
-            className="rounded-xl border px-3 py-1 disabled:opacity-50"
-          >
-            التالي
-          </button>
-        </div>
-      </>
-    )}
-
-
+          {/* Pagination */}
+          <div className="flex items-center gap-2 mt-3">
+            <button
+              disabled={offset === 0}
+              onClick={() => setOffset((o) => Math.max(0, o - limit))}
+              className="rounded-xl border px-3 py-1 disabled:opacity-50"
+            >
+              السابق
+            </button>
+            <button
+              disabled={offset + limit >= total}
+              onClick={() => setOffset((o) => o + limit)}
+              className="rounded-xl border px-3 py-1 disabled:opacity-50"
+            >
+              التالي
+            </button>
+          </div>
+        </>
+      )}
     </main>
   );
 }
