@@ -81,38 +81,39 @@ export default function DashboardPage() {
         </div>
 
         {/* Actions */}
-        <div className="flex items-center gap-2 md:ml-auto shrink-0">
-          {/* أزرار تظهر دائمًا */}
-          <a href="/lands" className="rounded-xl bg-black text-white px-4 py-2">
+        <div className="flex flex-wrap items-center gap-2 md:ml-auto shrink-0">
+          {/* ثابت دائمًا */}
+          <a href="/lands" className="rounded-xl bg-black text-white px-4 py-2 whitespace-nowrap">
             My Lands
           </a>
-          <a href="/profile" className="rounded-xl border px-4 py-2">
+          <a href="/profile" className="rounded-xl border px-4 py-2 whitespace-nowrap">
             My Account
           </a>
 
-          {/* لو المستخدم غير مسجّل */}
-          {!me && (
-            <>
-              <a href="/login" className="rounded-xl bg-black text-white px-4 py-2">
-                Log in
-              </a>
-              <a href="/signup" className="rounded-xl border px-4 py-2">
-                Sign up
-              </a>
-            </>
-          )}
+          {/* لغير المسجّل: تظهر */}
+          <a
+            href="/login"
+            className={`rounded-xl bg-black text-white px-4 py-2 whitespace-nowrap ${me ? "hidden" : ""}`}
+          >
+            Log in
+          </a>
+          <a
+            href="/signup"
+            className={`rounded-xl border px-4 py-2 whitespace-nowrap ${me ? "hidden" : ""}`}
+          >
+            Sign up
+          </a>
 
-          {/* لو المستخدم مسجّل */}
-          {me && (
-            <form action="/api/auth/logout" method="POST">
-              <button
-                className="rounded-xl border px-4 py-2"
-              >
-                Logout
-              </button>
-            </form>
-          )}
+          {/* للمسجّل: زر Logout بدلهم */}
+          <form
+            action="/api/auth/logout"
+            method="POST"
+            className={`${me ? "" : "hidden"} whitespace-nowrap`}
+          >
+            <button className="rounded-xl border px-4 py-2">Logout</button>
+          </form>
         </div>
+
 
       </header>
 
