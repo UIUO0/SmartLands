@@ -1,12 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { API_URL } from "@/lib/config";
 
-// Proxy: GET /api/lands?...
 export async function GET(req: NextRequest) {
   const url = new URL(req.url);
   const target = `${API_URL}/lands?${url.searchParams.toString()}`;
 
-  // لا تمكّن الكاش على الحافة
   const upstream = await fetch(target, {
     method: "GET",
     headers: { Accept: "application/json" },
@@ -15,7 +13,7 @@ export async function GET(req: NextRequest) {
 
   const text = await upstream.text();
   let data: any = null;
-  try { data = JSON.parse(text); } catch { /* يبقى نص */ }
+  try { data = JSON.parse(text); } catch {}
 
   if (!upstream.ok) {
     return NextResponse.json(
