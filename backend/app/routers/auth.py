@@ -200,3 +200,97 @@ async def logout(response: Response):
         logger.exception("LOGOUT_ERROR: %r", e)
         # حتى لو صار خطأ في مسح الكوكي نرجّع 204 عشان الـ client ما يعلق
         return Response(status_code=204)
+import logging
+from datetime import datetime
+
+from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.db.database import get_db
+from app.core.security import get_current_user, get_password_hash
+from app.models.user import User
+from app.models.email_verification import EmailVerification, VerificationPurpose
+from app.models.auth_identity import AuthIdentity, AuthProvider  # عدّل الأسماء حسب الموديل عندك
+from app.schemas.user import ResetPasswordRequest  # أو من ملف schemas آخر
+
+router = APIRouter(prefix="/auth", tags=["auth"])
+
+
+@router.post("/resetpassword")
+async def reset_password(
+    payload: ResetPasswordRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    يغيّر الباسوورد للمستخدم الحالي إذا الكود صحيح وغير منتهي.
+    يفترض أن الكود مُرسل مسبقاً ومخزّن في email_verifications
+    بـ purpose = password_reset.
+    """
+    try:
+        now = datetime.utcnow()
+
+        # 1) نلاقي الكود في email_verifications
+        stmt = select(EmailVerification).where(
+            EmailVerification.email == current_user.email,
+            EmailVerification.token == payload.code,
+            EmailVerification.purpose == VerificationPurpose.password_reset,
+            EmailVerification.is_used == False,  # noqa: E712
+            EmailVerification.expires_at > now,
+        )
+        res = await db.execute(stmt)
+        ev = res.scalar_one_or_none()
+
+        if not ev:
+            raise HTTPException(
+                status_code=400,
+                detail="Invalid or expired code",
+            )
+
+        # 2) نجيب AuthIdentity حق هذا اليوزر (provider = password)
+        identity_stmt = select(AuthIdentity).where(
+            AuthIdentity.user_id == current_user.user_id,
+            AuthIdentity.provider == AuthProvider.password,
+        )
+        identity_res = await db.execute(identity_stmt)
+        identity = identity_res.scalar_one_or_none()
+
+        if identity is None:
+            # مثال: لو المستخدم كان مسجّل عن طريق Google فقط
+            identity = AuthIdentity(
+                user_id=current_user.user_id,
+                provider=AuthProvider.password,
+            )
+            db.add(identity)
+
+        # 3) نحدّث الباسوورد
+        identity.password_hash = get_password_hash(payload.new_password)
+
+        # 4) نعلّم الكود إنه استُخدم
+        ev.is_used = True
+
+        await db.commit()
+
+        logging.info(
+            "Password reset via code for user_id=%s email=%s",
+            current_user.user_id,
+            current_user.email,
+        )
+
+        return {"detail": "Password has been reset successfully."}
+
+    except HTTPException:
+        # نرجّع نفس الخطأ بدون لف
+        raise
+    except Exception as exc:
+        logging.error(
+            "Error in reset_password for user_id=%s: %s",
+            getattr(current_user, "user_id", None),
+            exc,
+            exc_info=True,
+        )
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to reset password",
+        )
