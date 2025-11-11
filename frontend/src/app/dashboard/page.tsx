@@ -42,24 +42,30 @@ export default function DashboardPage() {
   }, [city, q, limit, offset]);
 
   // ---------- Data Loader ----------
-  async function load() {
+    async function load() {
     setLoading(true);
     setErr(null);
     try {
-      const url = `/api/lands?${qs}`;
-      console.log("[Dashboard] fetch:", url);
+      // نقرأ الـ BASE من env العامة (لازم تكون موجودة عندك)
+      const BASE = process.env.NEXT_PUBLIC_API_URL || "https://smartlands-production.up.railway.app";
+      const url = `${BASE}/lands?${qs}`;
+      console.log("[Dashboard] direct fetch:", url);
 
-      const r = await fetch(url, { cache: "no-store" });
+      const r = await fetch(url, {
+        method: "GET",
+        headers: { Accept: "application/json" },
+        // مهم للتشخيص: لا كاش
+        cache: "no-store",
+      });
+
       const raw = await r.text();
       console.log("[Dashboard] status:", r.status, "raw:", raw);
 
       if (!r.ok) {
-        // جرّب نفكّ JSON، وإلا اعرض النص
+        // حاول نحوله JSON وإلا خليه نص
         try {
           const j = JSON.parse(raw);
-          throw new Error(
-            j?.error?.message || j?.message || `HTTP ${r.status}`
-          );
+          throw new Error(j?.detail || j?.message || raw || `HTTP ${r.status}`);
         } catch {
           throw new Error(raw || `HTTP ${r.status}`);
         }
@@ -77,6 +83,7 @@ export default function DashboardPage() {
       setLoading(false);
     }
   }
+
 
   // ---------- Effects ----------
   // جلب حالة المستخدم (للهيدر فقط)
