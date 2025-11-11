@@ -71,6 +71,11 @@ export default function DashboardPage() {
       }
     })();
   }, []);
+
+  useEffect(() => {
+    load();
+  }, [qs]);
+  
   return (
       <main className="p-6 space-y-5">
       {/* DEBUG: اطبع حالة المصادقة */}
@@ -92,7 +97,7 @@ export default function DashboardPage() {
           <h1 style={{ fontSize: 28, fontWeight: 700, margin: 0 }}>Dashboard</h1>
           <p style={{ color: "#666", margin: "4px 0 0" }}>الأراضي المتاحة الآن (Public)</p>
         </div>
-
+          
         <div style={{ display: "flex", flexDirection: "column", gap: 8, flexShrink: 0 }}>
           {/* ========== 1) STATIC GROUP: يجب أن تراها دائماً 6 أزرار ========== */}
           <nav style={{ display: "flex", flexWrap: "wrap", gap: 8, border: "1px solid #ddd", padding: 6, background:"#fff" }}>
@@ -126,9 +131,15 @@ export default function DashboardPage() {
 
             {/* للمسجل */}
             <form action="/api/auth/logout" method="POST" style={{ display: me ? "inline-block" : "none" }}>
-              <button type="submit" style={{ background:"#fff", color:"#b91c1c", padding:"8px 12px", border:"1px solid #b91c1c", borderRadius:8, cursor:"pointer" }}>
-                Logout
-              </button>
+              <button
+              onClick={async () => {
+                await fetch("/api/auth/logout", { method: "POST" });
+                location.reload(); // حدّث الصفحة لتعيد فحص /api/users/me وتختفي أزرار login/signup
+              }}
+              className="rounded-xl border px-4 py-2 whitespace-nowrap"
+            >
+              Logout
+            </button>
             </form>
           </nav>
         </div>
