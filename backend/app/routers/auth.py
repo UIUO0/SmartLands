@@ -208,7 +208,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.database import get_db
-from app.core.security import get_current_user, hash_password as get_password_hash
+from app.core.security import get_current_user, hash_password
 from app.models.user import User
 from app.models.email_verification import EmailVerification, VerificationPurpose
 from app.models.auth_identity import AuthIdentity, AuthProvider  # عدّل الأسماء حسب الموديل عندك
@@ -265,7 +265,7 @@ async def reset_password(
             db.add(identity)
 
         # 3) نحدّث الباسوورد
-        identity.password_hash = get_password_hash(payload.new_password)
+        identity.password_hash = hash_password(payload.new_password)
 
         # 4) نعلّم الكود إنه استُخدم
         ev.is_used = True
