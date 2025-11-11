@@ -86,7 +86,7 @@ async def send_code_to_me(
         )
 
         return {
-            "detail": "Verification code sent to your email.",
+            "detail": "Verification code sent to your email, it may appear in the unwannted or spam mail box.",
             "email_sent": True,
         }
 

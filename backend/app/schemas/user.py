@@ -31,3 +31,9 @@ from typing import Optional
 class UserUpdate(BaseModel):
     full_name: Optional[str] = None
     picture_url: Optional[str] = None
+from pydantic import BaseModel, constr
+
+
+class PasswordResetWithCode(BaseModel):
+    code: str
+    new_password: constr(min_length=8)
