@@ -74,164 +74,116 @@ export default function DashboardPage() {
   return (
       <main className="p-6 space-y-5">
       {/* HEADER */}
-      <header className="flex flex-col md:flex-row md:items-end md:justify-between gap-3">
+      <header
+        style={{
+          display: "flex",
+          gap: 12,
+          alignItems: "flex-end",
+          justifyContent: "space-between",
+          padding: 8,
+          border: "1px dashed #ccc",
+        }}
+      >
         <div>
-          <h1 className="text-2xl font-semibold">Dashboard</h1>
-          <p className="text-zinc-600">الأراضي المتاحة الآن (Public)</p>
+          <h1 style={{ fontSize: 28, fontWeight: 700, margin: 0 }}>Dashboard</h1>
+          <p style={{ color: "#666", margin: "4px 0 0" }}>الأراضي المتاحة الآن (Public)</p>
         </div>
 
-       {/* Actions (debug-friendly) */}
-        <div className="flex flex-wrap items-center gap-2 md:ml-auto shrink-0">
+        {/* Actions (no Tailwind hiding) */}
+        <nav style={{ display: "flex", flexWrap: "wrap", gap: 8, flexShrink: 0 }}>
           {/* ثابت دائمًا */}
-          <a href="/lands" className="rounded-xl bg-black text-white px-4 py-2 whitespace-nowrap">
+          <a
+            href="/lands"
+            style={{
+              display: "inline-block",
+              padding: "8px 12px",
+              background: "black",
+              color: "white",
+              textDecoration: "none",
+              borderRadius: 10,
+              whiteSpace: "nowrap",
+            }}
+          >
             My Lands
           </a>
-          <a href="/profile" className="rounded-xl border px-4 py-2 whitespace-nowrap">
+
+          <a
+            href="/profile"
+            style={{
+              display: "inline-block",
+              padding: "8px 12px",
+              border: "1px solid #000",
+              color: "#000",
+              textDecoration: "none",
+              borderRadius: 10,
+              whiteSpace: "nowrap",
+            }}
+          >
             My Account
           </a>
 
-          {/* Debug: أزرار وهمية للتأكد من اللف/المسافات */}
-          <a href="#" className="rounded-xl border px-4 py-2 whitespace-nowrap">
-            Debug A
-          </a>
-          <a href="#" className="rounded-xl border px-4 py-2 whitespace-nowrap">
-            Debug B
-          </a>
-
-          {/* لغير المسجّل: Log in + Sign up (نخفيها بالـ inline style لو me موجود) */}
+          {/* لغير المسجّل */}
           <a
             href="/login"
-            style={{ display: me ? "none" as const : undefined }}
-            className="rounded-xl bg-black text-white px-4 py-2 whitespace-nowrap"
+            style={{
+              display: me ? "none" : "inline-block",
+              padding: "8px 12px",
+              background: "black",
+              color: "white",
+              textDecoration: "none",
+              borderRadius: 10,
+              whiteSpace: "nowrap",
+            }}
             data-testid="btn-login"
           >
             Log in
           </a>
+
           <a
             href="/signup"
-            style={{ display: me ? "none" as const : undefined }}
-            className="rounded-xl border px-4 py-2 whitespace-nowrap"
+            style={{
+              display: me ? "none" : "inline-block",
+              padding: "8px 12px",
+              border: "1px solid #000",
+              color: "#000",
+              textDecoration: "none",
+              borderRadius: 10,
+              whiteSpace: "nowrap",
+            }}
             data-testid="btn-signup"
           >
             Sign up
           </a>
 
-          {/* للمسجّل: زر Logout بدلهم (نظهره فقط إذا me موجود) */}
+          {/* للمسجّل */}
           <form
             action="/api/auth/logout"
             method="POST"
-            style={{ display: me ? undefined : "none" }}
-            className="whitespace-nowrap"
+            style={{ display: me ? "inline-block" : "none", whiteSpace: "nowrap" }}
             data-testid="btn-logout-form"
           >
-            <button className="rounded-xl border px-4 py-2">Logout</button>
+            <button
+              type="submit"
+              style={{
+                padding: "8px 12px",
+                border: "1px solid #000",
+                color: "#000",
+                background: "white",
+                borderRadius: 10,
+                cursor: "pointer",
+              }}
+            >
+              Logout
+            </button>
           </form>
-        </div>
+        </nav>
       </header>
 
-      {/* FILTERS */}
-      <form
-        onSubmit={(e) => {
-          e.preventDefault();
-          setOffset(0);
-          load();
-        }}
-        className="flex flex-wrap gap-2"
-      >
-        <input
-          placeholder="مدينة (مثال: Riyadh)"
-          className="border rounded-xl px-3 py-2"
-          value={city}
-          onChange={(e) => setCity(e.target.value)}
-        />
-        <input
-          placeholder="بحث في العنوان/الوصف"
-          className="border rounded-xl px-3 py-2"
-          value={q}
-          onChange={(e) => setQ(e.target.value)}
-        />
-        <button className="rounded-xl bg-black text-white px-4 py-2">
-          بحث
-        </button>
-      </form>
+      {/* Debug line - مؤقت لفحص الحالة */}
+      <div style={{ fontSize: 12, color: "#666", marginTop: 6 }}>
+        auth state: <code>{String(!!me)}</code>
+      </div>
 
-      {loading && <div className="text-zinc-500">…جارِ التحميل</div>}
-      {err && <div className="text-red-600">خطأ: {err}</div>}
-
-      {!loading && !err && (
-        <>
-          <div className="text-sm text-zinc-600">النتائج: {total}</div>
-
-          <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {items.map((x) => (
-              <article key={x.land_id} className="rounded-2xl border p-4">
-                <div className="flex items-center justify-between">
-                  <h3 className="font-semibold truncate">{x.title}</h3>
-                  {x.price_amount != null && (
-                    <div className="text-sm font-medium">
-                      {Intl.NumberFormat("ar-SA", { maximumFractionDigits: 0 }).format(
-                        x.price_amount
-                      )} ر.س
-                    </div>
-                  )}
-                </div>
-
-                <div className="text-sm text-zinc-600 mt-1">
-                  {x.city || "—"} {x.region ? `• ${x.region}` : ""}{" "}
-                  {x.country ? `• ${x.country}` : ""}
-                </div>
-
-                {x.area_sq_m != null && (
-                  <div className="text-sm mt-1">المساحة: {x.area_sq_m} م²</div>
-                )}
-
-                <div className="text-xs text-zinc-500 mt-2 line-clamp-2">
-                  {x.description || "—"}
-                </div>
-
-                <div className="mt-3 flex gap-2">
-                  <a
-                    href={`/lands/${x.land_id}`}
-                    className="text-sm underline"
-                  >
-                    تفاصيل
-                  </a>
-                  <a
-                    href={`/lands?status=available&city=${encodeURIComponent(
-                      x.city || ""
-                    )}`}
-                    className="text-sm text-zinc-600"
-                  >
-                    مشابهة في {x.city || "—"}
-                  </a>
-                </div>
-              </article>
-            ))}
-          </section>
-
-          {items.length === 0 && (
-            <div className="text-zinc-600">لا توجد أراضٍ متاحة بهذه الفلاتر.</div>
-          )}
-
-          {/* تنقّل بسيط */}
-          <div className="flex items-center gap-2">
-            <button
-              disabled={offset === 0}
-              onClick={() => setOffset((o) => Math.max(0, o - limit))}
-              className="rounded-xl border px-3 py-1 disabled:opacity-50"
-            >
-              السابق
-            </button>
-            <button
-              disabled={offset + limit >= total}
-              onClick={() => setOffset((o) => o + limit)}
-              className="rounded-xl border px-3 py-1 disabled:opacity-50"
-            >
-              التالي
-            </button>
-          </div>
-        </>
-      )}
     </main>
   );
 }
