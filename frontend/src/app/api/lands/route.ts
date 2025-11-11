@@ -1,16 +1,31 @@
 import { NextRequest, NextResponse } from "next/server";
-import { forwardToBackend } from "@/lib/fetcher";
+import { API_URL } from "@/lib/config";
 
 export async function GET(req: NextRequest) {
-  // يرسل /lands مع كل الاستعلامات كما هي (مثال: ?status=available&city=Riyadh&q=...)
-  const r = await forwardToBackend(req, `/lands${req.nextUrl.search}`);
-  const data = await r.json().catch(() => ({}));
-  return NextResponse.json(data, { status: r.status });
-}
+  // مرر كل الـ query params كما هي للباك إند
+  const url = new URL(req.url);
+  const target = `${API_URL}/lands?${url.searchParams.toString()}`;
 
-export async function POST(req: NextRequest) {
-  // (للاستخدام لاحقاً)
-  const r = await forwardToBackend(req, "/lands");
-  const data = await r.json().catch(() => ({}));
-  return NextResponse.json(data, { status: r.status });
+  const upstream = await fetch(target, {
+    method: "GET",
+    // مهم جدًا لتفادي الكاش على الحافة
+    cache: "no-store",
+    headers: { Accept: "application/json" },
+  });
+
+  const text = await upstream.text(); // نقرأ كـ نص أولاً لأغراض الديبغ
+
+  // حاول تحويله JSON لو ممكن
+  let data: any = null;
+  try { data = JSON.parse(text); } catch { /* يظل نص */ }
+
+  if (!upstream.ok) {
+    return NextResponse.json(
+      { ok: false, status: upstream.status, error: data ?? text },
+      { status: upstream.status }
+    );
+  }
+
+  // backend يرجع { total, items: [...] }
+  return NextResponse.json(data ?? { ok: true, raw: text }, { status: 200 });
 }
