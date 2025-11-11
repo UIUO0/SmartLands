@@ -59,3 +59,19 @@ class User(Base):
 
     def __repr__(self) -> str:
         return f"<User id={self.user_id} email={self.email} role={self.role}>"
+# app/models/user.py
+email_verifications = relationship("EmailVerification", back_populates="user")
+# app/models/user.py
+from sqlalchemy.orm import relationship
+
+class User(Base):
+    __tablename__ = "users"
+
+    # ... الأعمدة الموجودة أصلاً ...
+
+    email_verifications = relationship(
+        "EmailVerification",
+        back_populates="user",
+        lazy="selectin"
+    )
+
