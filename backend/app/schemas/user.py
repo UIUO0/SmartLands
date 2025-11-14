@@ -37,3 +37,9 @@ from pydantic import BaseModel, constr
 class PasswordResetWithCode(BaseModel):
     code: str
     new_password: constr(min_length=8)
+from pydantic import BaseModel, constr
+
+
+class ResetPasswordRequest(BaseModel):
+    code: str
+    new_password: constr(min_length=8)
