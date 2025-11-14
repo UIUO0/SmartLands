@@ -1,23 +1,28 @@
 # app/routers/auth.py
 from __future__ import annotations
 
-from datetime import timedelta
-from typing import Optional, Literal
+from datetime import timedelta, datetime
+from typing import Optional
 
 import logging
 from fastapi import APIRouter, Depends, HTTPException, Response, status
-from sqlalchemy import text
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.database import get_db
-from app.schemas.user import SignupIn, LoginIn, TokenOut, UserOut
+from app.schemas.user import SignupIn, LoginIn, TokenOut, UserOut, ResetPasswordRequest
 from app.core.security import (
     hash_password,
     verify_password,
     create_access_token,
+    get_current_user,
     ACCESS_TOKEN_EXPIRE_MINUTES,
 )
+from app.models.user import User
+from app.models.auth_identity import AuthIdentity, AuthProvider
+from app.models.email_verification import EmailVerification, VerificationPurpose
 
+# ===== Single Router Definition =====
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 # ===== Logging =====
@@ -27,211 +32,245 @@ logger = logging.getLogger("smartlands.auth")
 COOKIE_NAME = "access_token"
 COOKIE_PATH = "/"
 
+
 def _set_auth_cookie(response: Response, access_token: str) -> None:
+    """Set HTTP-only authentication cookie"""
     response.set_cookie(
         key=COOKIE_NAME,
         value=f"Bearer {access_token}",
         httponly=True,
-        secure=True,        # فعّلها على الإنتاج (HTTPS)
-        samesite="lax",     # استخدم "none" إذا frontend على دومين مختلف + HTTPS
+        secure=True,  # Enable on production (HTTPS only)
+        samesite="lax",  # Use "none" if frontend is on different domain + HTTPS
         max_age=60 * ACCESS_TOKEN_EXPIRE_MINUTES,
         path=COOKIE_PATH,
     )
 
+
 def _clear_auth_cookie(response: Response) -> None:
+    """Clear authentication cookie"""
     response.delete_cookie(key=COOKIE_NAME, path=COOKIE_PATH)
 
 
-# ===== Password column auto-detect =====
-_password_col_cache: Optional[Literal["password_hash", "password"]] = None
+# ===== Helper Functions =====
 
-async def _detect_password_column(db: AsyncSession) -> str:
+async def _get_user_with_auth(db: AsyncSession, email: str) -> tuple[Optional[User], Optional[AuthIdentity]]:
     """
-    يحاول يكتشف اسم عمود كلمة المرور الفعلي في جدول users:
-    - password_hash
-    - password
-    ويكاشّه للمرات الجاية.
+    Fetch user and their password auth identity
+    Returns: (User, AuthIdentity) or (None, None)
     """
-    global _password_col_cache
-    if _password_col_cache:
-        return _password_col_cache
-
     try:
-        # جرّب password_hash
-        res = await db.execute(text("SHOW COLUMNS FROM users LIKE 'password_hash';"))
-        row = res.first()
-        if row:
-            _password_col_cache = "password_hash"
-            logger.info("Detected users password column: password_hash")
-            return _password_col_cache
-
-        # جرّب password
-        res = await db.execute(text("SHOW COLUMNS FROM users LIKE 'password';"))
-        row = res.first()
-        if row:
-            _password_col_cache = "password"
-            logger.info("Detected users password column: password")
-            return _password_col_cache
-
-        # لا هذا ولا ذاك!
-        logger.error("No password column found in users table (expected password_hash or password)")
-        raise HTTPException(
-            status_code=500,
-            detail="users table missing password column (expected 'password_hash' or 'password')",
+        # Get user by email
+        stmt = select(User).where(User.email == email)
+        result = await db.execute(stmt)
+        user = result.scalar_one_or_none()
+        
+        if not user:
+            return None, None
+        
+        # Get password auth identity
+        auth_stmt = select(AuthIdentity).where(
+            AuthIdentity.user_id == user.user_id,
+            AuthIdentity.provider == AuthProvider.password
         )
-    except HTTPException:
-        raise
+        auth_result = await db.execute(auth_stmt)
+        auth_identity = auth_result.scalar_one_or_none()
+        
+        return user, auth_identity
+        
     except Exception as e:
-        logger.exception("PASSWORD_COL_DETECT_ERROR: %r", e)
-        raise HTTPException(status_code=500, detail="failed to detect password column")
+        logger.error("Error fetching user with auth: %s", e, exc_info=True)
+        return None, None
 
 
-# ===== Helpers =====
-async def _user_by_email(db: AsyncSession, email: str) -> Optional[dict]:
+async def _create_user_with_auth(
+    db: AsyncSession,
+    email: str,
+    full_name: Optional[str],
+    password: str
+) -> tuple[User, AuthIdentity]:
     """
-    يرجّع dict لليوزر (أو None) باستخدام raw SQL
-    لتفادي مشاكل ORM مع عمود الباسوورد.
+    Create a new user and their password auth identity
+    Returns: (User, AuthIdentity)
     """
-    pwd_col = await _detect_password_column(db)
-    sql = text(f"""
-        SELECT user_id, email, full_name, `{pwd_col}` AS password_hash, `role`, picture_url, created_at, updated_at
-        FROM users
-        WHERE email = :email
-        LIMIT 1
-    """)
-    res = await db.execute(sql, {"email": email})
-    row = res.mappings().first()
-    return dict(row) if row else None
+    try:
+        # Create user
+        user = User(
+            email=email,
+            full_name=full_name or email.split("@")[0],
+            role="user",
+            is_active=True,
+        )
+        db.add(user)
+        await db.flush()  # Get user_id without committing
+        
+        # Create auth identity
+        auth_identity = AuthIdentity(
+            user_id=user.user_id,
+            provider=AuthProvider.password,
+            password_hash=hash_password(password),
+        )
+        db.add(auth_identity)
+        await db.commit()
+        
+        await db.refresh(user)
+        await db.refresh(auth_identity)
+        
+        return user, auth_identity
+        
+    except Exception as e:
+        await db.rollback()
+        logger.error("Error creating user with auth: %s", e, exc_info=True)
+        raise
 
 
-async def _insert_user(db: AsyncSession, email: str, full_name: Optional[str], password_raw: str) -> dict:
-    pwd_col = await _detect_password_column(db)
-    pwd_hash = hash_password(password_raw)
-
-    sql = text(f"""
-        INSERT INTO users (email, full_name, `{pwd_col}`, `role`, picture_url)
-        VALUES (:email, :full_name, :pwd_hash, 'user', NULL)
-    """)
-    await db.execute(sql, {"email": email, "full_name": full_name, "pwd_hash": pwd_hash})
-    await db.commit()
-
-    # رجّع اليوزر بعد الإدخال
-    return await _user_by_email(db, email)
-
-
-def _user_out_from_row(row: dict) -> UserOut:
+def _user_to_out(user: User) -> UserOut:
+    """Convert User model to UserOut schema"""
     return UserOut(
-        user_id=row["user_id"],
-        email=row["email"],
-        full_name=row.get("full_name"),
-        role=row.get("role", "user"),
-        picture_url=row.get("picture_url"),
-        created_at=row.get("created_at"),
-        updated_at=row.get("updated_at"),
+        user_id=user.user_id,
+        email=user.email,
+        full_name=user.full_name,
+        role=user.role,
+        picture_url=user.picture_url,
+        created_at=user.created_at,
+        updated_at=user.updated_at,
     )
 
 
 # ===== Routes =====
 
 @router.post("/signup", response_model=TokenOut, status_code=201)
-async def signup(payload: SignupIn, response: Response, db: AsyncSession = Depends(get_db)):
+async def signup(
+    payload: SignupIn,
+    response: Response,
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Register a new user with email and password
+    """
     try:
-        # موجود؟
-        existing = await _user_by_email(db, payload.email)
-        if existing:
-            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Email already registered")
-
-        user_row = await _insert_user(db, payload.email, payload.full_name, payload.password)
-        if not user_row:
-            raise HTTPException(status_code=500, detail="failed to create user")
-
-        access_token = create_access_token({"sub": str(user_row["user_id"])})
+        # Check if user already exists
+        user, _ = await _get_user_with_auth(db, payload.email)
+        if user:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Email already registered"
+            )
+        
+        # Create user and auth identity
+        user, auth_identity = await _create_user_with_auth(
+            db,
+            payload.email,
+            payload.full_name,
+            payload.password
+        )
+        
+        # Generate access token
+        access_token = create_access_token({"sub": str(user.user_id)})
         _set_auth_cookie(response, access_token)
-
+        
+        logger.info("User registered successfully: %s (id=%s)", user.email, user.user_id)
+        
         return {
             "access_token": access_token,
             "token_type": "bearer",
-            "user": _user_out_from_row(user_row),
+            "user": _user_to_out(user),
         }
-    except HTTPException as he:
-        logger.error("SIGNUP_HTTP_ERROR: %s", he.detail)
+        
+    except HTTPException:
         raise
     except Exception as e:
-        logger.exception("SIGNUP_ERROR: %r", e)
-        raise HTTPException(status_code=500, detail="internal signup error")
+        logger.error("SIGNUP_ERROR: %s", e, exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail="Internal signup error"
+        )
 
 
 @router.post("/login", response_model=TokenOut)
-async def login(payload: LoginIn, response: Response, db: AsyncSession = Depends(get_db)):
+async def login(
+    payload: LoginIn,
+    response: Response,
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Login with email and password
+    """
     try:
-        user_row = await _user_by_email(db, payload.email)
-        if not user_row:
-            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
-
-        pwd_hash = user_row.get("password_hash")
-        if not pwd_hash or not verify_password(payload.password, pwd_hash):
-            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
-
+        # Get user and auth identity
+        user, auth_identity = await _get_user_with_auth(db, payload.email)
+        
+        # Validate credentials
+        if not user or not auth_identity or not auth_identity.password_hash:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid credentials"
+            )
+        
+        if not verify_password(payload.password, auth_identity.password_hash):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid credentials"
+            )
+        
+        if not user.is_active:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Account is inactive"
+            )
+        
+        # Generate access token
         access_token = create_access_token(
-            {"sub": str(user_row["user_id"])},
-            expires_delta=timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES),
+            {"sub": str(user.user_id)},
+            expires_delta=timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
         )
         _set_auth_cookie(response, access_token)
-
+        
+        logger.info("User logged in: %s (id=%s)", user.email, user.user_id)
+        
         return {
             "access_token": access_token,
             "token_type": "bearer",
-            "user": _user_out_from_row(user_row),
+            "user": _user_to_out(user),
         }
-    except HTTPException as he:
-        logger.error("LOGIN_HTTP_ERROR: %s", he.detail)
+        
+    except HTTPException:
         raise
     except Exception as e:
-        logger.exception("LOGIN_ERROR: %r", e)
-        raise HTTPException(status_code=500, detail="internal login error")
+        logger.error("LOGIN_ERROR: %s", e, exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail="Internal login error"
+        )
 
 
 @router.post("/logout", status_code=204)
 async def logout(response: Response):
+    """
+    Logout by clearing authentication cookie
+    """
     try:
         _clear_auth_cookie(response)
+        logger.info("User logged out")
         return Response(status_code=204)
     except Exception as e:
-        logger.exception("LOGOUT_ERROR: %r", e)
-        # حتى لو صار خطأ في مسح الكوكي نرجّع 204 عشان الـ client ما يعلق
+        logger.error("LOGOUT_ERROR: %s", e, exc_info=True)
+        # Return 204 anyway to prevent client hanging
         return Response(status_code=204)
-import logging
-from datetime import datetime
-
-from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
-
-from app.db.database import get_db
-from app.core.security import get_current_user, hash_password
-from app.models.user import User
-from app.models.email_verification import EmailVerification, VerificationPurpose
-from app.models.auth_identity import AuthIdentity, AuthProvider  # عدّل الأسماء حسب الموديل عندك
-from app.schemas.user import ResetPasswordRequest  # أو من ملف schemas آخر
-
-router = APIRouter(prefix="/auth", tags=["auth"])
 
 
-@router.post("/resetpassword")
+@router.post("/reset-password")
 async def reset_password(
     payload: ResetPasswordRequest,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
     """
-    يغيّر الباسوورد للمستخدم الحالي إذا الكود صحيح وغير منتهي.
-    يفترض أن الكود مُرسل مسبقاً ومخزّن في email_verifications
-    بـ purpose = password_reset.
+    Reset password using verification code sent via email
     """
     try:
         now = datetime.utcnow()
-
-        # 1) نلاقي الكود في email_verifications
+        
+        # 1) Find verification code
         stmt = select(EmailVerification).where(
             EmailVerification.email == current_user.email,
             EmailVerification.token == payload.code,
@@ -239,58 +278,58 @@ async def reset_password(
             EmailVerification.is_used == False,  # noqa: E712
             EmailVerification.expires_at > now,
         )
-        res = await db.execute(stmt)
-        ev = res.scalar_one_or_none()
-
-        if not ev:
+        result = await db.execute(stmt)
+        verification = result.scalar_one_or_none()
+        
+        if not verification:
             raise HTTPException(
                 status_code=400,
-                detail="Invalid or expired code",
+                detail="Invalid or expired verification code"
             )
-
-        # 2) نجيب AuthIdentity حق هذا اليوزر (provider = password)
-        identity_stmt = select(AuthIdentity).where(
+        
+        # 2) Get or create auth identity
+        auth_stmt = select(AuthIdentity).where(
             AuthIdentity.user_id == current_user.user_id,
             AuthIdentity.provider == AuthProvider.password,
         )
-        identity_res = await db.execute(identity_stmt)
-        identity = identity_res.scalar_one_or_none()
-
-        if identity is None:
-            # مثال: لو المستخدم كان مسجّل عن طريق Google فقط
-            identity = AuthIdentity(
+        auth_result = await db.execute(auth_stmt)
+        auth_identity = auth_result.scalar_one_or_none()
+        
+        if not auth_identity:
+            # Create new password auth if user only had OAuth
+            auth_identity = AuthIdentity(
                 user_id=current_user.user_id,
                 provider=AuthProvider.password,
             )
-            db.add(identity)
-
-        # 3) نحدّث الباسوورد
-        identity.password_hash = hash_password(payload.new_password)
-
-        # 4) نعلّم الكود إنه استُخدم
-        ev.is_used = True
-
+            db.add(auth_identity)
+        
+        # 3) Update password
+        auth_identity.password_hash = hash_password(payload.new_password)
+        
+        # 4) Mark code as used
+        verification.is_used = True
+        
         await db.commit()
-
-        logging.info(
-            "Password reset via code for user_id=%s email=%s",
+        
+        logger.info(
+            "Password reset successfully for user_id=%s email=%s",
             current_user.user_id,
-            current_user.email,
+            current_user.email
         )
-
-        return {"detail": "Password has been reset successfully."}
-
+        
+        return {"detail": "Password has been reset successfully"}
+        
     except HTTPException:
-        # نرجّع نفس الخطأ بدون لف
         raise
-    except Exception as exc:
-        logging.error(
-            "Error in reset_password for user_id=%s: %s",
-            getattr(current_user, "user_id", None),
-            exc,
-            exc_info=True,
+    except Exception as e:
+        logger.error(
+            "RESET_PASSWORD_ERROR for user_id=%s: %s",
+            current_user.user_id,
+            e,
+            exc_info=True
         )
+        await db.rollback()
         raise HTTPException(
             status_code=500,
-            detail="Failed to reset password",
+            detail="Failed to reset password"
         )

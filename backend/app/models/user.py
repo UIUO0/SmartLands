@@ -26,9 +26,6 @@ class User(Base):
         nullable=False,
     )
 
-    # مافي عمود باسوورد في جدول users
-    # الباسوورد مخزون في جدول auth_identities.password_hash
-
     picture_url: Mapped[Optional[str]] = mapped_column(
         String(512),
         nullable=True,
@@ -59,6 +56,15 @@ class User(Base):
         server_onupdate=text("CURRENT_TIMESTAMP"),
     )
 
+    # ✅ ADD THIS - Relationship to AuthIdentity
+    auth_identities: Mapped[List["AuthIdentity"]] = relationship(
+        "AuthIdentity",
+        back_populates="user",
+        lazy="selectin",
+        cascade="all, delete-orphan",
+    )
+
+    # ✅ Already exists
     email_verifications: Mapped[List["EmailVerification"]] = relationship(
         "EmailVerification",
         back_populates="user",
@@ -67,3 +73,9 @@ class User(Base):
 
     def __repr__(self) -> str:
         return f"<User id={self.user_id} email={self.email} role={self.role}>"
+    auth_identities: Mapped[List["AuthIdentity"]] = relationship(
+    "AuthIdentity",
+    back_populates="user",
+    lazy="selectin",
+    cascade="all, delete-orphan",
+)
