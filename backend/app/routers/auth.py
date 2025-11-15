@@ -265,16 +265,16 @@ async def reset_password(
     current_user: User = Depends(get_current_user),
 ):
     """
-    Reset password using verification code sent via email
+    Reset password using any valid verification code
     """
     try:
         now = datetime.utcnow()
         
-        # 1) Find verification code
+        # ✅ Remove the purpose check - accept any valid code
         stmt = select(EmailVerification).where(
             EmailVerification.email == current_user.email,
             EmailVerification.token == payload.code,
-            EmailVerification.purpose == VerificationPurpose.password_reset,
+            # ❌ REMOVED: EmailVerification.purpose == VerificationPurpose.password_reset,
             EmailVerification.is_used == False,  # noqa: E712
             EmailVerification.expires_at > now,
         )
@@ -311,7 +311,7 @@ async def reset_password(
         
         await db.commit()
         
-        logger.info(
+        logging.info(
             "Password reset successfully for user_id=%s email=%s",
             current_user.user_id,
             current_user.email
@@ -322,7 +322,7 @@ async def reset_password(
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(
+        logging.error(
             "RESET_PASSWORD_ERROR for user_id=%s: %s",
             current_user.user_id,
             e,
