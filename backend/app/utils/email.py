@@ -11,7 +11,7 @@ from typing import Tuple
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.user import User
-from app.models.email_verification import EmailVerification, VerificationPurpose
+from app.models.email_verification import EmailVerification
 
 from sendgrid import SendGridAPIClient
 from sendgrid.helpers.mail import Mail
