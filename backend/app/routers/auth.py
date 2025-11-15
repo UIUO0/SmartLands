@@ -264,17 +264,14 @@ async def reset_password(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """
-    Reset password using any valid verification code
-    """
+    """Reset password using verification code"""
     try:
         now = datetime.utcnow()
         
-        # ✅ Remove the purpose check - accept any valid code
+        # ✅ No purpose check - just validate code
         stmt = select(EmailVerification).where(
             EmailVerification.email == current_user.email,
             EmailVerification.token == payload.code,
-            # ❌ REMOVED: EmailVerification.purpose == VerificationPurpose.password_reset,
             EmailVerification.is_used == False,  # noqa: E712
             EmailVerification.expires_at > now,
         )
@@ -287,7 +284,7 @@ async def reset_password(
                 detail="Invalid or expired verification code"
             )
         
-        # 2) Get or create auth identity
+        # Get or create auth identity
         auth_stmt = select(AuthIdentity).where(
             AuthIdentity.user_id == current_user.user_id,
             AuthIdentity.provider == AuthProvider.password,
@@ -296,25 +293,23 @@ async def reset_password(
         auth_identity = auth_result.scalar_one_or_none()
         
         if not auth_identity:
-            # Create new password auth if user only had OAuth
             auth_identity = AuthIdentity(
                 user_id=current_user.user_id,
                 provider=AuthProvider.password,
             )
             db.add(auth_identity)
         
-        # 3) Update password
+        # Update password
         auth_identity.password_hash = hash_password(payload.new_password)
         
-        # 4) Mark code as used
+        # Mark code as used
         verification.is_used = True
         
         await db.commit()
         
         logging.info(
-            "Password reset successfully for user_id=%s email=%s",
-            current_user.user_id,
-            current_user.email
+            "Password reset successfully for user_id=%s",
+            current_user.user_id
         )
         
         return {"detail": "Password has been reset successfully"}

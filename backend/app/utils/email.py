@@ -37,33 +37,27 @@ logger = logging.getLogger("smartlands.email")
 async def create_email_code(
     session: AsyncSession,
     user: User,
-    purpose: VerificationPurpose = VerificationPurpose.email_link,
+    # ❌ REMOVE purpose parameter
     ttl_minutes: int = 10,
 ) -> EmailVerification:
     """
-    Create a 6-digit verification code and store it in email_verifications table
+    Create a 6-digit verification code (generic - no purpose)
     
     Args:
         session: Database session
         user: User model instance
-        purpose: Purpose of verification (email_link, password_reset, etc.)
         ttl_minutes: Time to live in minutes (default: 10)
     
     Returns:
         EmailVerification instance
-    
-    Raises:
-        Exception: If database operation fails
     """
     try:
-        # Generate 6-digit code (000000-999999)
         code = f"{random.randint(0, 999999):06d}"
         expires_at = datetime.utcnow() + timedelta(minutes=ttl_minutes)
         
         logger.info(
-            "Creating verification code for user_id=%s, purpose=%s, expires in %d minutes",
+            "Creating verification code for user_id=%s, expires in %d minutes",
             user.user_id,
-            purpose.value if hasattr(purpose, 'value') else purpose,
             ttl_minutes
         )
         
@@ -71,7 +65,7 @@ async def create_email_code(
             user_id=user.user_id,
             email=user.email,
             token=code,
-            purpose=purpose,
+            # ❌ REMOVE purpose field
             is_used=False,
             expires_at=expires_at,
         )
@@ -96,7 +90,6 @@ async def create_email_code(
         )
         await session.rollback()
         raise
-
 
 # ===== Email Content Builders =====
 
