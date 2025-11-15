@@ -58,20 +58,32 @@ async def send_code_to_me(
     session: AsyncSession = Depends(get_async_session),
     current_user: User = Depends(get_current_user),
 ):
+    """Send generic verification code to current user's email"""
     try:
-        # 1) إنشاء record في email_verifications مع كود جديد
+        # ✅ Remove purpose parameter
         ev = await create_email_code(
             session=session,
             user=current_user,
-            # نستخدم email_link كـ "generic" purpose متوافق مع DB
-            purpose=VerificationPurpose.email_link,
             ttl_minutes=10,
         )
 
-        # 2) بناء محتوى الإيميل
-        subject, body = build_verification_email(ev.token, ttl_minutes=10)
+        # Build email content
+        subject = "Smart Lands - Your Verification Code"
+        body = f"""Hello {current_user.full_name}!
 
-        # 3) إرسال الإيميل فعليًا عبر SendGrid في threadpool
+Your Smart Lands verification code is:
+
+    {ev.token}
+
+This code will expire in 10 minutes.
+
+If you did not request this code, please ignore this email.
+
+Best regards,
+Smart Lands Team
+"""
+
+        # Send email
         await run_in_threadpool(
             send_email_sendgrid,
             current_user.email,
@@ -80,20 +92,20 @@ async def send_code_to_me(
         )
 
         logging.info(
-            "Verification email sent successfully to %s (user_id=%s)",
+            "Verification code sent to %s (user_id=%s)",
             current_user.email,
-            getattr(current_user, "user_id", None),
+            current_user.user_id,
         )
 
         return {
-            "detail": "Verification code sent to your email, it may appear in the unwannted or spam mail box.",
+            "detail": "Verification code sent to your email. It may appear in spam.",
             "email_sent": True,
         }
 
     except Exception as exc:
         logging.error(
-            "Error in send_code_to_me for user_id=%s: %s",
-            getattr(current_user, "user_id", None),
+            "Error sending code for user_id=%s: %s",
+            current_user.user_id,
             exc,
             exc_info=True,
         )
