@@ -1,15 +1,16 @@
 # app/routers/users.py
 import logging
 
-from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi.concurrency import run_in_threadpool
+
 from app.db.database import get_db, get_async_session
 from app.core.security import get_current_user
 from app.schemas.user import UserOut, UserUpdate
 from app.models.user import User
-from app.models.email_verification import EmailVerification
+from app.models.email_verification import EmailVerification  # ✅ Complete this line
 from app.utils.email import (
     create_email_code,
     build_verification_email,

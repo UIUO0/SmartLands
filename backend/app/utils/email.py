@@ -37,11 +37,10 @@ logger = logging.getLogger("smartlands.email")
 async def create_email_code(
     session: AsyncSession,
     user: User,
-    # ❌ REMOVE purpose parameter
     ttl_minutes: int = 10,
 ) -> EmailVerification:
     """
-    Create a 6-digit verification code (generic - no purpose)
+    Create a 6-digit verification code and store it in email_verifications table
     
     Args:
         session: Database session
@@ -50,8 +49,12 @@ async def create_email_code(
     
     Returns:
         EmailVerification instance
+    
+    Raises:
+        Exception: If database operation fails
     """
     try:
+        # Generate 6-digit code (000000-999999)
         code = f"{random.randint(0, 999999):06d}"
         expires_at = datetime.utcnow() + timedelta(minutes=ttl_minutes)
         
@@ -65,7 +68,6 @@ async def create_email_code(
             user_id=user.user_id,
             email=user.email,
             token=code,
-            # ❌ REMOVE purpose field
             is_used=False,
             expires_at=expires_at,
         )
@@ -90,6 +92,7 @@ async def create_email_code(
         )
         await session.rollback()
         raise
+
 
 # ===== Email Content Builders =====
 
@@ -301,22 +304,20 @@ def send_email_sendgrid(to_email: str, subject: str, body: str) -> None:
         raise
 
 
-# ===== High-Level Email Functions =====
+# ===== High-Level Email Functions (Optional - Not Currently Used) =====
 
 async def send_verification_code(
     session: AsyncSession,
     user: User,
-    purpose: VerificationPurpose = VerificationPurpose.email_link,
     ttl_minutes: int = 10,
     use_sendgrid: bool = True
 ) -> EmailVerification:
     """
-    Create verification code and send it via email
+    Create verification code and send it via email (helper function)
     
     Args:
         session: Database session
         user: User model instance
-        purpose: Purpose of verification
         ttl_minutes: Code expiration time in minutes
         use_sendgrid: Use SendGrid (True) or SMTP (False)
     
@@ -327,13 +328,10 @@ async def send_verification_code(
         Exception: If code creation or email sending fails
     """
     # Create verification code in database
-    ev = await create_email_code(session, user, purpose, ttl_minutes)
+    ev = await create_email_code(session, user, ttl_minutes)
     
-    # Build email content based on purpose
-    if purpose == VerificationPurpose.password_reset:
-        subject, body = build_password_reset_email(ev.token, ttl_minutes, user.full_name)
-    else:
-        subject, body = build_verification_email(ev.token, ttl_minutes, user.full_name)
+    # Build email content
+    subject, body = build_verification_email(ev.token, ttl_minutes, user.full_name)
     
     # Send email
     if use_sendgrid:
@@ -349,7 +347,7 @@ async def send_welcome_email(
     use_sendgrid: bool = True
 ) -> None:
     """
-    Send welcome email to new user
+    Send welcome email to new user (helper function)
     
     Args:
         user: User model instance
