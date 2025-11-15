@@ -176,3 +176,37 @@ class TokenOut(BaseModel):
 
 # Keep backward compatibility with old class names (can be removed later)
 PasswordResetWithCode = ResetPasswordRequest
+from pydantic import BaseModel, HttpUrl
+from typing import Optional
+
+
+class UserPictureOut(BaseModel):
+    """Response for profile picture endpoints"""
+    picture_url: str
+    user_id: int
+    full_name: Optional[str] = None
+    
+    model_config = {
+        "json_schema_extra": {
+            "examples": [{
+                "picture_url": "https://res.cloudinary.com/smartlands/image/upload/v1234567890/smartlands/users/1/profile.jpg",
+                "user_id": 1,
+                "full_name": "John Doe"
+            }]
+        }
+    }
+
+
+class PictureUploadResponse(BaseModel):
+    """Response after successful picture upload"""
+    picture_url: str
+    message: str = "Profile picture uploaded successfully"
+    
+    model_config = {
+        "json_schema_extra": {
+            "examples": [{
+                "picture_url": "https://res.cloudinary.com/smartlands/image/upload/v1234567890/smartlands/users/1/profile.jpg",
+                "message": "Profile picture uploaded successfully"
+            }]
+        }
+    }
