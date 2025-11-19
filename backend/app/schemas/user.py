@@ -212,3 +212,16 @@ class PictureUploadResponse(BaseModel):
     }
 class SendCodeRequest(BaseModel):
     email: EmailStr
+class ResetPasswordWithCodeRequest(ResetPasswordRequest):
+    """Password reset with email + code + new password (no login required)"""
+    email: EmailStr = Field(..., description="User email address associated with the code")
+
+    model_config = {
+        "json_schema_extra": {
+            "examples": [{
+                "email": "user@example.com",
+                "code": "123456",
+                "new_password": "NewSecurePassword123"
+            }]
+        }
+    }
