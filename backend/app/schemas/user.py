@@ -210,3 +210,5 @@ class PictureUploadResponse(BaseModel):
             }]
         }
     }
+class SendCodeRequest(BaseModel):
+    email: EmailStr
