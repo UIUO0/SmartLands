@@ -328,3 +328,121 @@ async def reset_password(
             status_code=500,
             detail="Failed to reset password"
         )
+# app/routers/auth.py
+import logging
+from datetime import datetime
+
+from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.db.database import get_async_session
+from app.models.user import User
+from app.models.auth_identity import AuthIdentity, AuthProvider
+from app.models.email_verification import EmailVerification
+from app.core.security import hash_password  # دالتك الحالية لعمل hash
+from app.schemas.user import ResetPasswordWithCodeRequest  # أو من ملف schemas المناسب
+
+router = APIRouter(prefix="/auth", tags=["auth"])
+
+
+@router.post("/reset-password/confirm")
+async def reset_password_with_code(
+    payload: ResetPasswordWithCodeRequest,
+    session: AsyncSession = Depends(get_async_session),
+):
+    """
+    يغيّر كلمة المرور بناءً على email + code بدون الحاجة لتسجيل دخول.
+    يتأكد أن الكود:
+    - يطابق الإيميل
+    - غير مستخدم
+    - غير منتهي الصلاحية
+    """
+    try:
+        now = datetime.utcnow()
+
+        # 1) نتحقّق من وجود المستخدم بهذا الإيميل
+        user_result = await session.execute(
+            select(User).where(User.email == payload.email)
+        )
+        user = user_result.scalar_one_or_none()
+
+        if not user or not user.is_active:
+            # لأسباب أمنية نقدر نرجع رسالة عامة
+            logging.warning(
+                "reset_password_with_code requested for non-existing or inactive email: %s",
+                payload.email,
+            )
+            raise HTTPException(
+                status_code=400,
+                detail="Invalid email or code",
+            )
+
+        # 2) نبحث عن كود مطابق في email_verifications
+        ev_result = await session.execute(
+            select(EmailVerification).where(
+                EmailVerification.email == payload.email,
+                EmailVerification.token == payload.code,
+                EmailVerification.is_used == False,  # noqa: E712
+                EmailVerification.expires_at > now,
+            )
+        )
+        ev = ev_result.scalar_one_or_none()
+
+        if not ev:
+            logging.warning(
+                "reset_password_with_code invalid/expired code for email=%s",
+                payload.email,
+            )
+            raise HTTPException(
+                status_code=400,
+                detail="Invalid email or code",
+            )
+
+        # 3) نجيب AuthIdentity لهذا المستخدم مع provider=password
+        identity_result = await session.execute(
+            select(AuthIdentity).where(
+                AuthIdentity.user_id == user.user_id,
+                AuthIdentity.provider == AuthProvider.password,
+            )
+        )
+        identity = identity_result.scalar_one_or_none()
+
+        # لو ما عنده سجل password (مثلاً كان مسجل Google فقط) ننشئ واحد
+        if identity is None:
+            identity = AuthIdentity(
+                user_id=user.user_id,
+                provider=AuthProvider.password,
+            )
+            session.add(identity)
+
+        # 4) نحدّث الباسوورد
+        identity.password_hash = hash_password(payload.new_password)
+
+        # 5) نعلّم الكود إنه استُخدم
+        ev.is_used = True
+
+        await session.commit()
+
+        logging.info(
+            "Password reset successfully for user_id=%s email=%s",
+            user.user_id,
+            user.email,
+        )
+
+        return {"detail": "Password has been reset successfully."}
+
+    except HTTPException:
+        # نمررها كما هي للـ client
+        raise
+    except Exception as exc:
+        logging.error(
+            "Error in reset_password_with_code for email=%s: %s",
+            payload.email,
+            exc,
+            exc_info=True,
+        )
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to reset password",
+        )
