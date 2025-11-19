@@ -343,8 +343,6 @@ from app.models.email_verification import EmailVerification
 from app.core.security import hash_password  # دالتك الحالية لعمل hash
 from app.schemas.user import ResetPasswordWithCodeRequest  # أو من ملف schemas المناسب
 
-router = APIRouter(prefix="/auth", tags=["auth"])
-
 
 @router.post("/reset-password/confirm")
 async def reset_password_with_code(
