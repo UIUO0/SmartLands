@@ -114,3 +114,84 @@ Smart Lands Team
             status_code=500,
             detail="Failed to send verification code",
         )
+@router.post("/send-code")
+async def send_code_by_email(
+    payload: SendCodeRequest,
+    session: AsyncSession = Depends(get_async_session),
+):
+    """
+    Send a verification code to the given email.
+    لا يتطلب تسجيل دخول.
+    لو الإيميل غير مسجل، نرجّع نفس الرسالة لأسباب أمنية.
+    """
+    try:
+        # نجيب المستخدم بهذا الإيميل (لو موجود)
+        result = await session.execute(
+            select(User).where(User.email == payload.email)
+        )
+        user = result.scalar_one_or_none()
+
+        if not user or not user.is_active:
+            # ما نكشف إذا الإيميل موجود أو لا، لكن نسجل في الـ logs
+            logging.warning(
+                "send_code_by_email requested for non-existing or inactive email: %s",
+                payload.email,
+            )
+            return {
+                "detail": "If this email is registered, a verification code has been sent.",
+                "email_sent": False,
+            }
+
+        # ننشئ record في email_verifications مع كود جديد
+        ev = await create_email_code(
+            session=session,
+            user=user,
+            ttl_minutes=10,
+        )
+
+        # نبني محتوى الإيميل
+        subject = "Smart Lands - Your Verification Code"
+        body = f"""Hello {user.full_name}!
+
+Your Smart Lands verification code is:
+
+    {ev.token}
+
+This code will expire in 10 minutes.
+
+If you did not request this code, please ignore this email.
+
+Best regards,
+Smart Lands Team
+"""
+
+        # نرسل الإيميل عن طريق SendGrid في threadpool
+        await run_in_threadpool(
+            send_email_sendgrid,
+            user.email,
+            subject,
+            body,
+        )
+
+        logging.info(
+            "Verification code sent to %s (user_id=%s) via /users/send-code",
+            user.email,
+            user.user_id,
+        )
+
+        return {
+            "detail": "If this email is registered, a verification code has been sent.",
+            "email_sent": True,
+        }
+
+    except Exception as exc:
+        logging.error(
+            "Error in send_code_by_email for email=%s: %s",
+            payload.email,
+            exc,
+            exc_info=True,
+        )
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to send verification code",
+        )
