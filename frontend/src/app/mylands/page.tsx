@@ -22,7 +22,7 @@ export default function LandsPage() {
 
   return (
     <main className="p-6 space-y-4">
-      <h1 className="text-2xl font-semibold">Lands</h1>
+      <h1 className="text-2xl font-semibold">MyLands</h1>
       <div className="flex gap-2">
         <button onClick={load} className="rounded-xl bg-black text-white px-4 py-2 text-sm">Refresh</button>
         {/* لاحقًا نضيف Create/Edit/Delete */}

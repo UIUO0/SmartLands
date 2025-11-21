@@ -143,7 +143,7 @@ export default function DashboardPage() {
         <nav style={{ display: "flex", flexWrap: "wrap", gap: 8, flexShrink: 0 }}>
           {/* دائمًا */}
           <a
-            href="/lands"
+            href="/mylands"
             style={{
               display: "inline-block",
               padding: "8px 12px",
@@ -157,7 +157,7 @@ export default function DashboardPage() {
             My Lands
           </a>
           <a
-            href="/profile"
+            href="/Profile"
             style={{
               display: "inline-block",
               padding: "8px 12px",
@@ -168,7 +168,7 @@ export default function DashboardPage() {
               whiteSpace: "nowrap",
             }}
           >
-            My Account
+            My Profile
           </a>
 
           {/* لغير المسجّل */}
@@ -202,12 +202,20 @@ export default function DashboardPage() {
           </a>
 
           {/* للمسجّل */}
-          <button
-            type="button"
-            onClick={async () => {
-              await fetch("/api/auth/logout", { method: "POST" });
-              location.reload();
-            }}
+            <button
+              type="button"
+              onClick={async () => {
+                try {
+                  await fetch("/logout", {
+                    method: "POST",
+                    cache: "no-store",
+                    credentials: "include",
+                  });
+                } finally {
+                  setMe(null);
+                  window.location.href = "/login";
+                }
+              }}
             style={{
               display: me ? "inline-block" : "none",
               padding: "8px 12px",
