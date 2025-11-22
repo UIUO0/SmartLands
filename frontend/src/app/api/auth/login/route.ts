@@ -4,6 +4,7 @@ import { API_URL, COOKIE_NAME } from "@/lib/config";
 
 export async function POST(req: NextRequest) {
   const body = await req.json().catch(() => ({}));
+  const secure = process.env.NODE_ENV === "production";
 
   const r = await fetch(`${API_URL}/auth/login`, {
     method: "POST",
@@ -28,7 +29,7 @@ export async function POST(req: NextRequest) {
       name: COOKIE_NAME,
       value: token,
       httpOnly: true,
-      secure: true,
+      secure,
       sameSite: "lax",
       path: "/",
       maxAge: 60 * 60 * 24 * 7, // 7 days
