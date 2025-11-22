@@ -157,7 +157,7 @@ export default function DashboardPage() {
             My Lands
           </a>
           <a
-            href="/Profile"
+            href="/profile"
             style={{
               display: "inline-block",
               padding: "8px 12px",
