@@ -16,5 +16,8 @@ export async function POST() {
     expires: new Date(0),
   });
 
+  // Defensive: ensure any existing cookie is cleared
+  res.cookies.delete(COOKIE_NAME);
+
   return res;
 }

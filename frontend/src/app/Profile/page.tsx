@@ -17,7 +17,7 @@ type UserOut = {
 
 async function getMe(cookieHeader: string): Promise<UserOut | null> {
   // نستدعي API داخليتنا مع تمرير الكوكيز لضمان المصادقة
-  const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || ""}/api/users/me`, {
+  const res = await fetch(`/api/users/me`, {
     cache: "no-store",
     headers: cookieHeader ? { Cookie: cookieHeader } : undefined,
   });
