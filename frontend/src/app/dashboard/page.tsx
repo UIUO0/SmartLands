@@ -202,20 +202,23 @@ export default function DashboardPage() {
           </a>
 
           {/* للمسجّل */}
-            <button
-              type="button"
-              onClick={async () => {
-                try {
-                  await fetch("/logout", {
-                    method: "POST",
-                    cache: "no-store",
-                    credentials: "include",
-                  });
-                } finally {
-                  setMe(null);
-                  window.location.href = "/login";
-                }
-              }}
+            // داخل DashboardPage
+          <button
+            type="button"
+            onClick={async () => {
+              try {
+                // ✅ تصحيح المسار ليتوجه للـ API Route
+                await fetch("/api/auth/logout", { 
+                  method: "POST",
+                  cache: "no-store",
+                  credentials: "include", // مهم جداً لإرسال الكوكيز
+                });
+              } finally {
+                setMe(null);
+                // يفضل استخدام router.push بدل window.location لتجربة أسرع، لكن هذا يعمل أيضاً
+                window.location.href = "/login"; 
+              }
+            }}
             style={{
               display: me ? "inline-block" : "none",
               padding: "8px 12px",

@@ -2,7 +2,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { Card } from "@/components/ui/Card";
 import { COOKIE_NAME } from "@/lib/config";
-
+import { headers } from "next/headers"; // 1. استيراد headers
 export const dynamic = "force-dynamic";
 
 type UserOut = {
@@ -15,15 +15,28 @@ type UserOut = {
   updated_at: string;
 };
 
+
+
 async function getMe(cookieHeader: string): Promise<UserOut | null> {
-  // نستدعي API داخليتنا مع تمرير الكوكيز لضمان المصادقة
-  const res = await fetch(`/api/users/me`, {
+  // 2. تحديد الدومين ديناميكياً
+  const headersList = await headers();
+  const host = headersList.get("host"); // يجلب localhost:3000 أو الدومين الحقيقي
+  const protocol = process.env.NODE_ENV === "development" ? "http" : "https";
+  const baseUrl = `${protocol}://${host}`;
+
+  // 3. استخدام الرابط الكامل
+  const res = await fetch(`${baseUrl}/api/users/me`, {
     cache: "no-store",
     headers: cookieHeader ? { Cookie: cookieHeader } : undefined,
   });
 
   if (res.status === 401) return null;
-  if (!res.ok) throw new Error("Failed to load profile");
+  if (!res.ok) {
+     // طباعة الخطأ للمساعدة في الـ Debugging
+     const txt = await res.text();
+     console.error("Profile fetch error:", txt); 
+     throw new Error("Failed to load profile");
+  }
 
   const json = await res.json();
   return json?.user as UserOut;
