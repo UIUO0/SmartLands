@@ -6,7 +6,7 @@ export function middleware(req: NextRequest) {
   const url = req.nextUrl.clone();
 
   if (url.pathname === "/Profile" || url.pathname.startsWith("/Profile/")) {
-    url.pathname = url.pathname.replace(/^\\/Profile/, "/profile");
+    url.pathname = url.pathname.replace(/^\/Profile/, "/profile");
     return NextResponse.redirect(url, 308);
   }
 
