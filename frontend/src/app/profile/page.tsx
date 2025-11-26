@@ -108,7 +108,7 @@ export default async function ProfilePage() {
 
         <div className="flex flex-wrap gap-3">
           <a
-            href="/reset-password"
+            href="/R_Pw"
             className="inline-flex items-center justify-center rounded-xl bg-black px-4 py-2 text-sm font-medium text-white"
           >
             Reset Password

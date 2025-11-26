@@ -202,7 +202,6 @@ export default function DashboardPage() {
           </a>
 
           {/* للمسجّل */}
-            // داخل DashboardPage
           <button
             type="button"
             onClick={async () => {
