@@ -4,8 +4,7 @@
 import { Suspense, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
-export const dynamic = "force-dynamic"; // منع الـ prerender الثابت على Vercel
-
+export const dynamic = "force-dynamic";
 
 function LoginForm() {
   const router = useRouter();
@@ -29,22 +28,47 @@ function LoginForm() {
 
   return (
     <main className="min-h-screen grid place-items-center p-6">
-      <form onSubmit={onSubmit} className="w-full max-w-md grid gap-3 border p-6 rounded-2xl">
+      <form
+        onSubmit={onSubmit}
+        className="w-full max-w-md grid gap-3 border p-6 rounded-2xl"
+      >
         <h1 className="text-2xl font-semibold">Login</h1>
+
         <div>
           <label className="block text-sm mb-1">Email</label>
-          <input className="w-full border rounded-xl px-3 py-2" type="email" required
-                 value={email} onChange={e=>setEmail(e.target.value)} />
+          <input
+            className="w-full border rounded-xl px-3 py-2"
+            type="email"
+            required
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+          />
         </div>
+
         <div>
           <label className="block text-sm mb-1">Password</label>
-          <input className="w-full border rounded-xl px-3 py-2" type="password" required
-                 value={password} onChange={e=>setPassword(e.target.value)} />
+          <input
+            className="w-full border rounded-xl px-3 py-2"
+            type="password"
+            required
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+          />
+          <div className="text-right mt-1">
+            <a
+              href="/forgot-password"
+              className="text-sm text-black underline"
+            >
+              نسيت كلمة المرور؟
+            </a>
+          </div>
         </div>
+
         <button className="rounded-xl bg-black text-white py-2" disabled={loading}>
           {loading ? "..." : "Login"}
         </button>
-          <div className="text-sm text-gray-600 text-center mt-2">
+
+        <div className="text-sm text-gray-600 text-center mt-2">
           ما عندك حساب؟{" "}
           <a
             href={`/signup?next=${encodeURIComponent(next)}`}
