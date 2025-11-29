@@ -56,7 +56,7 @@ function LoginForm() {
           />
           <div className="text-right mt-1">
             <a
-              href="/forgot-password"
+              href="/R_Pw"
               className="text-sm text-black underline"
             >
               نسيت كلمة المرور؟
