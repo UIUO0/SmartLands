@@ -15,3 +15,4 @@ cloudinary
 python-multipart
 sendgrid
 google-auth
+requests
