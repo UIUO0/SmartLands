@@ -42,16 +42,48 @@ export default function MyLandsPage() {
   // لرفع الصور
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
-  // 1. Fetch Data
+  // 1. Fetch Data (Updated to fetch images)
   async function load() {
     setLoading(true); setErr(null);
     try {
+      // أ. جلب قائمة الأراضي
       const r = await fetch("/api/lands/mine", { cache: "no-store" });
       if (!r.ok) throw new Error(`HTTP ${r.status}`);
-      const j = await r.json();
-      setData(Array.isArray(j) ? j : j?.items ?? []);
-    } catch (e: any) { setErr(e.message); } 
-    finally { setLoading(false); }
+      
+      const landsData = await r.json();
+      const items = Array.isArray(landsData) ? landsData : landsData?.items ?? [];
+
+      // ب. جلب الصور لكل أرض (Parallel Fetching)
+      // سنمر على كل أرض ونطلب صورها لدمجها مع البيانات
+      const landsWithImages = await Promise.all(items.map(async (land: Land) => {
+        try {
+            const landId = land.land_id || land.id;
+            // طلب الصور من الـ API الجديد الذي عدلناه للتو
+            const imgRes = await fetch(`/api/lands/${landId}/images`, { cache: 'no-store' });
+            
+            if (imgRes.ok) {
+                const images = await imgRes.json();
+                // البحث عن الصورة التي is_cover === true أو أخذ الصورة الأولى
+                const cover = images.find((img: any) => img.is_cover) || images[0];
+                
+                // إذا وجدنا صورة، نضيف رابطها للأرض
+                if (cover) {
+                    return { ...land, cover_image_url: cover.file_url };
+                }
+            }
+        } catch (e) {
+            console.error("Failed to load image for land", land.id);
+        }
+        // إذا فشل جلب الصورة، نرجع الأرض كما هي
+        return land;
+      }));
+
+      setData(landsWithImages);
+    } catch (e: any) { 
+        setErr(e.message); 
+    } finally { 
+        setLoading(false); 
+    }
   }
 
   useEffect(() => { load(); }, []);
