@@ -3,14 +3,18 @@ from __future__ import annotations
 
 from datetime import timedelta, datetime
 from typing import Optional
+import os
 
 import logging
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from google.oauth2 import id_token
+from google.auth.transport import requests as google_requests
+
 
 from app.db.database import get_db
-from app.schemas.user import SignupIn, LoginIn, TokenOut, UserOut, ResetPasswordRequest
+from app.schemas.user import SignupIn, LoginIn, TokenOut, UserOut, ResetPasswordRequest, GoogleLoginRequest
 from app.core.security import (
     hash_password,
     verify_password,
@@ -233,6 +237,7 @@ async def login(
             "user": _user_to_out(user),
         }
         
+
     except HTTPException:
         raise
     except Exception as e:
@@ -240,6 +245,132 @@ async def login(
         raise HTTPException(
             status_code=500,
             detail="Internal login error"
+        )
+
+
+@router.post("/google", response_model=TokenOut)
+async def google_login(
+    payload: GoogleLoginRequest,
+    response: Response,
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Login or Signup with Google ID Token
+    """
+    try:
+        # Verify Token
+        # NOTE: Make sure GOOGLE_CLIENT_ID is set in .env
+        client_id = os.getenv("GOOGLE_CLIENT_ID")
+        
+        # Verify the token using Google's library
+        try:
+            id_info = id_token.verify_oauth2_token(
+                payload.id_token, 
+                google_requests.Request(), 
+                client_id
+            )
+        except ValueError as e:
+            logger.warning("Invalid Google Token: %s", e)
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid Google Token"
+            )
+
+        google_user_id = id_info.get('sub')
+        email = id_info.get('email')
+        email_verified = id_info.get('email_verified')
+        name = id_info.get('name')
+        picture = id_info.get('picture')
+
+        if not email_verified:
+            raise HTTPException(
+                status_code=400, 
+                detail="Google email must be verified"
+            )
+
+        # 1. Check if Identity Exists (Already linked)
+        stmt = select(AuthIdentity).where(
+            AuthIdentity.provider == AuthProvider.google,
+            AuthIdentity.provider_user_id == google_user_id
+        )
+        res = await db.execute(stmt)
+        identity = res.scalar_one_or_none()
+
+        if identity:
+            # Identity found -> Get User
+            user_stmt = select(User).where(User.user_id == identity.user_id)
+            user_res = await db.execute(user_stmt)
+            user = user_res.scalar_one()
+            
+            # Update user info if needed (optional)
+            if not user.full_name and name:
+                user.full_name = name
+            if not user.picture_url and picture:
+                user.picture_url = picture
+            await db.commit()
+
+        else:
+            # Identity not found -> Check if email exists (Link account)
+            user_stmt = select(User).where(User.email == email)
+            user_res = await db.execute(user_stmt)
+            user = user_res.scalar_one_or_none()
+
+            if not user:
+                # User doesn't exist -> Create New User
+                user = User(
+                    email=email,
+                    full_name=name or email.split("@")[0],
+                    picture_url=picture,
+                    role="user",
+                    is_active=True
+                )
+                db.add(user)
+                await db.flush()  # to get user_id
+                logger.info("Created new user from Google: %s", email)
+            else:
+                logger.info("Linking Google account to existing user: %s", email)
+
+            # Create Auth Identity
+            identity = AuthIdentity(
+                user_id=user.user_id,
+                provider=AuthProvider.google,
+                provider_user_id=google_user_id,
+                provider_email=email,
+                email_verified=True
+            )
+            db.add(identity)
+            await db.commit()
+            await db.refresh(user)
+
+        # check if user is active
+        if not user.is_active:
+             raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Account is inactive"
+            )
+
+        # Generate Access Token
+        access_token = create_access_token(
+            {"sub": str(user.user_id)},
+            expires_delta=timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+        )
+        _set_auth_cookie(response, access_token)
+        
+        logger.info("Google login successful: %s (id=%s)", user.email, user.user_id)
+        
+        return {
+            "access_token": access_token,
+            "token_type": "bearer",
+            "user": _user_to_out(user),
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("GOOGLE_LOGIN_ERROR: %s", e, exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail="Internal Google login error"
         )
 
 
