@@ -1,5 +1,4 @@
 import { notFound } from "next/navigation";
-import { cookies } from "next/headers";
 
 // رابط الباك-إند المباشر (لأننا في Server Component)
 const BACKEND_URL = "https://smartlands-production.up.railway.app";
@@ -22,7 +21,7 @@ export default async function LandDetailsPage({ params }: { params: Promise<{ id
   // 1. انتظار الـ params (مهم في Next.js 15)
   const { id } = await params;
 
-  // 2. جلب البيانات بالتوازي (للسرعة)
+  // 2. جلب البيانات بالتوازي
   const [land, images] = await Promise.all([
     getLandDetails(id),
     getLandImages(id)
@@ -31,13 +30,13 @@ export default async function LandDetailsPage({ params }: { params: Promise<{ id
   // إذا لم توجد الأرض، نعرض صفحة 404
   if (!land) return notFound();
 
-  // تحديد صورة الغلاف (إما الموجودة في is_cover أو أول صورة)
+  // تحديد صورة الغلاف
   const coverImage = images.find((img: any) => img.is_cover) || images[0];
 
   return (
     <main className="min-h-screen bg-[#F1F3E0] font-sans text-black pb-20">
       
-      {/* --- 1. قسم الصور (Hero Section) --- */}
+      {/* --- قسم الصور --- */}
       <div className="max-w-4xl mx-auto pt-6 px-4">
          {/* زر الرجوع */}
          <a href="/mylands" className="inline-block mb-4 px-4 py-2 bg-white rounded-xl shadow-sm hover:bg-gray-50 font-bold transition">
@@ -57,7 +56,7 @@ export default async function LandDetailsPage({ params }: { params: Promise<{ id
             </div>
          </div>
 
-         {/* معرض الصور المصغرة (باقي الصور) */}
+         {/* معرض الصور المصغرة */}
          {images.length > 0 && (
            <div className="flex gap-3 mt-4 overflow-x-auto pb-2 scrollbar-hide">
               {images.map((img: any) => (
@@ -69,10 +68,8 @@ export default async function LandDetailsPage({ params }: { params: Promise<{ id
          )}
       </div>
 
-      {/* --- 2. تفاصيل الأرض --- */}
+      {/* --- تفاصيل الأرض --- */}
       <div className="max-w-4xl mx-auto mt-8 px-4 grid grid-cols-1 md:grid-cols-3 gap-8">
-         
-         {/* العمود الأيمن: المعلومات الرئيسية */}
          <div className="md:col-span-2 space-y-6">
             <div className="bg-white/50 p-6 rounded-3xl border border-[#A1BC98]/30">
                <h1 className="text-3xl font-bold mb-2">{land.title}</h1>
@@ -87,7 +84,6 @@ export default async function LandDetailsPage({ params }: { params: Promise<{ id
             </div>
          </div>
 
-         {/* العمود الأيسر: بطاقة ملخصة */}
          <div className="space-y-4">
             <div className="bg-[#D2DCB6] p-6 rounded-3xl shadow-sm border border-[#A1BC98]/50">
                <h3 className="font-bold text-xl mb-4">تفاصيل سريعة</h3>
@@ -109,7 +105,6 @@ export default async function LandDetailsPage({ params }: { params: Promise<{ id
                </ul>
             </div>
          </div>
-
       </div>
     </main>
   );
