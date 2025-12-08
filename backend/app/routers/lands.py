@@ -1,5 +1,6 @@
 from decimal import Decimal
 from typing import Optional, List
+import os
 
 import logging
 
@@ -315,6 +316,13 @@ async def upload_land_image(
         data = await file.read()
         if not data:
             raise HTTPException(status_code=400, detail="empty file")
+
+        if not cloudinary.config().api_key and not os.getenv("CLOUDINARY_API_KEY"):
+            logger.error("CLOUDINARY_CONFIG_ERROR: API Key is missing.")
+            raise HTTPException(
+                status_code=500,
+                detail="Server configuration error: Cloudinary API Key missing (Verify CLOUDINARY_API_KEY env var)"
+            )
 
         folder = f"smartlands/lands/{land_id}"
         result = cloudinary.uploader.upload(
