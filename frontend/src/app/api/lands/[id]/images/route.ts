@@ -1,12 +1,12 @@
-// src/app/api/lands/[id]/route.ts
+// src/app/api/lands/[id]/images/route.ts
 import { NextResponse, NextRequest } from "next/server";
 import { cookies } from "next/headers";
 
 const BACKEND_URL = "https://smartlands-production.up.railway.app";
 
-export async function PATCH(
+export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } } // استقبال ID الأرض
+  { params }: { params: { id: string } }
 ) {
   const cookieStore = await cookies();
   const token = cookieStore.get("sl_token")?.value || cookieStore.get("session_id")?.value;
@@ -14,16 +14,17 @@ export async function PATCH(
   if (!token) return NextResponse.json({ detail: "Unauthorized" }, { status: 401 });
 
   try {
-    const body = await request.json();
-    const { id } = params; // رقم الأرض
-
-    const res = await fetch(`${BACKEND_URL}/lands/${id}`, {
-      method: "PATCH",
+    // 1. استقبال الـ FormData من الفرونت
+    const formData = await request.formData();
+    
+    // 2. إرسالها كما هي للباك إند (مع التوكن)
+    // ملاحظة: عند استخدام FormData، لا تضع Content-Type يدوياً، المتصفح يضعه تلقائياً
+    const res = await fetch(`${BACKEND_URL}/lands/${params.id}/images/upload`, {
+      method: "POST",
       headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${token}`,
+        "Authorization": `Bearer ${token}`, 
       },
-      body: JSON.stringify(body),
+      body: formData, 
     });
 
     if (!res.ok) {
