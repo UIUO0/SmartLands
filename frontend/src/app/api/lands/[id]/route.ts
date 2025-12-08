@@ -3,9 +3,9 @@ import { cookies } from "next/headers";
 
 const BACKEND_URL = "https://smartlands-production.up.railway.app";
 
+// ✅ التصحيح: params يجب أن يكون Promise
 export async function PATCH(
   request: NextRequest,
-  // 1️⃣ التغيير هنا: تعريف params كـ Promise
   { params }: { params: Promise<{ id: string }> }
 ) {
   const cookieStore = await cookies();
@@ -14,7 +14,7 @@ export async function PATCH(
   if (!token) return NextResponse.json({ detail: "Unauthorized" }, { status: 401 });
 
   try {
-    // 2️⃣ التغيير هنا: انتظار الـ params
+    // ✅ انتظار params
     const { id } = await params;
     
     const body = await request.json();
