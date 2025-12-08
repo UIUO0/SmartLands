@@ -223,14 +223,27 @@ export default function MyLandsPage() {
             {data.map((x, i) => (
               <article 
                 key={x.id ?? x.land_id ?? i} 
-                className="rounded-3xl bg-[#D2DCB6] p-4 shadow-sm border border-[#A1BC98]/30 flex flex-col gap-4 transition hover:shadow-md"
+                className="rounded-3xl bg-[#D2DCB6] p-4 shadow-sm border border-[#A1BC98]/30 flex flex-col gap-3 transition hover:shadow-md"
               >
                  
-                 {/* المنطقة العلوية: الصورة + المعلومات بجانب بعض */}
-                 <div className="flex gap-4">
+                 {/* المنطقة العلوية: الصورة والمعلومات */}
+                 {/* items-center: عشان يكونون متوازين عمودياً */}
+                 <div className="flex gap-4 items-center justify-between">
                     
-                    {/* 1. الصورة (مربع ثابت الحجم) */}
-                    <div className="w-16 h-16 flex-shrink-0 rounded-2xl overflow-hidden bg-[#c1cdae] border border-black/5 relative">
+                    {/* 1. المعلومات (جعلناها أولاً لتظهر على اليسار في المتصفحات الانجليزية، او اليمين حسب لغة موقعك) */}
+                    {/* flex-1: تأخذ المساحة المتبقية */}
+                    <div className="flex-1 flex flex-col">
+                        <h3 className="font-bold text-base leading-tight mb-2 line-clamp-2">{x.title}</h3>
+                        <div className="text-xs text-[#3a4430] space-y-1">
+                           <p>📍 {x.city}</p>
+                           <p>💰 <span className="font-bold text-black">{x.price_amount?.toLocaleString()}</span> ر.س</p>
+                           <p>📏 {x.area_sq_m} م²</p>
+                        </div>
+                    </div>
+
+                    {/* 2. الصورة (جعلناها ثانياً) */}
+                    {/* 👇 التعديل هنا: غيرنا w-32 الى w-24 لتصغيرها */}
+                    <div className="w-24 h-24 flex-shrink-0 rounded-xl overflow-hidden bg-[#c1cdae] border border-black/5 relative shadow-sm">
                         {(x.cover_image?.file_url || x.cover_image_url) ? (
                           <img 
                             src={x.cover_image?.file_url || x.cover_image_url} 
@@ -238,48 +251,36 @@ export default function MyLandsPage() {
                             className="w-full h-full object-cover" 
                           />
                         ) : (
-                          <div className="w-full h-full flex items-center justify-center text-black/20 text-3xl">📷</div>
+                          <div className="w-full h-full flex items-center justify-center text-black/20 text-2xl">📷</div>
                         )}
                         
-                        {/* بادج الحالة (صغير فوق الصورة) */}
-                        <div className="absolute bottom-0 left-0 right-0 bg-black/60 text-white text-[10px] text-center py-1 font-bold backdrop-blur-sm">
+                        {/* بادج الحالة */}
+                        <div className="absolute bottom-0 left-0 right-0 bg-black/60 text-white text-[9px] text-center py-0.5 backdrop-blur-sm">
                            {x.status === "sold" ? "مباع" : "للبيع"}
                         </div>
                     </div>
 
-                    {/* 2. المعلومات (العنوان والسعر) */}
-                    <div className="flex-1 flex flex-col justify-center">
-                        <h3 className="font-bold text-lg leading-tight mb-2 line-clamp-2">{x.title}</h3>
-                        <div className="text-sm text-[#3a4430] space-y-1">
-                           <p>📍 {x.city}</p>
-                           <p>💰 <span className="font-bold text-black">{x.price_amount?.toLocaleString()}</span> ر.س</p>
-                           <p>📏 {x.area_sq_m} م²</p>
-                        </div>
-                    </div>
                  </div>
 
                  {/* المنطقة السفلية: الأزرار */}
                  <div className="flex gap-2 pt-2 border-t border-black/5 mt-auto">
-                      {/* زر التعديل */}
                       <button 
                         onClick={() => openEditModal(x)}
-                        className="flex-1 bg-white/60 hover:bg-white py-2 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1"
+                        className="flex-1 bg-white/60 hover:bg-white py-1.5 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1"
                       >
                         ✏️ تعديل
                       </button>
                       
-                      {/* زر الصور */}
                       <button 
                          onClick={() => openUploadModal(x)}
-                         className="flex-1 bg-black/10 hover:bg-black/20 py-2 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1"
+                         className="flex-1 bg-black/10 hover:bg-black/20 py-1.5 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1"
                       >
                         🖼️ صور
                       </button>
 
-                      {/* زر التفاصيل */}
                       <button 
                          onClick={() => router.push(`/lands/${x.land_id || x.id}`)}
-                         className="px-4 bg-[#A1BC98] hover:bg-[#8ea885] rounded-xl text-black transition"
+                         className="px-3 bg-[#A1BC98] hover:bg-[#8ea885] rounded-lg text-black transition"
                       >
                         ➝
                       </button>
