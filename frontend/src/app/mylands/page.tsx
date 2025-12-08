@@ -219,38 +219,51 @@ export default function MyLandsPage() {
 
         {/* --- CARDS GRID --- */}
         {!loading && !err && (
-          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-6 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3">
             {data.map((x, i) => (
-              <article key={x.id ?? x.land_id ?? i} className="rounded-3xl bg-[#D2DCB6] shadow-sm border border-[#A1BC98]/30 overflow-hidden flex flex-col">
+              <article 
+                key={x.id ?? x.land_id ?? i} 
+                className="rounded-3xl bg-[#D2DCB6] p-4 shadow-sm border border-[#A1BC98]/30 flex flex-col gap-4 transition hover:shadow-md"
+              >
                  
-                 {/* صورة الأرض (تم التعديل هنا) */}
-                 <div className="h-48 w-full bg-[#c1cdae] relative">
-                    {/* 👇 التحقق: هل يوجد رابط داخل كائن الصورة؟ أو رابط مباشر؟ */}
-                    {(x.cover_image?.file_url || x.cover_image_url) ? (
-                      <img 
-                        src={x.cover_image?.file_url || x.cover_image_url} 
-                        alt={x.title} 
-                        className="w-full h-full object-cover" 
-                      />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center text-black/30 text-4xl">📷</div>
-                    )}
+                 {/* المنطقة العلوية: الصورة + المعلومات بجانب بعض */}
+                 <div className="flex gap-4">
                     
-                    {/* بادج الحالة */}
-                    <span className="absolute top-3 right-3 bg-white/80 px-3 py-1 rounded-full text-xs font-bold shadow-sm">
-                      {x.status === "sold" ? "❌ مباع" : "✅ للبيع"}
-                    </span>
+                    {/* 1. الصورة (مربع ثابت الحجم) */}
+                    <div className="w-32 h-32 flex-shrink-0 rounded-2xl overflow-hidden bg-[#c1cdae] border border-black/5 relative">
+                        {(x.cover_image?.file_url || x.cover_image_url) ? (
+                          <img 
+                            src={x.cover_image?.file_url || x.cover_image_url} 
+                            alt={x.title} 
+                            className="w-full h-full object-cover" 
+                          />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center text-black/20 text-3xl">📷</div>
+                        )}
+                        
+                        {/* بادج الحالة (صغير فوق الصورة) */}
+                        <div className="absolute bottom-0 left-0 right-0 bg-black/60 text-white text-[10px] text-center py-1 font-bold backdrop-blur-sm">
+                           {x.status === "sold" ? "مباع" : "للبيع"}
+                        </div>
+                    </div>
+
+                    {/* 2. المعلومات (العنوان والسعر) */}
+                    <div className="flex-1 flex flex-col justify-center">
+                        <h3 className="font-bold text-lg leading-tight mb-2 line-clamp-2">{x.title}</h3>
+                        <div className="text-sm text-[#3a4430] space-y-1">
+                           <p>📍 {x.city}</p>
+                           <p>💰 <span className="font-bold text-black">{x.price_amount?.toLocaleString()}</span> ر.س</p>
+                           <p>📏 {x.area_sq_m} م²</p>
+                        </div>
+                    </div>
                  </div>
 
-                 <div className="p-5 flex-1 flex flex-col">
-                    <h3 className="font-bold text-xl mb-1">{x.title}</h3>
-                    <p className="text-sm text-[#3a4430] mb-4">{x.city} • {x.price_amount?.toLocaleString()} ر.س</p>
-                    
-                    <div className="mt-auto flex gap-2 pt-4 border-t border-black/5">
+                 {/* المنطقة السفلية: الأزرار */}
+                 <div className="flex gap-2 pt-2 border-t border-black/5 mt-auto">
                       {/* زر التعديل */}
                       <button 
                         onClick={() => openEditModal(x)}
-                        className="flex-1 bg-white/60 hover:bg-white py-2 rounded-lg text-sm font-bold transition"
+                        className="flex-1 bg-white/60 hover:bg-white py-2 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1"
                       >
                         ✏️ تعديل
                       </button>
@@ -258,7 +271,7 @@ export default function MyLandsPage() {
                       {/* زر الصور */}
                       <button 
                          onClick={() => openUploadModal(x)}
-                         className="flex-1 bg-black/10 hover:bg-black/20 py-2 rounded-lg text-sm font-bold transition"
+                         className="flex-1 bg-black/10 hover:bg-black/20 py-2 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1"
                       >
                         🖼️ صور
                       </button>
@@ -266,16 +279,15 @@ export default function MyLandsPage() {
                       {/* زر التفاصيل */}
                       <button 
                          onClick={() => router.push(`/lands/${x.land_id || x.id}`)}
-                         className="px-3 bg-[#A1BC98] hover:bg-[#8ea885] rounded-lg"
+                         className="px-4 bg-[#A1BC98] hover:bg-[#8ea885] rounded-xl text-black transition"
                       >
                         ➝
                       </button>
-                    </div>
                  </div>
               </article>
             ))}
           </div>
-        )}
+        )} 
       </div>
 
       {/* ================= MODAL: CREATE (إضافة) ================= */}
