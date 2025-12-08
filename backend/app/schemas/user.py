@@ -52,7 +52,19 @@ class LoginIn(BaseModel):
                 "password": "SecurePassword123"
             }]
         }
+    model_config = {
+        "json_schema_extra": {
+            "examples": [{
+                "email": "user@example.com",
+                "password": "SecurePassword123"
+            }]
+        }
     }
+
+
+class GoogleLoginRequest(BaseModel):
+    """Google login request receiving ID token from frontend"""
+    id_token: str = Field(..., description="Google ID Token from frontend")
 
 
 class UserUpdate(BaseModel):
