@@ -243,7 +243,7 @@ export default function MyLandsPage() {
 
                     {/* 2. الصورة (جعلناها ثانياً) */}
                     {/* 👇 التعديل هنا: غيرنا w-32 الى w-24 لتصغيرها */}
-                    <div className="w-24 h-24 flex-shrink-0 rounded-xl overflow-hidden bg-[#c1cdae] border border-black/5 relative shadow-sm">
+                    <div className="w-16 h-16 flex-shrink-0 rounded-xl overflow-hidden bg-[#c1cdae] border border-black/5 relative shadow-sm">
                         {(x.cover_image?.file_url || x.cover_image_url) ? (
                           <img 
                             src={x.cover_image?.file_url || x.cover_image_url} 
