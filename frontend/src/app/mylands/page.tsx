@@ -44,7 +44,9 @@ export default function MyLandsPage() {
     setLoading(true);
     setErr(null);
     try {
-      const r = await fetch("/api/lands", { cache: "no-store" });
+      // ✅ التأكد من استخدام الرابط الجديد الذي أنشأناه
+      const r = await fetch("/api/lands/mine", { cache: "no-store" });
+      
       if (!r.ok) throw new Error(`HTTP ${r.status}`);
       const j = await r.json();
       setData(Array.isArray(j) ? j : j?.items ?? []);
