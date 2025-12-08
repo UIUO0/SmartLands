@@ -23,12 +23,19 @@ logging.basicConfig(
 logger = logging.getLogger("smartlands")
 
 # ===== Cloudinary Configuration =====
-cloudinary.config(
-    cloud_name=os.getenv("CLOUDINARY_CLOUD_NAME"),
-    api_key=os.getenv("CLOUDINARY_API_KEY"),
-    api_secret=os.getenv("CLOUDINARY_API_SECRET"),
-    secure=True
-)
+# ===== Cloudinary Configuration =====
+if os.getenv("CLOUDINARY_URL"):
+    # If CLOUDINARY_URL is present, we let cloudinary library handle it,
+    # OR we can just pass nothing to config which defaults to env var.
+    # However, sometimes we need 'secure=True'.
+    cloudinary.config(secure=True)
+else:
+    cloudinary.config(
+        cloud_name=os.getenv("CLOUDINARY_CLOUD_NAME"),
+        api_key=os.getenv("CLOUDINARY_API_KEY"),
+        api_secret=os.getenv("CLOUDINARY_API_SECRET"),
+        secure=True
+    )
 
 # ===== Lifespan Events =====
 @asynccontextmanager
