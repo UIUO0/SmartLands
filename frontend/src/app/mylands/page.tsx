@@ -226,20 +226,20 @@ export default function MyLandsPage() {
                 className="rounded-3xl bg-[#D2DCB6] p-4 shadow-sm border border-[#A1BC98]/30 flex flex-col gap-3 transition hover:shadow-md"
               >
                  {/* المنطقة العلوية */}
-                 <div className="flex gap-4 items-center justify-between">
+                 <div className="flex gap-3 items-center justify-between">
                     
                     {/* 1. المعلومات (يسار) */}
                     <div className="flex-1 flex flex-col">
-                        <h3 className="font-bold text-base leading-tight mb-2 line-clamp-1">{x.title}</h3>
-                        <div className="text-xs text-[#3a4430] space-y-1">
+                        <h3 className="font-bold text-sm leading-tight mb-1 line-clamp-1">{x.title}</h3>
+                        <div className="text-[10px] text-[#3a4430] space-y-0.5">
                            <p>📍 {x.city}</p>
                            <p>💰 <span className="font-bold text-black">{x.price_amount?.toLocaleString()}</span> ر.س</p>
                            <p>📏 {x.area_sq_m} م²</p>
                         </div>
                     </div>
 
-                    {/* 2. الصورة (يمين - حجم 16) */}
-                    <div className="w-16 h-16 flex-shrink-0 rounded-xl overflow-hidden bg-[#c1cdae] border border-black/5 relative shadow-sm">
+                    {/* 2. الصورة (يمين - حجم 12 أي 48px) */}
+                    <div className="w-12 h-12 flex-shrink-0 rounded-lg overflow-hidden bg-[#c1cdae] border border-black/5 relative shadow-sm">
                         {(x.cover_image?.file_url || x.cover_image_url) ? (
                           <img 
                             src={x.cover_image?.file_url || x.cover_image_url} 
@@ -247,21 +247,20 @@ export default function MyLandsPage() {
                             className="w-full h-full object-cover" 
                           />
                         ) : (
-                          <div className="w-full h-full flex items-center justify-center text-black/20 text-xl">📷</div>
+                          <div className="w-full h-full flex items-center justify-center text-black/20 text-lg">📷</div>
                         )}
                     </div>
                  </div>
 
                  {/* الأزرار السفلية */}
                  <div className="flex gap-2 pt-2 border-t border-black/5 mt-auto">
-                      <button onClick={() => openEditModal(x)} className="flex-1 bg-white/60 hover:bg-white py-1.5 rounded-lg text-xs font-bold transition">
+                      <button onClick={() => openEditModal(x)} className="flex-1 bg-white/60 hover:bg-white py-1 rounded-md text-[10px] font-bold transition">
                         ✏️ تعديل
                       </button>
-                      <button onClick={() => openUploadModal(x)} className="flex-1 bg-black/10 hover:bg-black/20 py-1.5 rounded-lg text-xs font-bold transition">
+                      <button onClick={() => openUploadModal(x)} className="flex-1 bg-black/10 hover:bg-black/20 py-1 rounded-md text-[10px] font-bold transition">
                         🖼️ صور
                       </button>
-                      {/* زر التفاصيل (السهم) */}
-                      <button onClick={() => router.push(`/lands/${x.land_id || x.id}`)} className="px-3 bg-[#A1BC98] hover:bg-[#8ea885] rounded-lg text-black transition">
+                      <button onClick={() => router.push(`/lands/${x.land_id || x.id}`)} className="px-3 bg-[#A1BC98] hover:bg-[#8ea885] rounded-md text-black transition flex items-center">
                         ➝
                       </button>
                  </div>
