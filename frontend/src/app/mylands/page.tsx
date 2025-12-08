@@ -3,18 +3,20 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
-// تحديث النوع ليشمل الصورة
 type Land = {
   land_id?: number;
-  id?: number; // أحياناً يأتي باسم id أو land_id
+  id?: number;
   title?: string;
   city?: string;
   price_amount?: number;
   area_sq_m?: number;
   description?: string;
-  status?: string; // sold, for_sale, etc.
+  status?: string;
   address_line?: string;
-  cover_image_url?: string; // رابط الصورة
+  
+  // 👇 التعديل هنا: نضيف احتمال أن يأتي الباك اند بكائن صورة كامل
+  cover_image?: { file_url: string }; 
+  cover_image_url?: string; // نبقي هذا للاحتياط
 };
 
 export default function MyLandsPage() {
@@ -183,19 +185,25 @@ export default function MyLandsPage() {
         {loading && <div className="text-center py-10">جارِ التحميل...</div>}
         {err && <div className="text-red-600 text-center bg-red-100 p-4 rounded-xl">{err}</div>}
 
-        {/* Grid Cards */}
+        {/* --- CARDS GRID --- */}
         {!loading && !err && (
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
             {data.map((x, i) => (
               <article key={x.id ?? x.land_id ?? i} className="rounded-3xl bg-[#D2DCB6] shadow-sm border border-[#A1BC98]/30 overflow-hidden flex flex-col">
                  
-                 {/* صورة الأرض */}
+                 {/* صورة الأرض (تم التعديل هنا) */}
                  <div className="h-48 w-full bg-[#c1cdae] relative">
-                    {x.cover_image_url ? (
-                      <img src={x.cover_image_url} alt={x.title} className="w-full h-full object-cover" />
+                    {/* 👇 التحقق: هل يوجد رابط داخل كائن الصورة؟ أو رابط مباشر؟ */}
+                    {(x.cover_image?.file_url || x.cover_image_url) ? (
+                      <img 
+                        src={x.cover_image?.file_url || x.cover_image_url} 
+                        alt={x.title} 
+                        className="w-full h-full object-cover" 
+                      />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center text-black/30 text-4xl">📷</div>
                     )}
+                    
                     {/* بادج الحالة */}
                     <span className="absolute top-3 right-3 bg-white/80 px-3 py-1 rounded-full text-xs font-bold shadow-sm">
                       {x.status === "sold" ? "❌ مباع" : "✅ للبيع"}
@@ -223,7 +231,7 @@ export default function MyLandsPage() {
                         🖼️ صور
                       </button>
 
-                      {/* زر التفاصيل (للمستقبل) */}
+                      {/* زر التفاصيل */}
                       <button 
                          onClick={() => router.push(`/lands/${x.land_id || x.id}`)}
                          className="px-3 bg-[#A1BC98] hover:bg-[#8ea885] rounded-lg"
