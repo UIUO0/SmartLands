@@ -5,41 +5,42 @@ const BACKEND_URL = "https://smartlands-production.up.railway.app";
 
 export async function POST(req: Request) {
   try {
-    const { id_token } = await req.json(); // [cite: 12]
+    const { id_token } = await req.json();
 
-    // 1. إرسال التوكن للباك-إند للتحقق وتسجيل الدخول
-    const res = await fetch(`${BACKEND_URL}/auth/google`, { // [cite: 11]
+    // إرسال التوكن للباك-إند
+    const res = await fetch(`${BACKEND_URL}/auth/google`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id_token }), // [cite: 12]
+      body: JSON.stringify({ id_token }),
     });
 
+    // 🔍 قراءة رد الباك-إند بالكامل سواء كان نجاح أو فشل
+    const data = await res.json();
+
     if (!res.ok) {
-      return NextResponse.json({ detail: "Google Login Failed" }, { status: 400 });
+      // طباعة الخطأ في التيرمنال لنعرف السبب
+      console.error("❌ Backend Google Auth Error:", data);
+      
+      // إرجاع تفاصيل الخطأ للفرونت
+      return NextResponse.json(
+        { detail: data.detail || "رفض الباك-إند عملية الدخول" }, 
+        { status: res.status }
+      );
     }
 
-    const data = await res.json(); // [cite: 13]
-
-    // 2. حفظ التوكن في الكوكيز (لأننا في البروكسي)
+    // النجاح
     const cookieStore = await cookies();
-    
-    // حفظ التوكن باسم sl_token (المعتمد عندنا)
     cookieStore.set("sl_token", data.access_token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
-      maxAge: 60 * 60 * 24 * 7, // أسبوع
+      maxAge: 60 * 60 * 24 * 7, 
       path: "/",
-    });
-
-    // حفظ بيانات المستخدم في كوكيز (اختياري، للعرض فقط)
-    cookieStore.set("user_data", JSON.stringify(data.user), {
-        path: "/",
-        maxAge: 60 * 60 * 24 * 7,
     });
 
     return NextResponse.json({ success: true });
 
   } catch (error: any) {
+    console.error("❌ Server Proxy Error:", error.message);
     return NextResponse.json({ detail: error.message }, { status: 500 });
   }
 }
