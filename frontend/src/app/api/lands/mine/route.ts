@@ -1,22 +1,19 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 
-// رابط الباك-إند
 const API_BASE_URL = "https://smartlands-production.up.railway.app"; 
 
 export async function GET() {
-  // ✅ التصحيح: أضفنا await هنا لأن cookies() أصبحت Promise في Next.js 15
   const cookieStore = await cookies();
   
-  // نفترض أن اسم الكوكيز هو session_id حسب ملخصك
-  const token = cookieStore.get("session_id")?.value || cookieStore.get("token")?.value;
+  // ✅ التصحيح: أضفنا sl_token للقائمة
+  const token = cookieStore.get("sl_token")?.value || cookieStore.get("session_id")?.value;
 
   if (!token) {
-    return NextResponse.json({ detail: "Unauthorized" }, { status: 401 });
+    return NextResponse.json({ detail: "Unauthorized - Token not found" }, { status: 401 });
   }
 
   try {
-    // استدعاء الباك-إند لجلب أراضي المستخدم فقط
     const res = await fetch(`${API_BASE_URL}/lands/me/mine`, {
       headers: {
         "Content-Type": "application/json",
