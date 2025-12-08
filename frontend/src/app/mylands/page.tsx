@@ -230,7 +230,7 @@ export default function MyLandsPage() {
                  <div className="flex gap-4">
                     
                     {/* 1. الصورة (مربع ثابت الحجم) */}
-                    <div className="w-32 h-32 flex-shrink-0 rounded-2xl overflow-hidden bg-[#c1cdae] border border-black/5 relative">
+                    <div className="w-16 h-16 flex-shrink-0 rounded-2xl overflow-hidden bg-[#c1cdae] border border-black/5 relative">
                         {(x.cover_image?.file_url || x.cover_image_url) ? (
                           <img 
                             src={x.cover_image?.file_url || x.cover_image_url} 
