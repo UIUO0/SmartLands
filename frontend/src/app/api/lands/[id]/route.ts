@@ -1,12 +1,12 @@
-// src/app/api/lands/[id]/route.ts
 import { NextResponse, NextRequest } from "next/server";
 import { cookies } from "next/headers";
 
 const BACKEND_URL = "https://smartlands-production.up.railway.app";
 
+// ✅ التصحيح: params يجب أن يكون Promise
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } } // استقبال ID الأرض
+  { params }: { params: Promise<{ id: string }> }
 ) {
   const cookieStore = await cookies();
   const token = cookieStore.get("sl_token")?.value || cookieStore.get("session_id")?.value;
@@ -14,8 +14,10 @@ export async function PATCH(
   if (!token) return NextResponse.json({ detail: "Unauthorized" }, { status: 401 });
 
   try {
+    // ✅ انتظار params
+    const { id } = await params;
+    
     const body = await request.json();
-    const { id } = params; // رقم الأرض
 
     const res = await fetch(`${BACKEND_URL}/lands/${id}`, {
       method: "PATCH",
