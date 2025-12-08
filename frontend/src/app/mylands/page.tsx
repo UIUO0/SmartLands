@@ -225,15 +225,12 @@ export default function MyLandsPage() {
                 key={x.id ?? x.land_id ?? i} 
                 className="rounded-3xl bg-[#D2DCB6] p-4 shadow-sm border border-[#A1BC98]/30 flex flex-col gap-3 transition hover:shadow-md"
               >
-                 
-                 {/* المنطقة العلوية: الصورة والمعلومات */}
-                 {/* items-center: عشان يكونون متوازين عمودياً */}
+                 {/* المنطقة العلوية */}
                  <div className="flex gap-4 items-center justify-between">
                     
-                    {/* 1. المعلومات (جعلناها أولاً لتظهر على اليسار في المتصفحات الانجليزية، او اليمين حسب لغة موقعك) */}
-                    {/* flex-1: تأخذ المساحة المتبقية */}
+                    {/* 1. المعلومات (يسار) */}
                     <div className="flex-1 flex flex-col">
-                        <h3 className="font-bold text-base leading-tight mb-2 line-clamp-2">{x.title}</h3>
+                        <h3 className="font-bold text-base leading-tight mb-2 line-clamp-1">{x.title}</h3>
                         <div className="text-xs text-[#3a4430] space-y-1">
                            <p>📍 {x.city}</p>
                            <p>💰 <span className="font-bold text-black">{x.price_amount?.toLocaleString()}</span> ر.س</p>
@@ -241,8 +238,7 @@ export default function MyLandsPage() {
                         </div>
                     </div>
 
-                    {/* 2. الصورة (جعلناها ثانياً) */}
-                    {/* 👇 التعديل هنا: غيرنا w-32 الى w-24 لتصغيرها */}
+                    {/* 2. الصورة (يمين - حجم 16) */}
                     <div className="w-16 h-16 flex-shrink-0 rounded-xl overflow-hidden bg-[#c1cdae] border border-black/5 relative shadow-sm">
                         {(x.cover_image?.file_url || x.cover_image_url) ? (
                           <img 
@@ -251,37 +247,21 @@ export default function MyLandsPage() {
                             className="w-full h-full object-cover" 
                           />
                         ) : (
-                          <div className="w-full h-full flex items-center justify-center text-black/20 text-2xl">📷</div>
+                          <div className="w-full h-full flex items-center justify-center text-black/20 text-xl">📷</div>
                         )}
-                        
-                        {/* بادج الحالة */}
-                        <div className="absolute bottom-0 left-0 right-0 bg-black/60 text-white text-[9px] text-center py-0.5 backdrop-blur-sm">
-                           {x.status === "sold" ? "مباع" : "للبيع"}
-                        </div>
                     </div>
-
                  </div>
 
-                 {/* المنطقة السفلية: الأزرار */}
+                 {/* الأزرار السفلية */}
                  <div className="flex gap-2 pt-2 border-t border-black/5 mt-auto">
-                      <button 
-                        onClick={() => openEditModal(x)}
-                        className="flex-1 bg-white/60 hover:bg-white py-1.5 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1"
-                      >
+                      <button onClick={() => openEditModal(x)} className="flex-1 bg-white/60 hover:bg-white py-1.5 rounded-lg text-xs font-bold transition">
                         ✏️ تعديل
                       </button>
-                      
-                      <button 
-                         onClick={() => openUploadModal(x)}
-                         className="flex-1 bg-black/10 hover:bg-black/20 py-1.5 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1"
-                      >
+                      <button onClick={() => openUploadModal(x)} className="flex-1 bg-black/10 hover:bg-black/20 py-1.5 rounded-lg text-xs font-bold transition">
                         🖼️ صور
                       </button>
-
-                      <button 
-                         onClick={() => router.push(`/lands/${x.land_id || x.id}`)}
-                         className="px-3 bg-[#A1BC98] hover:bg-[#8ea885] rounded-lg text-black transition"
-                      >
+                      {/* زر التفاصيل (السهم) */}
+                      <button onClick={() => router.push(`/lands/${x.land_id || x.id}`)} className="px-3 bg-[#A1BC98] hover:bg-[#8ea885] rounded-lg text-black transition">
                         ➝
                       </button>
                  </div>
