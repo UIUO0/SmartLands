@@ -125,6 +125,9 @@ async def http_exception_handler(request: Request, exc: StarletteHTTPException):
 @app.exception_handler(RequestValidationError)
 async def validation_exception_handler(request: Request, exc: RequestValidationError):
     """Handle request validation errors"""
+    # Fix: Use jsonable_encoder to handle non-serializable objects like ValueError
+    from fastapi.encoders import jsonable_encoder
+    
     logger.warning(
         "Validation error on %s %s: %s",
         request.method,
@@ -133,11 +136,11 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
     )
     return JSONResponse(
         status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-        content={
+        content=jsonable_encoder({
             "detail": "Validation error",
             "errors": exc.errors(),
             "path": request.url.path
-        }
+        })
     )
 
 
