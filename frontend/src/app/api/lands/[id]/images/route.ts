@@ -3,18 +3,19 @@ import { cookies } from "next/headers";
 
 const BACKEND_URL = "https://smartlands-production.up.railway.app";
 
+// ✅ التصحيح: params يجب أن يكون Promise في Next.js 15
 export async function POST(
   request: NextRequest,
-  // 1️⃣ التغيير هنا: تعريف params كـ Promise
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> } 
 ) {
+  // ✅ يجب انتظار cookies
   const cookieStore = await cookies();
   const token = cookieStore.get("sl_token")?.value || cookieStore.get("session_id")?.value;
 
   if (!token) return NextResponse.json({ detail: "Unauthorized" }, { status: 401 });
 
   try {
-    // 2️⃣ التغيير هنا: انتظار الـ params
+    // ✅ يجب انتظار params قبل استخدام id
     const { id } = await params;
 
     const formData = await request.formData();
