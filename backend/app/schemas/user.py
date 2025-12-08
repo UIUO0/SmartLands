@@ -45,13 +45,7 @@ class LoginIn(BaseModel):
     email: EmailStr = Field(..., description="User email address")
     password: str = Field(..., min_length=1, max_length=72, description="User password")
     
-    model_config = {
-        "json_schema_extra": {
-            "examples": [{
-                "email": "user@example.com",
-                "password": "SecurePassword123"
-            }]
-        }
+
     model_config = {
         "json_schema_extra": {
             "examples": [{
