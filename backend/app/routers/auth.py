@@ -335,8 +335,6 @@ async def google_login(
                 user_id=user.user_id,
                 provider=AuthProvider.google,
                 provider_user_id=google_user_id,
-                provider_email=email,
-                email_verified=True
             )
             db.add(identity)
             await db.commit()
