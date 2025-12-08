@@ -368,9 +368,10 @@ async def google_login(
         raise
     except Exception as e:
         logger.error("GOOGLE_LOGIN_ERROR: %s", e, exc_info=True)
+        # DEBUG: Expose error to frontend to identify the issue
         raise HTTPException(
             status_code=500,
-            detail="Internal Google login error"
+            detail=f"Internal Google login error: {str(e)}"
         )
 
 
