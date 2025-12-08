@@ -23,13 +23,20 @@ logging.basicConfig(
 logger = logging.getLogger("smartlands")
 
 # ===== Cloudinary Configuration =====
-# ===== Cloudinary Configuration =====
-if os.getenv("CLOUDINARY_URL"):
-    # If CLOUDINARY_URL is present, we let cloudinary library handle it,
+cloudinary_url = os.getenv("CLOUDINARY_URL")
+if cloudinary_url:
+    # Fix common user error: remove < and > placeholders
+    if "<" in cloudinary_url or ">" in cloudinary_url:
+        logger.warning("Found placeholders <> in CLOUDINARY_URL, attempting to fix...")
+        cloudinary_url = cloudinary_url.replace("<", "").replace(">", "")
+        os.environ["CLOUDINARY_URL"] = cloudinary_url # Update env var for library to pick up
+
+    # If CLOUDINARY_URL is present, we let cloudinary library handle it, 
     # OR we can just pass nothing to config which defaults to env var.
     # However, sometimes we need 'secure=True'.
     cloudinary.config(secure=True)
 else:
+    # Explicit config from individual vars
     cloudinary.config(
         cloud_name=os.getenv("CLOUDINARY_CLOUD_NAME"),
         api_key=os.getenv("CLOUDINARY_API_KEY"),
@@ -52,7 +59,7 @@ async def lifespan(app: FastAPI):
         raise RuntimeError(f"Missing required environment variables: {missing}")
     
     # Warn about optional services
-    if not os.getenv("CLOUDINARY_CLOUD_NAME"):
+    if not os.getenv("CLOUDINARY_CLOUD_NAME") and not os.getenv("CLOUDINARY_URL"):
         logger.warning("⚠️ Cloudinary not configured - image uploads will fail")
     
     if not os.getenv("SENDGRID_API_KEY"):
