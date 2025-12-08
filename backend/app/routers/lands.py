@@ -26,8 +26,14 @@ from app.schemas.land import (
     LandOut,
     LandListOut,
     LandImageOut,
+    LandListOut,
+    LandImageOut,
     LandStatus,  # Enum
 )
+from app.models.land_request import LandRequest
+from app.schemas.land_request import LandRequestOut, RequestStatus, LandRequestUpdate
+from app.utils.email import send_email_sendgrid
+from fastapi.concurrency import run_in_threadpool
 from app.core.security import get_current_user
 
 import cloudinary
@@ -412,3 +418,204 @@ async def set_cover_image(
         logger.error("SET_COVER_IMAGE_ERROR: %r", e, exc_info=True)
         await db.rollback()
         raise HTTPException(status_code=500, detail="set cover image failed")
+
+
+# ---------------------------
+# Land Requests (Buy / Accept / Reject)
+# ---------------------------
+
+@router.post("/{land_id}/request", response_model=LandRequestOut, status_code=201)
+async def request_to_buy(
+    land_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    User requests to buy a land.
+    - Creates a LandRequest.
+    - Sends an email notification to the land owner.
+    """
+    try:
+        # Check if land exists and is available
+        res = await db.execute(select(Land).where(Land.land_id == land_id))
+        land = res.scalar_one_or_none()
+        if not land:
+            raise HTTPException(status_code=404, detail="Land not found")
+        
+        if land.status != "available":
+            raise HTTPException(status_code=400, detail="Land is not available for sale")
+        
+        if land.owner_id == current_user.user_id:
+            raise HTTPException(status_code=400, detail="You cannot request to buy your own land")
+
+        # Check if request already exists
+        res_req = await db.execute(
+            select(LandRequest).where(
+                LandRequest.land_id == land_id,
+                LandRequest.buyer_id == current_user.user_id,
+                LandRequest.status == "pending"
+            )
+        )
+        existing_request = res_req.scalar_one_or_none()
+        if existing_request:
+            raise HTTPException(status_code=400, detail="You already have a pending request for this land")
+
+        # Create Request
+        land_request = LandRequest(
+            land_id=land_id,
+            buyer_id=current_user.user_id,
+            status="pending"
+        )
+        db.add(land_request)
+        await db.commit()
+        await db.refresh(land_request)
+
+        # Notify Owner
+        # We need to fetch owner details
+        res_owner = await db.execute(select(User).where(User.user_id == land.owner_id))
+        owner = res_owner.scalar_one_or_none()
+
+        if owner and owner.email:
+            subject = f"New Request for your land: {land.title}"
+            body = f"""Hello {owner.full_name},
+
+User {current_user.full_name} ({current_user.email}) has requested to buy your land: "{land.title}".
+
+Please log in to your dashboard to accept or reject this request.
+
+Best regards,
+Smart Lands Team
+"""
+            # Send email in background
+            await run_in_threadpool(
+                send_email_sendgrid,
+                owner.email,
+                subject,
+                body,
+            )
+
+        return LandRequestOut.model_validate(land_request)
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("REQUEST_TO_BUY_ERROR: %r", e, exc_info=True)
+        await db.rollback()
+        raise HTTPException(status_code=500, detail="Failed to submit buy request")
+
+
+@router.get("/requests/me", response_model=List[LandRequestOut])
+async def my_requests(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """List requests I have sent."""
+    try:
+        res = await db.execute(
+            select(LandRequest)
+            .where(LandRequest.buyer_id == current_user.user_id)
+            .order_by(LandRequest.created_at.desc())
+        )
+        requests = res.scalars().all()
+        return [LandRequestOut.model_validate(r) for r in requests]
+    except Exception as e:
+        logger.error("MY_REQUESTS_ERROR: %r", e, exc_info=True)
+        raise HTTPException(status_code=500, detail="Failed to fetch requests")
+
+
+@router.post("/requests/{request_id}/accept", response_model=LandRequestOut)
+async def accept_request(
+    request_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Owner accepts a request.
+    - Sets request status to 'accepted'.
+    - Optionally sets Land status to 'reserved'.
+    """
+    try:
+        # Fetch request + land to verify ownership
+        res = await db.execute(
+            select(LandRequest)
+            .where(LandRequest.request_id == request_id)
+        )
+        land_request = res.scalar_one_or_none()
+        if not land_request:
+            raise HTTPException(status_code=404, detail="Request not found")
+
+        # We need to load land to check owner
+        # (Assuming Lazy loading might work, but async requires explicit join or separate query usually. 
+        # But 'land' relationship is defined in LandRequest. Let's do a join to be safe or just fetch land.)
+        res_land = await db.execute(select(Land).where(Land.land_id == land_request.land_id))
+        land = res_land.scalar_one_or_none()
+        
+        if not land:
+             raise HTTPException(status_code=404, detail="Associated Land not found")
+
+        if land.owner_id != current_user.user_id:
+            raise HTTPException(status_code=403, detail="You are not the owner of this land")
+
+        if land_request.status != "pending":
+            raise HTTPException(status_code=400, detail=f"Request is already {land_request.status}")
+
+        # Update Request
+        land_request.status = "accepted"
+        
+        # Update Land Status to 'reserved' (as per plan/request implication)
+        land.status = "reserved"
+
+        await db.commit()
+        await db.refresh(land_request)
+        
+        return LandRequestOut.model_validate(land_request)
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("ACCEPT_REQUEST_ERROR: %r", e, exc_info=True)
+        await db.rollback()
+        raise HTTPException(status_code=500, detail="Failed to accept request")
+
+
+@router.post("/requests/{request_id}/reject", response_model=LandRequestOut)
+async def reject_request(
+    request_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Owner rejects a request.
+    """
+    try:
+        res = await db.execute(
+            select(LandRequest).where(LandRequest.request_id == request_id)
+        )
+        land_request = res.scalar_one_or_none()
+        if not land_request:
+            raise HTTPException(status_code=404, detail="Request not found")
+
+        res_land = await db.execute(select(Land).where(Land.land_id == land_request.land_id))
+        land = res_land.scalar_one_or_none()
+        
+        if not land:
+             raise HTTPException(status_code=404, detail="Associated Land not found")
+
+        if land.owner_id != current_user.user_id:
+            raise HTTPException(status_code=403, detail="You are not the owner of this land")
+            
+        if land_request.status != "pending":
+            raise HTTPException(status_code=400, detail=f"Request is already {land_request.status}")
+
+        land_request.status = "rejected"
+        await db.commit()
+        await db.refresh(land_request)
+        
+        return LandRequestOut.model_validate(land_request)
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("REJECT_REQUEST_ERROR: %r", e, exc_info=True)
+        await db.rollback()
+        raise HTTPException(status_code=500, detail="Failed to reject request")
