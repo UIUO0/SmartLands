@@ -1,4 +1,3 @@
-// src/app/api/lands/[id]/images/route.ts
 import { NextResponse, NextRequest } from "next/server";
 import { cookies } from "next/headers";
 
@@ -6,7 +5,8 @@ const BACKEND_URL = "https://smartlands-production.up.railway.app";
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  // 1️⃣ التغيير هنا: تعريف params كـ Promise
+  { params }: { params: Promise<{ id: string }> }
 ) {
   const cookieStore = await cookies();
   const token = cookieStore.get("sl_token")?.value || cookieStore.get("session_id")?.value;
@@ -14,12 +14,12 @@ export async function POST(
   if (!token) return NextResponse.json({ detail: "Unauthorized" }, { status: 401 });
 
   try {
-    // 1. استقبال الـ FormData من الفرونت
+    // 2️⃣ التغيير هنا: انتظار الـ params
+    const { id } = await params;
+
     const formData = await request.formData();
     
-    // 2. إرسالها كما هي للباك إند (مع التوكن)
-    // ملاحظة: عند استخدام FormData، لا تضع Content-Type يدوياً، المتصفح يضعه تلقائياً
-    const res = await fetch(`${BACKEND_URL}/lands/${params.id}/images/upload`, {
+    const res = await fetch(`${BACKEND_URL}/lands/${id}/images/upload`, {
       method: "POST",
       headers: {
         "Authorization": `Bearer ${token}`, 
