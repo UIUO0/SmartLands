@@ -69,6 +69,17 @@ async def lifespan(app: FastAPI):
     db_ok = await ping_database()
     if db_ok:
         logger.info("✅ Database connection successful")
+        
+        # Auto-create tables (Migration fix)
+        logger.info("🔄 Checking/Creating database tables...")
+        from app.db.database import engine, Base
+        # Ensure models are registered (they are imported via routers, but explicit is better if we had a registry)
+        # Relying on main.py imports of routers which import models.
+        
+        async with engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
+        logger.info("✅ Database tables verified/created")
+        
     else:
         logger.error("❌ Database connection failed")
         raise RuntimeError("Failed to connect to database")
