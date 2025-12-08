@@ -3,18 +3,20 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
-// تحديث النوع ليشمل الصورة
 type Land = {
   land_id?: number;
-  id?: number; // أحياناً يأتي باسم id أو land_id
+  id?: number;
   title?: string;
   city?: string;
   price_amount?: number;
   area_sq_m?: number;
   description?: string;
-  status?: string; // sold, for_sale, etc.
+  status?: string;
   address_line?: string;
-  cover_image_url?: string; // رابط الصورة
+  
+  // 👇 التعديل هنا: نضيف احتمال أن يأتي الباك اند بكائن صورة كامل
+  cover_image?: { file_url: string }; 
+  cover_image_url?: string; // نبقي هذا للاحتياط
 };
 
 export default function MyLandsPage() {
@@ -40,16 +42,48 @@ export default function MyLandsPage() {
   // لرفع الصور
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
-  // 1. Fetch Data
+  // 1. Fetch Data (Updated to fetch images)
   async function load() {
     setLoading(true); setErr(null);
     try {
+      // أ. جلب قائمة الأراضي
       const r = await fetch("/api/lands/mine", { cache: "no-store" });
       if (!r.ok) throw new Error(`HTTP ${r.status}`);
-      const j = await r.json();
-      setData(Array.isArray(j) ? j : j?.items ?? []);
-    } catch (e: any) { setErr(e.message); } 
-    finally { setLoading(false); }
+      
+      const landsData = await r.json();
+      const items = Array.isArray(landsData) ? landsData : landsData?.items ?? [];
+
+      // ب. جلب الصور لكل أرض (Parallel Fetching)
+      // سنمر على كل أرض ونطلب صورها لدمجها مع البيانات
+      const landsWithImages = await Promise.all(items.map(async (land: Land) => {
+        try {
+            const landId = land.land_id || land.id;
+            // طلب الصور من الـ API الجديد الذي عدلناه للتو
+            const imgRes = await fetch(`/api/lands/${landId}/images`, { cache: 'no-store' });
+            
+            if (imgRes.ok) {
+                const images = await imgRes.json();
+                // البحث عن الصورة التي is_cover === true أو أخذ الصورة الأولى
+                const cover = images.find((img: any) => img.is_cover) || images[0];
+                
+                // إذا وجدنا صورة، نضيف رابطها للأرض
+                if (cover) {
+                    return { ...land, cover_image_url: cover.file_url };
+                }
+            }
+        } catch (e) {
+            console.error("Failed to load image for land", land.id);
+        }
+        // إذا فشل جلب الصورة، نرجع الأرض كما هي
+        return land;
+      }));
+
+      setData(landsWithImages);
+    } catch (e: any) { 
+        setErr(e.message); 
+    } finally { 
+        setLoading(false); 
+    }
   }
 
   useEffect(() => { load(); }, []);
@@ -183,59 +217,58 @@ export default function MyLandsPage() {
         {loading && <div className="text-center py-10">جارِ التحميل...</div>}
         {err && <div className="text-red-600 text-center bg-red-100 p-4 rounded-xl">{err}</div>}
 
-        {/* Grid Cards */}
+        {/* --- CARDS GRID --- */}
         {!loading && !err && (
-          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-6 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3">
             {data.map((x, i) => (
-              <article key={x.id ?? x.land_id ?? i} className="rounded-3xl bg-[#D2DCB6] shadow-sm border border-[#A1BC98]/30 overflow-hidden flex flex-col">
-                 
-                 {/* صورة الأرض */}
-                 <div className="h-48 w-full bg-[#c1cdae] relative">
-                    {x.cover_image_url ? (
-                      <img src={x.cover_image_url} alt={x.title} className="w-full h-full object-cover" />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center text-black/30 text-4xl">📷</div>
-                    )}
-                    {/* بادج الحالة */}
-                    <span className="absolute top-3 right-3 bg-white/80 px-3 py-1 rounded-full text-xs font-bold shadow-sm">
-                      {x.status === "sold" ? "❌ مباع" : "✅ للبيع"}
-                    </span>
+              <article 
+                key={x.id ?? x.land_id ?? i} 
+                className="rounded-3xl bg-[#D2DCB6] p-4 shadow-sm border border-[#A1BC98]/30 flex flex-col gap-3 transition hover:shadow-md"
+              >
+                 <div className="flex gap-3 items-center justify-between">
+                    
+                    {/* النصوص (يسار) */}
+                    <div className="flex-1 flex flex-col min-w-0"> {/* min-w-0 مهم لمنع النص من كسر التصميم */}
+                        <h3 className="font-bold text-sm leading-tight mb-1 truncate">{x.title}</h3>
+                        <div className="text-[10px] text-[#3a4430] space-y-0.5">
+                           <p>📍 {x.city}</p>
+                           <p>💰 <span className="font-bold text-black">{x.price_amount?.toLocaleString()}</span> ر.س</p>
+                           <p>📏 {x.area_sq_m} م²</p>
+                        </div>
+                    </div>
+
+                    {/* الصورة (يمين - حجم ثابت وموحد بقوة) */}
+                    {/* shrink-0: يمنع الصورة من التقلص */}
+                    {/* w-14 h-14: يثبت الحجم على 56 بكسل بالضبط */}
+                    <div className="w-14 h-14 shrink-0 rounded-lg overflow-hidden bg-[#c1cdae] border border-black/5 relative shadow-sm">
+                        {(x.cover_image?.file_url || x.cover_image_url) ? (
+                          <img 
+                            src={x.cover_image?.file_url || x.cover_image_url} 
+                            alt={x.title} 
+                            className="w-full h-full object-cover" 
+                          />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center text-black/20 text-lg">📷</div>
+                        )}
+                    </div>
                  </div>
 
-                 <div className="p-5 flex-1 flex flex-col">
-                    <h3 className="font-bold text-xl mb-1">{x.title}</h3>
-                    <p className="text-sm text-[#3a4430] mb-4">{x.city} • {x.price_amount?.toLocaleString()} ر.س</p>
-                    
-                    <div className="mt-auto flex gap-2 pt-4 border-t border-black/5">
-                      {/* زر التعديل */}
-                      <button 
-                        onClick={() => openEditModal(x)}
-                        className="flex-1 bg-white/60 hover:bg-white py-2 rounded-lg text-sm font-bold transition"
-                      >
+                 {/* الأزرار */}
+                 <div className="flex gap-2 pt-2 border-t border-black/5 mt-auto">
+                      <button onClick={() => openEditModal(x)} className="flex-1 bg-white/60 hover:bg-white py-1 rounded-md text-[10px] font-bold transition">
                         ✏️ تعديل
                       </button>
-                      
-                      {/* زر الصور */}
-                      <button 
-                         onClick={() => openUploadModal(x)}
-                         className="flex-1 bg-black/10 hover:bg-black/20 py-2 rounded-lg text-sm font-bold transition"
-                      >
+                      <button onClick={() => openUploadModal(x)} className="flex-1 bg-black/10 hover:bg-black/20 py-1 rounded-md text-[10px] font-bold transition">
                         🖼️ صور
                       </button>
-
-                      {/* زر التفاصيل (للمستقبل) */}
-                      <button 
-                         onClick={() => router.push(`/lands/${x.land_id || x.id}`)}
-                         className="px-3 bg-[#A1BC98] hover:bg-[#8ea885] rounded-lg"
-                      >
+                      <button onClick={() => router.push(`/lands/${x.land_id || x.id}`)} className="px-3 bg-[#A1BC98] hover:bg-[#8ea885] rounded-md text-black transition flex items-center">
                         ➝
                       </button>
-                    </div>
                  </div>
               </article>
             ))}
           </div>
-        )}
+        )} 
       </div>
 
       {/* ================= MODAL: CREATE (إضافة) ================= */}
