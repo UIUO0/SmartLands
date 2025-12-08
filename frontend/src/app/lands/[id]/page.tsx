@@ -36,8 +36,8 @@ export default async function LandDetailsPage({ params }: { params: Promise<{ id
            ← العودة لقائمتي
          </a>
 
-         {/* الصورة الكبيرة (تم تقليل الارتفاع h-56) */}
-         <div className="w-full h-56 md:h-80 bg-[#D2DCB6] rounded-3xl overflow-hidden shadow-md relative border border-[#A1BC98]">
+         {/* الصورة الكبيرة (ثابتة الارتفاع h-60 أي 240px) */}
+         <div className="w-full h-60 bg-[#D2DCB6] rounded-3xl overflow-hidden shadow-md relative border border-[#A1BC98]">
             {coverImage ? (
                <img src={coverImage.file_url} alt={land.title} className="w-full h-full object-cover" />
             ) : (
@@ -49,11 +49,12 @@ export default async function LandDetailsPage({ params }: { params: Promise<{ id
             </div>
          </div>
 
-         {/* معرض الصور المصغرة (تم تصغيرها w-16 h-16) */}
+         {/* معرض الصور المصغرة (أحجام موحدة وصغيرة) */}
          {images.length > 0 && (
            <div className="flex gap-2 mt-3 overflow-x-auto pb-2 scrollbar-hide">
               {images.map((img: any) => (
-                <div key={img.image_id} className="w-16 h-16 flex-shrink-0 rounded-lg overflow-hidden border-2 border-[#A1BC98]/50 cursor-pointer hover:border-[#A1BC98] transition">
+                // shrink-0 + w-16 h-16 يضمن ثبات الحجم
+                <div key={img.image_id} className="w-16 h-16 shrink-0 rounded-lg overflow-hidden border-2 border-[#A1BC98]/50 cursor-pointer hover:border-[#A1BC98] transition">
                    <img src={img.file_url} alt="land img" className="w-full h-full object-cover" />
                 </div>
               ))}
@@ -63,6 +64,7 @@ export default async function LandDetailsPage({ params }: { params: Promise<{ id
 
       {/* --- تفاصيل الأرض --- */}
       <div className="max-w-4xl mx-auto mt-6 px-4 grid grid-cols-1 md:grid-cols-3 gap-6">
+         {/* القسم الأيمن (النصوص) */}
          <div className="md:col-span-2 space-y-4">
             <div className="bg-white/50 p-5 rounded-3xl border border-[#A1BC98]/30">
                <h1 className="text-2xl font-bold mb-1">{land.title}</h1>
@@ -77,6 +79,7 @@ export default async function LandDetailsPage({ params }: { params: Promise<{ id
             </div>
          </div>
 
+         {/* القسم الأيسر (المخلص) */}
          <div className="space-y-4">
             <div className="bg-[#D2DCB6] p-5 rounded-3xl shadow-sm border border-[#A1BC98]/50 text-sm">
                <h3 className="font-bold text-lg mb-3">تفاصيل سريعة</h3>

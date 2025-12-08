@@ -225,12 +225,11 @@ export default function MyLandsPage() {
                 key={x.id ?? x.land_id ?? i} 
                 className="rounded-3xl bg-[#D2DCB6] p-4 shadow-sm border border-[#A1BC98]/30 flex flex-col gap-3 transition hover:shadow-md"
               >
-                 {/* المنطقة العلوية */}
                  <div className="flex gap-3 items-center justify-between">
                     
-                    {/* 1. المعلومات (يسار) */}
-                    <div className="flex-1 flex flex-col">
-                        <h3 className="font-bold text-sm leading-tight mb-1 line-clamp-1">{x.title}</h3>
+                    {/* النصوص (يسار) */}
+                    <div className="flex-1 flex flex-col min-w-0"> {/* min-w-0 مهم لمنع النص من كسر التصميم */}
+                        <h3 className="font-bold text-sm leading-tight mb-1 truncate">{x.title}</h3>
                         <div className="text-[10px] text-[#3a4430] space-y-0.5">
                            <p>📍 {x.city}</p>
                            <p>💰 <span className="font-bold text-black">{x.price_amount?.toLocaleString()}</span> ر.س</p>
@@ -238,8 +237,10 @@ export default function MyLandsPage() {
                         </div>
                     </div>
 
-                    {/* 2. الصورة (يمين - حجم 12 أي 48px) */}
-                    <div className="w-12 h-12 flex-shrink-0 rounded-lg overflow-hidden bg-[#c1cdae] border border-black/5 relative shadow-sm">
+                    {/* الصورة (يمين - حجم ثابت وموحد بقوة) */}
+                    {/* shrink-0: يمنع الصورة من التقلص */}
+                    {/* w-14 h-14: يثبت الحجم على 56 بكسل بالضبط */}
+                    <div className="w-14 h-14 shrink-0 rounded-lg overflow-hidden bg-[#c1cdae] border border-black/5 relative shadow-sm">
                         {(x.cover_image?.file_url || x.cover_image_url) ? (
                           <img 
                             src={x.cover_image?.file_url || x.cover_image_url} 
@@ -252,7 +253,7 @@ export default function MyLandsPage() {
                     </div>
                  </div>
 
-                 {/* الأزرار السفلية */}
+                 {/* الأزرار */}
                  <div className="flex gap-2 pt-2 border-t border-black/5 mt-auto">
                       <button onClick={() => openEditModal(x)} className="flex-1 bg-white/60 hover:bg-white py-1 rounded-md text-[10px] font-bold transition">
                         ✏️ تعديل
