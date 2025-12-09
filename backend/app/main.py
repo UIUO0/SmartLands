@@ -1,6 +1,7 @@
 import os
 import logging
 from contextlib import asynccontextmanager
+from sqlalchemy import text
 
 from fastapi import FastAPI, Request, status
 from fastapi.middleware.cors import CORSMiddleware
@@ -73,10 +74,32 @@ async def lifespan(app: FastAPI):
         # Auto-create tables (Migration fix)
         logger.info("🔄 Checking/Creating database tables...")
         from app.db.database import engine, Base
-        # Ensure models are registered (they are imported via routers, but explicit is better if we had a registry)
-        # Relying on main.py imports of routers which import models.
         
         async with engine.begin() as conn:
+            # DEBUG: Check actual column type of lands.land_id
+            try:
+                result = await conn.execute(text(
+                    "SELECT COLUMN_TYPE FROM information_schema.COLUMNS "
+                    "WHERE TABLE_NAME = 'lands' AND COLUMN_NAME = 'land_id'"
+                ))
+                col_type = result.scalar_one_or_none()
+                logger.error(f"DEBUG INFO: lands.land_id type is '{col_type}'")
+                
+                # Check users.user_id too
+                result_user = await conn.execute(text(
+                    "SELECT COLUMN_TYPE FROM information_schema.COLUMNS "
+                    "WHERE TABLE_NAME = 'users' AND COLUMN_NAME = 'user_id'"
+                ))
+                user_col_type = result_user.scalar_one_or_none()
+                logger.error(f"DEBUG INFO: users.user_id type is '{user_col_type}'")
+                
+                # Raise error to make sure user sees it
+                if col_type:
+                     raise RuntimeError(f"DEBUG: lands.land_id={col_type}, users.user_id={user_col_type}")
+                     
+            except Exception as e:
+                logger.error(f"DEBUG QUERY ERROR: {e}")
+                
             await conn.run_sync(Base.metadata.create_all)
         logger.info("✅ Database tables verified/created")
         
