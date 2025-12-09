@@ -210,14 +210,41 @@ def health_check():
     }
 
 
-@app.get("/health/db", tags=["health"])
-async def health_db():
-    """Database health check"""
-    ok = await ping_database()
     return {
         "status": "ok" if ok else "error",
         "database": "connected" if ok else "disconnected"
     }
+
+@app.get("/debug/schema", tags=["debug"])
+async def debug_schema():
+    """Debug endpoint to check DB schema types"""
+    from app.db.database import engine
+    from sqlalchemy import inspect, text
+    
+    info = {}
+    try:
+        async with engine.connect() as conn:
+            def get_types(connection):
+                insp = inspect(connection)
+                res = {}
+                if insp.has_table("lands"):
+                    cols = insp.get_columns("lands")
+                    res["lands"] = {c["name"]: str(c["type"]) for c in cols if c["name"] == "land_id"}
+                else:
+                    res["lands"] = "MISSING"
+                    
+                if insp.has_table("users"):
+                    cols = insp.get_columns("users")
+                    res["users"] = {c["name"]: str(c["type"]) for c in cols if c["name"] == "user_id"}
+                else:
+                    res["users"] = "MISSING"
+                return res
+            
+            info = await conn.run_sync(get_types)
+    except Exception as e:
+        info["error"] = str(e)
+        
+    return info
 
 # ===== Include Routers =====
 app.include_router(auth_router)
