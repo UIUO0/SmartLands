@@ -74,33 +74,10 @@ async def lifespan(app: FastAPI):
         # Auto-create tables (Migration fix)
         logger.info("🔄 Checking/Creating database tables...")
         from app.db.database import engine, Base
-        from sqlalchemy import inspect
         
-        # DEBUG: Inspect table to find correct types
-        async with engine.connect() as conn:
-            def inspect_db(connection):
-                insp = inspect(connection)
-                if insp.has_table("lands"):
-                    cols = insp.get_columns("lands")
-                    for c in cols:
-                        if c["name"] == "land_id":
-                            print(f"MY_DEBUG: lands.land_id type: {c['type']}", flush=True)
-                else:
-                    print("MY_DEBUG: lands table DOES NOT EXIST", flush=True)
-
-                if insp.has_table("users"):
-                    cols = insp.get_columns("users")
-                    for c in cols:
-                         if c["name"] == "user_id":
-                             print(f"MY_DEBUG: users.user_id type: {c['type']}", flush=True)
-            
-            await conn.run_sync(inspect_db)
-
-        # SKIP CREATE_ALL TEMPORARILY
-        # async with engine.begin() as conn:
-        #     await conn.run_sync(Base.metadata.create_all)
-        
-        logger.info("✅ Database tables verification skipped for debugging")
+        async with engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
+        logger.info("✅ Database tables verified/created")
         
     else:
         logger.error("❌ Database connection failed")
