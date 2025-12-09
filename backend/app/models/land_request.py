@@ -24,7 +24,7 @@ class LandRequest(Base):
     )
 
     land_id: Mapped[int] = mapped_column(
-        Integer,
+        BigInteger,
         ForeignKey("lands.land_id", ondelete="CASCADE"),
         nullable=False,
     )
