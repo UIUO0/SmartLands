@@ -532,7 +532,9 @@ async def accept_request(
     """
     Owner accepts a request.
     - Sets request status to 'accepted'.
-    - Optionally sets Land status to 'reserved'.
+    - Sets Land status to 'reserved'.
+    - Creates an Agreement.
+    - Creates a ChatConversation.
     """
     try:
         # Fetch request + land to verify ownership
@@ -545,8 +547,6 @@ async def accept_request(
             raise HTTPException(status_code=404, detail="Request not found")
 
         # We need to load land to check owner
-        # (Assuming Lazy loading might work, but async requires explicit join or separate query usually. 
-        # But 'land' relationship is defined in LandRequest. Let's do a join to be safe or just fetch land.)
         res_land = await db.execute(select(Land).where(Land.land_id == land_request.land_id))
         land = res_land.scalar_one_or_none()
         
@@ -562,8 +562,31 @@ async def accept_request(
         # Update Request
         land_request.status = "accepted"
         
-        # Update Land Status to 'reserved' (as per plan/request implication)
+        # Update Land Status to 'reserved'
         land.status = "reserved"
+        
+        # Create Agreement
+        from app.models.agreement import Agreement
+        agreement = Agreement(
+            land_id=land.land_id,
+            buyer_user_id=land_request.buyer_id,
+            seller_user_id=land.owner_id,
+            request_id=land_request.request_id,
+            agreed_amount=land.price_amount,
+            status="pending"
+        )
+        db.add(agreement)
+        # Flush to get agreement_id
+        await db.flush()
+        
+        # Create ChatConversation
+        from app.models.chat_conversation import ChatConversation
+        chat = ChatConversation(
+            agreement_id=agreement.agreement_id,
+            buyer_user_id=land_request.buyer_id,
+            seller_user_id=land.owner_id
+        )
+        db.add(chat)
 
         await db.commit()
         await db.refresh(land_request)
