@@ -1,120 +1,100 @@
-import { cookies } from "next/headers";
-import { redirect } from "next/navigation";
-import { Card } from "@/components/ui/Card";
-import { COOKIE_NAME } from "@/lib/config";
-import { headers } from "next/headers"; // 1. استيراد headers
-export const dynamic = "force-dynamic";
+"use client";
 
-type UserOut = {
-  user_id: number;
-  email: string;
-  full_name: string | null;
-  role: string;
-  picture_url: string | null;
-  created_at: string;
-  updated_at: string;
-};
+import { useEffect, useState } from "react";
+import { Sidebar } from "@/components/sidebar";
+import { Header } from "@/components/header";
+import { User, Mail, Shield, Camera } from "lucide-react";
 
+export default function ProfilePage() {
+  const [user, setUser] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
 
-
-async function getMe(cookieHeader: string): Promise<UserOut | null> {
-  // 2. تحديد الدومين ديناميكياً
-  const headersList = await headers();
-  const host = headersList.get("host"); // يجلب localhost:3000 أو الدومين الحقيقي
-  const protocol = process.env.NODE_ENV === "development" ? "http" : "https";
-  const baseUrl = `${protocol}://${host}`;
-
-  // 3. استخدام الرابط الكامل
-  const res = await fetch(`${baseUrl}/api/users/me`, {
-    cache: "no-store",
-    headers: cookieHeader ? { Cookie: cookieHeader } : undefined,
-  });
-
-  if (res.status === 401) return null;
-  if (!res.ok) {
-     // طباعة الخطأ للمساعدة في الـ Debugging
-     const txt = await res.text();
-     console.error("Profile fetch error:", txt); 
-     throw new Error("Failed to load profile");
-  }
-
-  const json = await res.json();
-  return json?.user as UserOut;
-}
-
-export default async function ProfilePage() {
-  const cookieStore = await cookies();
-  const cookieHeader = cookieStore.toString();
-  const token = cookieStore.get(COOKIE_NAME)?.value ?? null;
-  const me = await getMe(cookieHeader);
-
-  // احتياط: لو أحد وصل هنا بدون توكن (الميدلوير يمنع أصلاً)
-  if (!me) redirect("/login?next=/profile");
-
-  const tokenPreview =
-    token && token.length > 12 ? `${token.slice(0, 6)}...${token.slice(-4)}` : token;
+  useEffect(() => {
+    async function fetchUser() {
+      try {
+        const res = await fetch("/api/users/me"); // نقطة الاتصال التي بنيناها سابقاً
+        if (res.ok) {
+          const data = await res.json();
+          setUser(data);
+        }
+      } catch (e) {
+        console.error("Failed to load profile");
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchUser();
+  }, []);
 
   return (
-    <main className="p-6">
-      <h1 className="text-2xl font-semibold mb-4">My Profile</h1>
+    <div className="flex min-h-screen bg-background">
+      <Sidebar />
+      <main className="flex-1 flex flex-col h-screen overflow-hidden">
+        <Header />
+        
+        <div className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
+          <div className="max-w-4xl mx-auto">
+            <h1 className="text-3xl font-bold mb-8">My Profile</h1>
 
-      <Card className="p-6 max-w-2xl space-y-6">
-        <div className="flex items-center gap-4">
-          <div className="h-16 w-16 rounded-full bg-zinc-100 overflow-hidden grid place-items-center text-zinc-500 text-xl">
-            {me.picture_url ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={me.picture_url}
-                alt={`${me.full_name || me.email} avatar`}
-                className="h-full w-full object-cover"
-                referrerPolicy="no-referrer"
-              />
+            {loading ? (
+              <div className="text-center py-20">Loading profile...</div>
+            ) : user ? (
+              <div className="bg-card rounded-3xl p-8 border border-border shadow-sm">
+                <div className="flex flex-col md:flex-row gap-8 items-start">
+                  
+                  {/* Avatar Section */}
+                  <div className="flex flex-col items-center gap-4">
+                    <div className="w-32 h-32 rounded-full bg-secondary border-4 border-white shadow-md flex items-center justify-center relative overflow-hidden">
+                        {user.picture_url ? (
+                            <img src={user.picture_url} alt="Profile" className="w-full h-full object-cover" />
+                        ) : (
+                            <User className="h-12 w-12 text-foreground/50" />
+                        )}
+                    </div>
+                    <button className="flex items-center gap-2 text-sm font-bold text-foreground bg-white/50 px-4 py-2 rounded-xl hover:bg-white transition">
+                        <Camera className="h-4 w-4" /> Change Photo
+                    </button>
+                  </div>
+
+                  {/* Info Section */}
+                  <div className="flex-1 w-full space-y-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="space-y-2">
+                            <label className="text-xs font-bold uppercase text-muted-foreground tracking-wider">Full Name</label>
+                            <div className="flex items-center gap-3 bg-white/50 p-4 rounded-xl border border-border/50">
+                                <User className="h-5 w-5 text-primary" />
+                                <span className="font-semibold">{user.full_name || "N/A"}</span>
+                            </div>
+                        </div>
+
+                        <div className="space-y-2">
+                            <label className="text-xs font-bold uppercase text-muted-foreground tracking-wider">Email Address</label>
+                            <div className="flex items-center gap-3 bg-white/50 p-4 rounded-xl border border-border/50">
+                                <Mail className="h-5 w-5 text-primary" />
+                                <span className="font-semibold">{user.email}</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="space-y-2">
+                        <label className="text-xs font-bold uppercase text-muted-foreground tracking-wider">Account Role</label>
+                        <div className="flex items-center gap-3 bg-primary/20 p-4 rounded-xl border border-primary/30 w-fit">
+                            <Shield className="h-5 w-5 text-foreground" />
+                            <span className="font-bold">{user.role || "User"}</span>
+                        </div>
+                    </div>
+                  </div>
+
+                </div>
+              </div>
             ) : (
-              <span>{me.full_name?.[0]?.toUpperCase() || me.email[0]?.toUpperCase()}</span>
+              <div className="text-center py-20">
+                <p>Please log in to view your profile.</p>
+              </div>
             )}
           </div>
-          <div>
-            <div className="text-lg font-medium">{me.full_name || "Unnamed"}</div>
-            <div className="text-sm text-zinc-600">{me.email}</div>
-          </div>
         </div>
-
-        <section className="grid gap-2 text-sm">
-          <div>
-            <span className="font-medium">User ID:</span> {me.user_id}
-          </div>
-          <div>
-            <span className="font-medium">Role:</span> {me.role}
-          </div>
-          <div className="text-zinc-500">
-            Created: {new Date(me.created_at).toLocaleString()}
-          </div>
-          <div className="text-zinc-500">
-            Updated: {new Date(me.updated_at).toLocaleString()}
-          </div>
-        </section>
-
-        {token && (
-          <section className="rounded-xl border border-dashed border-zinc-300 bg-zinc-50 p-4 space-y-2">
-            <div className="text-sm font-semibold text-zinc-700">Active Token</div>
-            <code className="block break-all rounded-md bg-white px-3 py-2 text-xs">
-              {tokenPreview}
-            </code>
-            <div className="text-xs text-zinc-500">
-              Length: {token.length} characters (stored in cookie &quot;{COOKIE_NAME}&quot;)
-            </div>
-          </section>
-        )}
-
-        <div className="flex flex-wrap gap-3">
-          <a
-            href="/R_Pw"
-            className="inline-flex items-center justify-center rounded-xl bg-black px-4 py-2 text-sm font-medium text-white"
-          >
-            Reset Password
-          </a>
-        </div>
-      </Card>
-    </main>
+      </main>
+    </div>
   );
 }
