@@ -1,120 +1,238 @@
-import { cookies } from "next/headers";
-import { redirect } from "next/navigation";
-import { Card } from "@/components/ui/Card";
-import { COOKIE_NAME } from "@/lib/config";
-import { headers } from "next/headers"; // 1. استيراد headers
-export const dynamic = "force-dynamic";
+"use client";
 
-type UserOut = {
-  user_id: number;
-  email: string;
-  full_name: string | null;
-  role: string;
-  picture_url: string | null;
-  created_at: string;
-  updated_at: string;
-};
+import { Sidebar } from "@/components/sidebar";
+import { Header } from "@/components/header";
+import { User, Mail, LogOut, Camera, Edit2, X, Save, Loader2 } from "lucide-react";
+import { useEffect, useState } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 
+export default function ProfilePage() {
+  const [user, setUser] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  
+  // حالات التعديل (Modal)
+  const [isEditing, setIsEditing] = useState(false);
+  const [editForm, setEditForm] = useState({ full_name: "", picture_url: "" });
+  const [isSaving, setIsSaving] = useState(false);
 
+  const router = useRouter();
 
-async function getMe(cookieHeader: string): Promise<UserOut | null> {
-  // 2. تحديد الدومين ديناميكياً
-  const headersList = await headers();
-  const host = headersList.get("host"); // يجلب localhost:3000 أو الدومين الحقيقي
-  const protocol = process.env.NODE_ENV === "development" ? "http" : "https";
-  const baseUrl = `${protocol}://${host}`;
+  // جلب البيانات عند التحميل
+  useEffect(() => {
+    loadProfile();
+  }, []);
 
-  // 3. استخدام الرابط الكامل
-  const res = await fetch(`${baseUrl}/api/users/me`, {
-    cache: "no-store",
-    headers: cookieHeader ? { Cookie: cookieHeader } : undefined,
-  });
-
-  if (res.status === 401) return null;
-  if (!res.ok) {
-     // طباعة الخطأ للمساعدة في الـ Debugging
-     const txt = await res.text();
-     console.error("Profile fetch error:", txt); 
-     throw new Error("Failed to load profile");
+  async function loadProfile() {
+    try {
+        const res = await fetch("/api/users/me");
+        if (res.ok) {
+            const data = await res.json();
+            setUser(data);
+            // تعبئة الفورم بالبيانات الحالية
+            setEditForm({ 
+                full_name: data.full_name || "", 
+                picture_url: data.picture_url || "" 
+            });
+        } else {
+            setUser(null);
+        }
+    } catch(e) { 
+        console.error(e);
+        setUser(null);
+    } finally {
+        setLoading(false);
+    }
   }
 
-  const json = await res.json();
-  return json?.user as UserOut;
-}
+  // دالة حفظ التعديلات
+  const handleUpdate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSaving(true);
+    try {
+        const res = await fetch("/api/users/me", {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(editForm)
+        });
 
-export default async function ProfilePage() {
-  const cookieStore = await cookies();
-  const cookieHeader = cookieStore.toString();
-  const token = cookieStore.get(COOKIE_NAME)?.value ?? null;
-  const me = await getMe(cookieHeader);
+        if (res.ok) {
+            const updatedUser = await res.json();
+            setUser(updatedUser); // تحديث الواجهة فوراً
+            setIsEditing(false);  // إغلاق النافذة
+        } else {
+            alert("فشل التحديث، تأكد من صحة البيانات");
+        }
+    } catch (error) {
+        console.error("Update failed", error);
+        alert("حدث خطأ في الاتصال");
+    } finally {
+        setIsSaving(false);
+    }
+  };
 
-  // احتياط: لو أحد وصل هنا بدون توكن (الميدلوير يمنع أصلاً)
-  if (!me) redirect("/login?next=/profile");
-
-  const tokenPreview =
-    token && token.length > 12 ? `${token.slice(0, 6)}...${token.slice(-4)}` : token;
+  const handleLogout = async () => {
+    try {
+        await fetch("/api/auth/logout", { method: "POST" });
+        setUser(null);
+        router.push("/login");
+        router.refresh();
+    } catch (e) {
+        console.error("Logout failed", e);
+    }
+  };
 
   return (
-    <main className="p-6">
-      <h1 className="text-2xl font-semibold mb-4">My Profile</h1>
+    <div className="flex min-h-screen bg-[#F1F3E0]">
+      <Sidebar />
+      <main className="flex-1 flex flex-col h-screen overflow-hidden relative">
+        <Header />
+        
+        <div className="flex-1 overflow-y-auto p-6 lg:p-8 flex items-center justify-center">
+            
+            <div className="w-full max-w-lg bg-[#D2DCB6] rounded-3xl p-8 border border-[#A1BC98]/50 shadow-lg relative">
+                
+                {loading ? (
+                    <div className="text-center py-10 text-[#556b4d] animate-pulse flex flex-col items-center gap-2">
+                        <Loader2 className="h-8 w-8 animate-spin" />
+                        <span>جارِ تحميل الملف الشخصي...</span>
+                    </div>
+                ) : user ? (
+                    // === واجهة المستخدم المسجل ===
+                    <>
+                        <div className="flex flex-col items-center text-center mb-8">
+                            {/* الصورة مع زر تعديل خفي */}
+                            <div 
+                                className="relative group cursor-pointer w-32 h-32 mb-4"
+                                onClick={() => setIsEditing(true)}
+                            >
+                                <div className="w-full h-full bg-[#F1F3E0] rounded-full flex items-center justify-center border-4 border-white overflow-hidden shadow-sm">
+                                    {user.picture_url ? (
+                                        <img src={user.picture_url} alt="Profile" className="w-full h-full object-cover"/>
+                                    ) : (
+                                        <User className="h-14 w-14 text-[#A1BC98]"/>
+                                    )}
+                                </div>
+                                {/* أيقونة الكاميرا تظهر عند التمرير */}
+                                <div className="absolute inset-0 bg-black/40 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300">
+                                    <Camera className="text-white h-8 w-8" />
+                                </div>
+                            </div>
 
-      <Card className="p-6 max-w-2xl space-y-6">
-        <div className="flex items-center gap-4">
-          <div className="h-16 w-16 rounded-full bg-zinc-100 overflow-hidden grid place-items-center text-zinc-500 text-xl">
-            {me.picture_url ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={me.picture_url}
-                alt={`${me.full_name || me.email} avatar`}
-                className="h-full w-full object-cover"
-                referrerPolicy="no-referrer"
-              />
-            ) : (
-              <span>{me.full_name?.[0]?.toUpperCase() || me.email[0]?.toUpperCase()}</span>
-            )}
-          </div>
-          <div>
-            <div className="text-lg font-medium">{me.full_name || "Unnamed"}</div>
-            <div className="text-sm text-zinc-600">{me.email}</div>
-          </div>
+                            {/* الاسم وزر التعديل */}
+                            <div className="flex items-center gap-2 justify-center mb-1">
+                                <h1 className="text-3xl font-bold text-black">{user.full_name}</h1>
+                                <button 
+                                    onClick={() => setIsEditing(true)} 
+                                    className="p-1.5 hover:bg-black/10 rounded-full transition text-gray-700"
+                                    title="تعديل الملف الشخصي"
+                                >
+                                    <Edit2 className="h-4 w-4"/>
+                                </button>
+                            </div>
+                            <p className="text-[#3a4430] font-medium dir-ltr">{user.email}</p>
+                        </div>
+
+                        <div className="space-y-4">
+                            {/* بطاقة الإيميل */}
+                            <div className="bg-white/60 p-4 rounded-2xl flex items-center gap-4 border border-white/50">
+                                <div className="bg-[#F1F3E0] p-2.5 rounded-xl">
+                                    <Mail className="h-5 w-5 text-black"/>
+                                </div>
+                                <div className="flex-1 text-right">
+                                    <p className="text-xs font-bold uppercase text-[#556b4d] mb-0.5">البريد الإلكتروني</p>
+                                    <p className="font-semibold text-black break-all">{user.email}</p>
+                                </div>
+                            </div>
+
+                            {/* زر تسجيل الخروج */}
+                            <button 
+                                onClick={handleLogout}
+                                className="w-full mt-6 bg-red-500/10 hover:bg-red-500/20 text-red-700 font-bold py-3.5 px-4 rounded-xl flex items-center justify-center gap-2 transition-all border border-red-500/20"
+                            >
+                                <LogOut className="h-5 w-5" />
+                                تسجيل الخروج
+                            </button>
+                        </div>
+                    </>
+                ) : (
+                    // === واجهة الزائر ===
+                    <div className="text-center py-8">
+                        <div className="w-20 h-20 bg-[#F1F3E0] rounded-full flex items-center justify-center mx-auto mb-4 border-4 border-white">
+                            <User className="h-8 w-8 text-[#A1BC98]"/>
+                        </div>
+                        <h2 className="text-xl font-bold mb-6 text-black">أهلاً بك يا زائر</h2>
+                        <div className="space-y-3">
+                            <Link href="/login" className="block w-full bg-black text-white font-bold py-3.5 px-4 rounded-xl hover:bg-[#333] transition shadow-md">
+                                تسجيل الدخول
+                            </Link>
+                            <Link href="/signup" className="block w-full bg-white text-black font-bold py-3.5 px-4 rounded-xl hover:bg-gray-50 transition border border-[#A1BC98]">
+                                إنشاء حساب جديد
+                            </Link>
+                        </div>
+                    </div>
+                )}
+            </div>
         </div>
 
-        <section className="grid gap-2 text-sm">
-          <div>
-            <span className="font-medium">User ID:</span> {me.user_id}
-          </div>
-          <div>
-            <span className="font-medium">Role:</span> {me.role}
-          </div>
-          <div className="text-zinc-500">
-            Created: {new Date(me.created_at).toLocaleString()}
-          </div>
-          <div className="text-zinc-500">
-            Updated: {new Date(me.updated_at).toLocaleString()}
-          </div>
-        </section>
+        {/* === نافذة التعديل (Modal) === */}
+        {isEditing && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+                <div className="bg-[#F1F3E0] w-full max-w-md rounded-3xl p-6 shadow-2xl scale-100 animate-in zoom-in-95 duration-200 border border-[#A1BC98]">
+                    <div className="flex justify-between items-center mb-6 border-b border-[#A1BC98]/30 pb-4">
+                        <h3 className="text-xl font-bold text-black">تعديل الملف الشخصي</h3>
+                        <button onClick={() => setIsEditing(false)} className="p-2 hover:bg-black/10 rounded-full transition">
+                            <X className="h-6 w-6 text-gray-700" />
+                        </button>
+                    </div>
 
-        {token && (
-          <section className="rounded-xl border border-dashed border-zinc-300 bg-zinc-50 p-4 space-y-2">
-            <div className="text-sm font-semibold text-zinc-700">Active Token</div>
-            <code className="block break-all rounded-md bg-white px-3 py-2 text-xs">
-              {tokenPreview}
-            </code>
-            <div className="text-xs text-zinc-500">
-              Length: {token.length} characters (stored in cookie &quot;{COOKIE_NAME}&quot;)
+                    <form onSubmit={handleUpdate} className="space-y-5">
+                        <div>
+                            <label className="block text-sm font-bold text-[#556b4d] mb-2">الاسم الكامل</label>
+                            <input 
+                                type="text" 
+                                required
+                                value={editForm.full_name}
+                                onChange={(e) => setEditForm({...editForm, full_name: e.target.value})}
+                                className="w-full p-3.5 rounded-xl border border-[#A1BC98] focus:outline-none focus:ring-2 focus:ring-black bg-white text-black placeholder-gray-400 transition"
+                                placeholder="الاسم الظاهر للمستخدمين"
+                            />
+                        </div>
+
+                        <div>
+                            <label className="block text-sm font-bold text-[#556b4d] mb-2">رابط الصورة الشخصية</label>
+                            <input 
+                                type="url" 
+                                value={editForm.picture_url}
+                                onChange={(e) => setEditForm({...editForm, picture_url: e.target.value})}
+                                className="w-full p-3.5 rounded-xl border border-[#A1BC98] focus:outline-none focus:ring-2 focus:ring-black bg-white text-black placeholder-gray-400 transition text-left dir-ltr"
+                                placeholder="https://example.com/photo.jpg"
+                            />
+                        </div>
+
+                        <div className="flex gap-3 pt-2">
+                            <button 
+                                type="button" 
+                                onClick={() => setIsEditing(false)}
+                                className="flex-1 py-3.5 font-bold text-gray-700 bg-gray-200 rounded-xl hover:bg-gray-300 transition"
+                            >
+                                إلغاء
+                            </button>
+                            <button 
+                                type="submit" 
+                                disabled={isSaving}
+                                className="flex-1 py-3.5 font-bold text-white bg-black rounded-xl hover:bg-[#333] transition disabled:opacity-70 flex items-center justify-center gap-2"
+                            >
+                                {isSaving ? <Loader2 className="h-5 w-5 animate-spin"/> : <Save className="h-5 w-5"/>}
+                                {isSaving ? "جارِ الحفظ..." : "حفظ التغييرات"}
+                            </button>
+                        </div>
+                    </form>
+                </div>
             </div>
-          </section>
         )}
 
-        <div className="flex flex-wrap gap-3">
-          <a
-            href="/R_Pw"
-            className="inline-flex items-center justify-center rounded-xl bg-black px-4 py-2 text-sm font-medium text-white"
-          >
-            Reset Password
-          </a>
-        </div>
-      </Card>
-    </main>
+      </main>
+    </div>
   );
 }
