@@ -1,9 +1,9 @@
 "use client";
 
-import { Sidebar } from "@/components/sidebar";
+import { Sidebar } from "@/components/sidebar"; // تأكد من حالة الحرف S (Sidebar)
 import { Header } from "@/components/header";
 import { useEffect, useState } from "react";
-import { Plus, MapPin, Ruler, Trash2, Edit, X, Loader2, Save, Image as ImageIcon } from "lucide-react";
+import { Plus, MapPin, Ruler, X, Loader2, Save, Image as ImageIcon } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
@@ -129,54 +129,69 @@ export default function MyLandsPage() {
                 </div>
             ) : (
                 <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
-                    {lands.map((land) => (
-                        <div key={land.land_id} className="bg-white rounded-3xl p-5 shadow-sm border border-[#A1BC98]/30 group hover:border-[#A1BC98] transition flex flex-col">
-                            
-                            {/* === قسم الصورة المضاف === */}
-                            <div className="h-48 w-full bg-gray-100 rounded-2xl mb-4 overflow-hidden relative border border-gray-100">
-                                {land.cover_image_url || land.picture_url ? (
-                                    <img 
-                                        src={land.cover_image_url || land.picture_url} 
-                                        alt={land.title} 
-                                        className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" 
-                                    />
-                                ) : (
-                                    <div className="flex flex-col items-center justify-center h-full text-gray-400">
+                    {lands.map((land) => {
+                        // منطق تحديد رابط الصورة: يبحث في عدة حقول محتملة
+                        const imageSrc = land.cover_image_url || land.picture_url || (land.images && land.images.length > 0 ? land.images[0].url : null);
+                        
+                        return (
+                            <div key={land.land_id} className="bg-white rounded-3xl p-5 shadow-sm border border-[#A1BC98]/30 group hover:border-[#A1BC98] transition flex flex-col">
+                                
+                                {/* === قسم الصورة المحسن === */}
+                                <div className="h-48 w-full bg-gray-100 rounded-2xl mb-4 overflow-hidden relative border border-gray-100">
+                                    {imageSrc ? (
+                                        <img 
+                                            src={imageSrc} 
+                                            alt={land.title} 
+                                            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                                            onError={(e) => {
+                                                // في حال فشل تحميل الصورة، نخفيها ونعرض الرمز البديل
+                                                (e.target as HTMLImageElement).style.display = 'none';
+                                                ((e.target as HTMLImageElement).nextSibling as HTMLElement).style.display = 'flex';
+                                            }}
+                                        />
+                                    ) : null}
+                                    
+                                    {/* الرمز البديل (يظهر إذا لم يكن هناك رابط، أو إذا فشل التحميل) */}
+                                    <div 
+                                        className="flex flex-col items-center justify-center h-full text-gray-400 w-full absolute top-0 left-0 bg-[#F9FAFB]"
+                                        style={{ display: imageSrc ? 'none' : 'flex' }}
+                                    >
                                         <ImageIcon className="h-10 w-10 mb-2 opacity-50"/>
                                         <span className="text-xs">لا توجد صورة</span>
                                     </div>
-                                )}
-                                <span className={`absolute top-3 right-3 text-xs font-bold px-2 py-1 rounded-lg shadow-sm ${land.status === 'available' ? 'bg-white text-green-700' : 'bg-gray-800 text-white'}`}>
-                                    {land.status === 'available' ? 'متاح' : land.status}
-                                </span>
-                            </div>
 
-                            <div className="flex justify-between items-start mb-2">
-                                <h3 className="font-bold text-xl truncate text-black w-full" title={land.title}>{land.title}</h3>
-                            </div>
-                            
-                            <p className="text-sm text-gray-500 mb-4 line-clamp-2 min-h-[2.5rem]">
-                                {land.description || "لا يوجد وصف متاح لهذا العقار."}
-                            </p>
-                            
-                            <div className="flex items-center gap-4 text-sm font-medium text-[#556b4d] mb-4 mt-auto">
-                                <span className="flex items-center gap-1 bg-[#F1F3E0] px-2 py-1 rounded-lg"><Ruler className="h-3.5 w-3.5"/> {land.area_sq_m} م²</span>
-                                <span className="flex items-center gap-1 bg-[#F1F3E0] px-2 py-1 rounded-lg"><MapPin className="h-3.5 w-3.5"/> {land.city}</span>
-                            </div>
+                                    <span className={`absolute top-3 right-3 text-xs font-bold px-2 py-1 rounded-lg shadow-sm z-10 ${land.status === 'available' ? 'bg-white text-green-700' : 'bg-gray-800 text-white'}`}>
+                                        {land.status === 'available' ? 'متاح' : land.status}
+                                    </span>
+                                </div>
 
-                            <div className="flex items-center justify-between border-t border-gray-100 pt-4 mt-2">
-                                <span className="font-bold text-lg text-black">{Intl.NumberFormat('en-US').format(land.price_amount)} ر.س</span>
-                                <Link href={`/lands/${land.land_id}`} className="text-sm bg-black text-white px-5 py-2.5 rounded-xl hover:bg-[#333] transition shadow-md">
-                                    التفاصيل
-                                </Link>
+                                <div className="flex justify-between items-start mb-2">
+                                    <h3 className="font-bold text-xl truncate text-black w-full" title={land.title}>{land.title}</h3>
+                                </div>
+                                
+                                <p className="text-sm text-gray-500 mb-4 line-clamp-2 min-h-[2.5rem]">
+                                    {land.description || "لا يوجد وصف متاح لهذا العقار."}
+                                </p>
+                                
+                                <div className="flex items-center gap-4 text-sm font-medium text-[#556b4d] mb-4 mt-auto">
+                                    <span className="flex items-center gap-1 bg-[#F1F3E0] px-2 py-1 rounded-lg"><Ruler className="h-3.5 w-3.5"/> {land.area_sq_m} م²</span>
+                                    <span className="flex items-center gap-1 bg-[#F1F3E0] px-2 py-1 rounded-lg"><MapPin className="h-3.5 w-3.5"/> {land.city}</span>
+                                </div>
+
+                                <div className="flex items-center justify-between border-t border-gray-100 pt-4 mt-2">
+                                    <span className="font-bold text-lg text-black">{Intl.NumberFormat('en-US').format(land.price_amount)} ر.س</span>
+                                    <Link href={`/lands/${land.land_id}`} className="text-sm bg-black text-white px-5 py-2.5 rounded-xl hover:bg-[#333] transition shadow-md">
+                                        التفاصيل
+                                    </Link>
+                                </div>
                             </div>
-                        </div>
-                    ))}
+                        );
+                    })}
                 </div>
             )}
         </div>
 
-        {/* Modal remains the same ... */}
+        {/* Modal */}
         {isModalOpen && (
             <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in">
                 <div className="bg-[#F1F3E0] w-full max-w-2xl rounded-3xl p-8 shadow-2xl max-h-[90vh] overflow-y-auto">
