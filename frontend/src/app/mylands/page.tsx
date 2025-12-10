@@ -3,12 +3,11 @@
 import { Sidebar } from "@/components/sidebar";
 import { Header } from "@/components/header";
 import { useEffect, useState } from "react";
-import { Plus, MapPin, Ruler, Trash2, Edit, X, Loader2, Save } from "lucide-react";
+import { Plus, MapPin, Ruler, Trash2, Edit, X, Loader2, Save, Image as ImageIcon } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
 export default function MyLandsPage() {
-  // تهيئة الحالة بمصفوفة فارغة لتجنب الخطأ قبل التحميل
   const [lands, setLands] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   
@@ -33,7 +32,6 @@ export default function MyLandsPage() {
     fetchMyLands();
   }, []);
 
-  // --- التعديل هنا (دالة جلب البيانات الآمنة) ---
   async function fetchMyLands() {
     try {
       const res = await fetch("/api/lands/mine");
@@ -45,32 +43,25 @@ export default function MyLandsPage() {
 
       if (res.ok) {
         const data = await res.json();
-        console.log("📦 Lands Data Received:", data); // لنرى شكل البيانات في الكونسول
+        console.log("📦 Lands Data Received:", data);
 
-        // التحقق من نوع البيانات قبل وضعها في الحالة
         if (Array.isArray(data)) {
-            // الحالة 1: البيانات مصفوفة مباشرة
             setLands(data);
         } else if (data && Array.isArray(data.items)) {
-            // الحالة 2: البيانات داخل خاصية items (تصفح الصفحات)
             setLands(data.items);
         } else if (data && Array.isArray(data.lands)) {
-             // الحالة 3: البيانات داخل خاصية lands
             setLands(data.lands);
         } else {
-            // الحالة 4: صيغة غير معروفة، نضع مصفوفة فارغة لتجنب الكراش
-            console.warn("⚠️ Unexpected data format, defaulting to empty list.");
             setLands([]);
         }
       }
     } catch (e) {
       console.error("Fetch Error:", e);
-      setLands([]); // عند الخطأ نضمن أنها مصفوفة
+      setLands([]); 
     } finally {
       setLoading(false);
     }
   }
-  // ------------------------------------------------
 
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault();
@@ -138,28 +129,44 @@ export default function MyLandsPage() {
                 </div>
             ) : (
                 <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
-                    {/* هنا كان يحدث الخطأ، الآن lands مضمونة أنها مصفوفة */}
                     {lands.map((land) => (
-                        <div key={land.land_id} className="bg-white rounded-3xl p-5 shadow-sm border border-[#A1BC98]/30 group hover:border-[#A1BC98] transition">
-                            <div className="flex justify-between items-start mb-3">
-                                <h3 className="font-bold text-xl truncate">{land.title}</h3>
-                                <span className={`text-xs font-bold px-2 py-1 rounded ${land.status === 'available' ? 'bg-green-100 text-green-800' : 'bg-gray-100'}`}>
-                                    {land.status}
+                        <div key={land.land_id} className="bg-white rounded-3xl p-5 shadow-sm border border-[#A1BC98]/30 group hover:border-[#A1BC98] transition flex flex-col">
+                            
+                            {/* === قسم الصورة المضاف === */}
+                            <div className="h-48 w-full bg-gray-100 rounded-2xl mb-4 overflow-hidden relative border border-gray-100">
+                                {land.cover_image_url || land.picture_url ? (
+                                    <img 
+                                        src={land.cover_image_url || land.picture_url} 
+                                        alt={land.title} 
+                                        className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" 
+                                    />
+                                ) : (
+                                    <div className="flex flex-col items-center justify-center h-full text-gray-400">
+                                        <ImageIcon className="h-10 w-10 mb-2 opacity-50"/>
+                                        <span className="text-xs">لا توجد صورة</span>
+                                    </div>
+                                )}
+                                <span className={`absolute top-3 right-3 text-xs font-bold px-2 py-1 rounded-lg shadow-sm ${land.status === 'available' ? 'bg-white text-green-700' : 'bg-gray-800 text-white'}`}>
+                                    {land.status === 'available' ? 'متاح' : land.status}
                                 </span>
                             </div>
+
+                            <div className="flex justify-between items-start mb-2">
+                                <h3 className="font-bold text-xl truncate text-black w-full" title={land.title}>{land.title}</h3>
+                            </div>
                             
-                            <p className="text-sm text-gray-500 mb-4 line-clamp-2 h-10">
-                                {land.description || "لا يوجد وصف"}
+                            <p className="text-sm text-gray-500 mb-4 line-clamp-2 min-h-[2.5rem]">
+                                {land.description || "لا يوجد وصف متاح لهذا العقار."}
                             </p>
                             
-                            <div className="flex items-center gap-4 text-sm font-medium text-[#556b4d] mb-4">
-                                <span className="flex items-center gap-1"><Ruler className="h-4 w-4"/> {land.area_sq_m} م²</span>
-                                <span className="flex items-center gap-1"><MapPin className="h-4 w-4"/> {land.city}</span>
+                            <div className="flex items-center gap-4 text-sm font-medium text-[#556b4d] mb-4 mt-auto">
+                                <span className="flex items-center gap-1 bg-[#F1F3E0] px-2 py-1 rounded-lg"><Ruler className="h-3.5 w-3.5"/> {land.area_sq_m} م²</span>
+                                <span className="flex items-center gap-1 bg-[#F1F3E0] px-2 py-1 rounded-lg"><MapPin className="h-3.5 w-3.5"/> {land.city}</span>
                             </div>
 
-                            <div className="flex items-center justify-between border-t border-gray-100 pt-4">
-                                <span className="font-bold text-lg">{Intl.NumberFormat('en-US').format(land.price_amount)} ر.س</span>
-                                <Link href={`/lands/${land.land_id}`} className="text-sm bg-black text-white px-4 py-2 rounded-lg hover:bg-[#333]">
+                            <div className="flex items-center justify-between border-t border-gray-100 pt-4 mt-2">
+                                <span className="font-bold text-lg text-black">{Intl.NumberFormat('en-US').format(land.price_amount)} ر.س</span>
+                                <Link href={`/lands/${land.land_id}`} className="text-sm bg-black text-white px-5 py-2.5 rounded-xl hover:bg-[#333] transition shadow-md">
                                     التفاصيل
                                 </Link>
                             </div>
@@ -169,7 +176,7 @@ export default function MyLandsPage() {
             )}
         </div>
 
-        {/* === Modal إضافة أرض === */}
+        {/* Modal remains the same ... */}
         {isModalOpen && (
             <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in">
                 <div className="bg-[#F1F3E0] w-full max-w-2xl rounded-3xl p-8 shadow-2xl max-h-[90vh] overflow-y-auto">
