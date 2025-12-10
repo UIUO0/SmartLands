@@ -1,40 +1,44 @@
-// src/app/api/auth/login/route.ts
 import { NextRequest, NextResponse } from "next/server";
-import { API_URL, COOKIE_NAME } from "@/lib/config";
 
-export async function POST(req: NextRequest) {
-  const body = await req.json().catch(() => ({}));
-  const secure = process.env.NODE_ENV === "production";
+export async function POST(request: NextRequest) {
+  try {
+    const body = await request.json();
+    const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "https://smartlands-production.up.railway.app";
 
-  const r = await fetch(`${API_URL}/auth/login`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
-
-  const data = await r.json().catch(() => ({}));
-
-  if (!r.ok) {
-    return NextResponse.json(data || { message: "Login failed" }, {
-      status: r.status,
+    // 1. إرسال بيانات الدخول للباك-إند
+    const res = await fetch(`${BASE_URL}/auth/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
     });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      return NextResponse.json(data, { status: res.status });
+    }
+
+    // 2. إنشاء الرد للفرونت-إند
+    const response = NextResponse.json(data, { status: 200 });
+
+    // 3. سحب الكوكيز من رد الباك-إند ووضعها في رد النيكست
+    // هذه الخطوة الأهم: نقل 'access_token' للمتصفح
+    const setCookieHeader = res.headers.get("set-cookie");
+    
+    if (setCookieHeader) {
+      // تنظيف الهيدر وتعيينه في المتصفح
+      // نقوم بتقسيم الكوكيز إذا كان هناك أكثر من واحد
+      const cookies = setCookieHeader.split(/,(?=\s*[^;]+=[^;]+)/);
+      
+      cookies.forEach((cookie) => {
+         response.headers.append("Set-Cookie", cookie);
+      });
+    }
+
+    return response;
+
+  } catch (error) {
+    console.error("Login Error:", error);
+    return NextResponse.json({ message: "Network Error" }, { status: 500 });
   }
-
-  const token = data?.access_token || data?.token;
-
-  const res = NextResponse.json({ ok: true });
-
-  if (token) {
-    res.cookies.set({
-      name: COOKIE_NAME,
-      value: token,
-      httpOnly: true,
-      secure,
-      sameSite: "lax",
-      path: "/",
-      maxAge: 60 * 60 * 24 * 7, // 7 days
-    });
-  }
-
-  return res;
 }
