@@ -11,13 +11,40 @@ export function PropertyGrid() {
   useEffect(() => {
     async function fetchLands() {
       try {
+        // 1. جلب قائمة الأراضي (نصوص فقط)
         const res = await fetch("/api/lands", { cache: "no-store" });
-        if (res.ok) {
-          const data = await res.json();
-          // التعامل مع البيانات
-          const list = Array.isArray(data) ? data : (data.data || data.items || []);
-          setLands(list);
-        }
+        if (!res.ok) throw new Error("Failed to fetch lands");
+
+        const data = await res.json();
+        const rawList = Array.isArray(data) ? data : (data.data || data.items || []);
+
+        // 2. الدوران على كل أرض لجلب صورتها الخاصة
+        const landsWithImages = await Promise.all(rawList.map(async (land: any) => {
+            // إذا كانت الأرض تملك صورة مسبقاً، لا داعي للتعب
+            if (land.image_url) return land;
+
+            try {
+                // نطلب الصور الخاصة بهذه الأرض
+                const landId = land.id || land.land_id;
+                // 👇 هذا الرابط يحتاج لملف في الخطوة 2 ليعمل
+                const imgRes = await fetch(`/api/lands/${landId}/images`); 
+                
+                if (imgRes.ok) {
+                    const images = await imgRes.json();
+                    // نبحث عن صورة الغلاف أو نأخذ أول صورة
+                    const cover = images.find((img: any) => img.is_cover) || images[0];
+                    if (cover) {
+                        return { ...land, image_url: cover.file_url }; 
+                    }
+                }
+            } catch (e) {
+                console.warn(`No image for land ${land.id}`);
+            }
+            return land;
+        }));
+
+        setLands(landsWithImages);
+        
       } catch (err) {
         console.error(err);
       } finally {
@@ -34,35 +61,24 @@ export function PropertyGrid() {
   );
 
   return (
-    // 👇 هذا الكود المسؤول عن وضع 3 بطاقات بجانب بعض
-    // grid-cols-1 (للجوال) -> grid-cols-3 (للشاشات الكبيرة)
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 w-full pb-20">
-      {lands.map((land: any) => {
-        // البحث عن رابط الصورة الصحيح
-        // نحاول العثور على صورة الغلاف، أو أول صورة، أو نستخدم صورة افتراضية
-        let imageUrl = "/placeholder.svg";
-        
-        if (land.image_url) imageUrl = land.image_url;
-        else if (land.cover_image?.file_url) imageUrl = land.cover_image.file_url;
-        else if (land.images && land.images.length > 0) imageUrl = land.images[0].file_url;
-
-        return (
-          <PropertyCard 
-            key={land.id || land.land_id} 
-            property={{
-              id: land.id || land.land_id,
-              title: land.title || land.name || "Untitled Land", 
-              location: land.city || land.location || "Riyadh",
-              price: land.price_amount || land.price || 0,
-              image: imageUrl, 
-              sqft: land.area_sq_m || land.area || 0,
-              status: land.status || "For Sale",
-              beds: 0,
-              baths: 0,
-            }} 
-          />
-        )
-      })}
+      {lands.map((land: any) => (
+        <PropertyCard 
+          key={land.id || land.land_id} 
+          property={{
+            id: land.id || land.land_id,
+            title: land.title || land.name || "Untitled Land", 
+            location: land.city || land.location || "Riyadh",
+            price: land.price_amount || land.price || 0,
+            // استخدام الصورة التي جلبناها أو الافتراضية
+            image: land.image_url || "/placeholder.svg", 
+            sqft: land.area_sq_m || land.area || 0,
+            status: land.status || "For Sale",
+            beds: 0,
+            baths: 0,
+          }} 
+        />
+      ))}
     </div>
   )
 }
