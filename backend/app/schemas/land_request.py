@@ -24,7 +24,9 @@ class LandRequestUpdate(BaseModel):
 class LandRequestOut(BaseModel):
     request_id: int
     land_id: int
-    buyer_id: int
+    from_user_id: int
+    to_user_id: int
+    amount: float
     status: RequestStatus
     created_at: datetime
     

@@ -452,7 +452,7 @@ async def request_to_buy(
         res_req = await db.execute(
             select(LandRequest).where(
                 LandRequest.land_id == land_id,
-                LandRequest.buyer_id == current_user.user_id,
+                LandRequest.from_user_id == current_user.user_id,
                 LandRequest.status == "pending"
             )
         )
@@ -463,7 +463,9 @@ async def request_to_buy(
         # Create Request
         land_request = LandRequest(
             land_id=land_id,
-            buyer_id=current_user.user_id,
+            from_user_id=current_user.user_id,
+            to_user_id=land.owner_id,
+            amount=land.price_amount,
             status="pending"
         )
         db.add(land_request)
@@ -479,7 +481,7 @@ async def request_to_buy(
             subject = f"New Request for your land: {land.title}"
             body = f"""Hello {owner.full_name},
 
-User {current_user.full_name} ({current_user.email}) has requested to buy your land: "{land.title}".
+User {current_user.full_name} ({current_user.email}) has requested to buy your land: "{land.title}" for {land.price_amount}.
 
 Please log in to your dashboard to accept or reject this request.
 
@@ -513,7 +515,7 @@ async def my_requests(
     try:
         res = await db.execute(
             select(LandRequest)
-            .where(LandRequest.buyer_id == current_user.user_id)
+            .where(LandRequest.from_user_id == current_user.user_id)
             .order_by(LandRequest.created_at.desc())
         )
         requests = res.scalars().all()
@@ -569,10 +571,10 @@ async def accept_request(
         from app.models.agreement import Agreement
         agreement = Agreement(
             land_id=land.land_id,
-            buyer_user_id=land_request.buyer_id,
+            buyer_user_id=land_request.from_user_id,
             seller_user_id=land.owner_id,
             request_id=land_request.request_id,
-            agreed_amount=land.price_amount,
+            agreed_amount=land_request.amount,
             status="pending"
         )
         db.add(agreement)
@@ -583,7 +585,7 @@ async def accept_request(
         from app.models.chat_conversation import ChatConversation
         chat = ChatConversation(
             agreement_id=agreement.agreement_id,
-            buyer_user_id=land_request.buyer_id,
+            buyer_user_id=land_request.from_user_id,
             seller_user_id=land.owner_id
         )
         db.add(chat)
