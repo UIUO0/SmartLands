@@ -1,16 +1,18 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { cookies } from "next/headers";
 
-const BACKEND_URL = "https://smartlands-production.up.railway.app";
+// رابط الباك-إند كما ورد في التوثيق
+const BACKEND_URL = "http://localhost:8000"; //  تأكد أن هذا الرابط هو المستخدم عندك (local أو railway)
 
-// 1. GET: لجلب الصور (موجود سابقاً)
+// 1. GET: لجلب صور الأرض
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const { id } = await params;
-    const res = await fetch(`${BACKEND_URL}/lands/${id}/images`, {
+    // استدعاء endpoint جلب الصور من الباك-إند
+    const res = await fetch(`${BACKEND_URL}/lands/${id}/images`, { // [cite: 29]
       cache: "no-store",
     });
 
@@ -22,14 +24,15 @@ export async function GET(
   }
 }
 
-// 2. POST: لرفع صورة جديدة (هذا الجديد)
+// 2. POST: لرفع صورة جديدة
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
   const cookieStore = await cookies();
-  // التأكد من التوكن لأن الرابط محمي 
+  
+  // استخراج التوكن للتحقق (محمي) [cite: 30]
   const token = cookieStore.get("sl_token")?.value || cookieStore.get("session_id")?.value;
 
   if (!token) {
@@ -37,30 +40,30 @@ export async function POST(
   }
 
   try {
-    // استلام البيانات كـ FormData من الفرونت
+    // استقبال البيانات (الصورة) من الفرونت
     const formData = await request.formData();
     
     // إرسالها للباك-إند
-    // ملاحظة: لا نضع Content-Type يدوياً، fetch سيفعل ذلك تلقائياً مع الـ Boundary الصحيح
-    const res = await fetch(`${BACKEND_URL}/lands/${id}/images/upload`, { // 
+    // ملاحظة: fetch سيقوم تلقائياً بضبط Content-Type: multipart/form-data مع الـ boundary الصحيح
+    const res = await fetch(`${BACKEND_URL}/lands/${id}/images/upload`, { // [cite: 30]
       method: "POST",
       headers: {
-        "Authorization": `Bearer ${token}`,
+        "Authorization": `Bearer ${token}`, // [cite: 2]
       },
       body: formData, 
     });
 
     if (!res.ok) {
       const errorData = await res.json().catch(() => ({}));
-      console.error("Upload failed:", errorData);
+      console.error("Backend Upload Failed:", errorData);
       return NextResponse.json(errorData, { status: res.status });
     }
 
-    const data = await res.json();
+    const data = await res.json(); // المتوقع: LandImageOut [cite: 30]
     return NextResponse.json(data, { status: 201 });
 
   } catch (error: any) {
-    console.error("Proxy Upload Error:", error);
+    console.error("Proxy Error:", error);
     return NextResponse.json(
       { detail: error.message || "Internal Server Error" },
       { status: 500 }
