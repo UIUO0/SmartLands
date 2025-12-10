@@ -1,31 +1,41 @@
 import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
-
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "https://smartlands-production.up.railway.app";
+import { API_URL, COOKIE_NAME } from "@/lib/config";
 
 export async function GET(req: NextRequest) {
+  // 1. قراءة الكوكيز من المتصفح
   const cookieStore = await cookies();
-  
-  // اسم الكوكيز حسب توثيق الباك-إند هو 'access_token'
-  const token = cookieStore.get("access_token")?.value;
+  const token = cookieStore.get(COOKIE_NAME);
 
+  // إذا لم يوجد توكن، المستخدم زائر (401)
   if (!token) {
-    return NextResponse.json({ message: "Guest" }, { status: 401 });
+    return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
   }
 
-  const backendRes = await fetch(`${BASE_URL}/users/me`, {
-    method: "GET",
-    headers: {
-      "Accept": "application/json",
-      "Cookie": `access_token=${token}`, // <--- هام جداً
-    },
-    cache: "no-store",
-  });
+  try {
+    // 2. إرسال الطلب للباك-إند مع الكوكيز في الهيدر الصحيح
+    const backendRes = await fetch(`${API_URL}/users/me`, {
+      method: "GET",
+      headers: {
+        "Accept": "application/json",
+        // انتبه: الباك-إند يتوقع هيدر Cookie وليس Authorization
+        "Cookie": `${COOKIE_NAME}=${token.value}`,
+      },
+      cache: "no-store",
+    });
 
-  if (!backendRes.ok) {
-    return NextResponse.json({ message: "Unauthorized" }, { status: backendRes.status });
+    if (!backendRes.ok) {
+      // إذا رفض الباك-إند التوكن (منتهي الصلاحية مثلاً)
+      return NextResponse.json({ message: "Session Expired" }, { status: 401 });
+    }
+
+    const data = await backendRes.json();
+    
+    // نجاح! نرجع بيانات المستخدم JSON
+    return NextResponse.json(data, { status: 200 });
+
+  } catch (error) {
+    console.error("Profile Fetch Error:", error);
+    return NextResponse.json({ message: "Server Error" }, { status: 500 });
   }
-
-  const data = await backendRes.json();
-  return NextResponse.json(data, { status: 200 });
 }
