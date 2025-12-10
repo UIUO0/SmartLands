@@ -3,42 +3,44 @@ import { NextRequest, NextResponse } from "next/server";
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
+    
+    // رابط الباك-إند
     const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "https://smartlands-production.up.railway.app";
 
     // 1. إرسال بيانات الدخول للباك-إند
-    const res = await fetch(`${BASE_URL}/auth/login`, {
+    const backendRes = await fetch(`${BASE_URL}/auth/login`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
     });
 
-    const data = await res.json();
-
-    if (!res.ok) {
-      return NextResponse.json(data, { status: res.status });
+    // 2. التحقق من نجاح الدخول
+    if (!backendRes.ok) {
+      const errorData = await backendRes.json();
+      return NextResponse.json(errorData, { status: backendRes.status });
     }
 
-    // 2. إنشاء الرد للفرونت-إند
+    const data = await backendRes.json();
+
+    // 3. إنشاء الرد للواجهة
     const response = NextResponse.json(data, { status: 200 });
 
-    // 3. سحب الكوكيز من رد الباك-إند ووضعها في رد النيكست
-    // هذه الخطوة الأهم: نقل 'access_token' للمتصفح
-    const setCookieHeader = res.headers.get("set-cookie");
+    // 4. (الخطوة الحاسمة) نقل الكوكيز من الباك-إند إلى المتصفح
+    // الباك-إند يرسل 'access_token' في الهيدر، يجب أن نمرره للمستخدم
+    const setCookieHeader = backendRes.headers.get("set-cookie");
     
     if (setCookieHeader) {
-      // تنظيف الهيدر وتعيينه في المتصفح
-      // نقوم بتقسيم الكوكيز إذا كان هناك أكثر من واحد
+      // قد يكون هناك أكثر من كوكي، نقسمهم ونضيفهم
       const cookies = setCookieHeader.split(/,(?=\s*[^;]+=[^;]+)/);
-      
       cookies.forEach((cookie) => {
-         response.headers.append("Set-Cookie", cookie);
+        response.headers.append("Set-Cookie", cookie);
       });
     }
 
     return response;
 
   } catch (error) {
-    console.error("Login Error:", error);
-    return NextResponse.json({ message: "Network Error" }, { status: 500 });
+    console.error("Login Proxy Error:", error);
+    return NextResponse.json({ message: "فشل الاتصال بالخادم" }, { status: 500 });
   }
 }
