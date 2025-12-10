@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { useSearchParams } from "next/navigation" // 👈 إضافة مهمة
+import { useSearchParams } from "next/navigation" 
 import { PropertyCard } from "./property-card"
 import { Loader2 } from "lucide-react"
 
@@ -9,37 +9,52 @@ export function PropertyGrid() {
   const [lands, setLands] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   
-  // 1. مراقبة الرابط
+  // 1. نستدعي هذا الهوك لمراقبة رابط الصفحة
   const searchParams = useSearchParams()
 
   useEffect(() => {
     async function fetchLands() {
       try {
         setLoading(true);
-        // 2. تحويل بارامترات الرابط إلى نص (مثلاً ?q=test&city=Riyadh)
+        
+        // 2. نأخذ الفلاتر من الرابط (مثل ?q=villa&city=Riyadh)
         const query = searchParams.toString();
         
-        // 3. إرسال الطلب مع الفلاتر
+        // 3. نطلب البيانات من الباك-إند مع الفلاتر
         const res = await fetch(`/api/lands?${query}`, { cache: "no-store" });
         
         if (res.ok) {
           const data = await res.json();
           const rawList = Array.isArray(data) ? data : (data.data || data.items || []);
           
-          // جلب الصور (الكود الذي يعمل معك حالياً)
+          // 🛑 4. هذا هو الجزء الذي أعيدناه: جلب الصور لكل أرض 🛑
           const landsWithImages = await Promise.all(rawList.map(async (land: any) => {
+             // محاولة استخراج الصورة من البيانات الأساسية أولاً
              if (land.image_url) return land;
+             if (land.cover_image?.file_url) return { ...land, image_url: land.cover_image.file_url };
+
              try {
-                // ملاحظة: إذا كان الباك إند يرجع الصورة مع البحث، لن يحتاج لهذا، لكن سنبقيه للاحتياط
-                if(land.cover_image?.file_url) return { ...land, image_url: land.cover_image.file_url };
-                // ... كود جلب الصور الإضافي إن لزم ...
-             } catch(e) {}
+                // إذا لم توجد، نطلبها من الباك-إند عبر البروكسي الخاص بنا
+                const landId = land.id || land.land_id;
+                const imgRes = await fetch(`/api/lands/${landId}/images`);
+                
+                if (imgRes.ok) {
+                    const images = await imgRes.json();
+                    // نأخذ صورة الغلاف أو أول صورة
+                    const cover = images.find((img: any) => img.is_cover) || images[0];
+                    if (cover) {
+                        return { ...land, image_url: cover.file_url };
+                    }
+                }
+             } catch(e) {
+                 console.warn(`Could not fetch image for land ${land.id}`);
+             }
+             // إذا فشل كل شيء، نرجع الأرض كما هي (وستظهر الصورة الافتراضية في البطاقة)
              return land;
           }));
           
           setLands(landsWithImages);
         } else {
-            // في حال الخطأ نصفر القائمة
             setLands([]);
         }
       } catch (err) {
@@ -51,7 +66,7 @@ export function PropertyGrid() {
 
     fetchLands()
     
-    // 4. إعادة التشغيل كلما تغير البحث
+    // يعيد التحميل كلما تغير البحث
   }, [searchParams]) 
 
   if (loading) return (
@@ -62,7 +77,7 @@ export function PropertyGrid() {
   
   if (lands.length === 0 && !loading) {
       return (
-          <div className="text-center py-20 text-gray-500">
+          <div className="text-center py-20 text-gray-500 text-lg">
               No lands found matching your search.
           </div>
       )
@@ -78,7 +93,7 @@ export function PropertyGrid() {
             title: land.title || land.name || "Untitled", 
             location: land.city || land.location || "Riyadh",
             price: land.price_amount || land.price || 0,
-            image: land.image_url || land.cover_image?.file_url || "/placeholder.svg", 
+            image: land.image_url || "/placeholder.svg", 
             sqft: land.area_sq_m || land.area || 0,
             status: land.status || "For Sale",
             beds: 0,

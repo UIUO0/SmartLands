@@ -1,29 +1,59 @@
-import { NextResponse, type NextRequest } from "next/server";
+import { NextResponse, NextRequest } from "next/server";
+import { cookies } from "next/headers";
 
-// رابط الباك-إند
 const BACKEND_URL = "https://smartlands-production.up.railway.app";
 
+// 1. دالة الرفع (POST) - موجودة سابقاً
+export async function POST(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> } 
+) {
+  const cookieStore = await cookies();
+  const token = cookieStore.get("sl_token")?.value || cookieStore.get("session_id")?.value;
+
+  if (!token) return NextResponse.json({ detail: "Unauthorized" }, { status: 401 });
+
+  try {
+    const { id } = await params;
+    const formData = await request.formData();
+    
+    const res = await fetch(`${BACKEND_URL}/lands/${id}/images/upload`, {
+      method: "POST",
+      headers: { "Authorization": `Bearer ${token}` },
+      body: formData, 
+    });
+
+    if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        return NextResponse.json(err, { status: res.status });
+    }
+    const data = await res.json();
+    return NextResponse.json(data);
+  } catch (error: any) {
+    return NextResponse.json({ detail: error.message }, { status: 500 });
+  }
+}
+
+// 2. ✅ دالة جلب الصور (GET) - الجديدة
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  // لا نحتاج توكن لجلب الصور (عادة عامة)، لكن لو خاصة نمرره
   try {
-    const { id } = await params; // استخراج رقم الأرض
-
-    // نطلب الصور من الباك-إند الحقيقي
+    const { id } = await params;
+    
+    // جلب الصور من الباك-إند
     const res = await fetch(`${BACKEND_URL}/lands/${id}/images`, {
-      cache: "no-store",
+      cache: "no-store", 
     });
 
-    if (!res.ok) {
-      return NextResponse.json([], { status: res.status });
-    }
+    if (!res.ok) return NextResponse.json([], { status: res.status });
 
     const data = await res.json();
-    return NextResponse.json(data);
-    
-  } catch (error) {
-    console.error("Image Proxy Error:", error);
-    return NextResponse.json([], { status: 500 });
+    return NextResponse.json(data); // إرجاع مصفوفة الصور
+
+  } catch (error: any) {
+    return NextResponse.json({ detail: error.message }, { status: 500 });
   }
 }
