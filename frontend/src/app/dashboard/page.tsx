@@ -1,5 +1,8 @@
 "use client";
-//هذا اخر واحدد
+
+// 👇 هذا السطر يخبر Next.js ألا يبني الصفحة بشكل ثابت، مما يحل مشكلة useSearchParams فوراً
+export const dynamic = "force-dynamic"; 
+
 import { Suspense } from "react"; 
 import { Sidebar } from "@/components/sidebar";
 import { Header } from "@/components/header";
@@ -24,7 +27,6 @@ export default function DashboardPage() {
               </p>
             </div>
 
-            {/* هذا هو الجزء الأهم لحل المشكلة */}
             <Suspense fallback={<div className="h-12 w-full bg-gray-200 rounded-xl animate-pulse"></div>}>
                 <SearchBar />
             </Suspense>
