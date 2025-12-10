@@ -75,19 +75,7 @@ async def lifespan(app: FastAPI):
         logger.info("🔄 Checking/Creating database tables...")
         from app.db.database import engine, Base
         
-        async with engine.connect() as conn:
-            try:
-                # DEBUG: Get raw create table statements
-                r = await conn.execute(text("SHOW CREATE TABLE lands"))
-                row = r.fetchone()
-                # row is (Table, Create Table)
-                print(f"MY_DEBUG_DDL_LANDS: {row[1]}", flush=True)
-                
-                r2 = await conn.execute(text("SHOW CREATE TABLE users"))
-                row2 = r2.fetchone()
-                print(f"MY_DEBUG_DDL_USERS: {row2[1]}", flush=True)
-            except Exception as e:
-                logger.error(f"DEBUG DDL ERROR: {e}")
+
 
         # SKIP CREATE_ALL TEMPORARILY
         # async with engine.begin() as conn:
@@ -208,36 +196,30 @@ def health_check():
         "database": "connected" if ok else "disconnected"
     }
 
-@app.get("/debug/schema", tags=["debug"])
-async def debug_schema():
-    """Debug endpoint to check DB schema types"""
+@app.get("/debug/ddl", tags=["debug"])
+async def debug_ddl():
+    """Debug endpoint to get raw CREATE TABLE statements"""
     from app.db.database import engine
-    from sqlalchemy import inspect, text
+    from sqlalchemy import text
     
-    info = {}
+    res = {}
     try:
         async with engine.connect() as conn:
-            def get_types(connection):
-                insp = inspect(connection)
-                res = {}
-                if insp.has_table("lands"):
-                    cols = insp.get_columns("lands")
-                    res["lands"] = {c["name"]: str(c["type"]) for c in cols if c["name"] == "land_id"}
-                else:
-                    res["lands"] = "MISSING"
-                    
-                if insp.has_table("users"):
-                    cols = insp.get_columns("users")
-                    res["users"] = {c["name"]: str(c["type"]) for c in cols if c["name"] == "user_id"}
-                else:
-                    res["users"] = "MISSING"
-                return res
-            
-            info = await conn.run_sync(get_types)
+            try:
+                r = await conn.execute(text("SHOW CREATE TABLE lands"))
+                res["lands"] = r.fetchone()[1]
+            except Exception as e:
+                res["lands"] = str(e)
+                
+            try:
+                r = await conn.execute(text("SHOW CREATE TABLE users"))
+                res["users"] = r.fetchone()[1]
+            except Exception as e:
+                res["users"] = str(e)
     except Exception as e:
-        info["error"] = str(e)
+        res["error"] = str(e)
         
-    return info
+    return res
 
 # ===== Include Routers =====
 app.include_router(auth_router)
