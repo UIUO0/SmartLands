@@ -122,20 +122,21 @@ export default function MyLandsPage() {
     finally { setIsSubmitting(false); }
   }
 
-  // 4. دالة رفع الصورة (محدثة)
+  // 4. دالة رفع الصورة (محدثة لتعمل مع الباك-إند)
   async function handleImageUpload(e: React.FormEvent) {
     e.preventDefault();
     if (!selectedLand || !selectedFile) return;
 
     setIsSubmitting(true);
-    const landId = selectedLand.land_id || selectedLand.id;
+    // نستخدم land_id أو id حسب المتوفر
+    const landId = selectedLand.land_id || selectedLand.id; 
     
-    // تجهيز الملف حسب طلب الباك إند 
+    // تجهيز الملف داخل FormData كما يطلب التوثيق
     const formPayload = new FormData();
-    formPayload.append("file", selectedFile); // الاسم 'file' ضروري جداً
+    formPayload.append("file", selectedFile); // [cite: 39] يجب أن يكون الاسم 'file'
 
     try {
-        // إرسال الطلب للبروكسي الذي أنشأناه في الخطوة 1
+        // إرسال الطلب للبروكسي الذي أنشأناه في الخطوة السابقة
         const res = await fetch(`/api/lands/${landId}/images`, { 
             method: "POST", 
             body: formPayload 
@@ -146,10 +147,10 @@ export default function MyLandsPage() {
             throw new Error(errData.detail || "Failed to upload image");
         }
 
-        // نجاح! نغلق النافذة ونحدث البيانات
+        // نجاح! نغلق النافذة، ونفرغ الملف، ونحدث البيانات
         setIsUploadOpen(false); 
         setSelectedFile(null); 
-        load(); 
+        load(); // إعادة تحميل القائمة لتظهر الصورة الجديدة
         
     } catch (error: any) { 
         alert(`Upload Error: ${error.message}`); 
@@ -157,7 +158,7 @@ export default function MyLandsPage() {
         setIsSubmitting(false); 
     }
   }
-  
+
   // Helpers لفتح المودلز
   const openEditModal = (land: Land) => {
     setSelectedLand(land);
