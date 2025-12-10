@@ -7,7 +7,7 @@ import { Check, X, MessageCircle, Clock, FileText, ArrowUpRight, ArrowDownLeft, 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
-// تعريف نوع البيانات للطلب
+// ... (نفس الـ Type RequestItem السابق)
 type RequestItem = {
   request_id: number;
   land_id: number;
@@ -16,14 +16,13 @@ type RequestItem = {
   status: "pending" | "accepted" | "rejected";
   amount?: number;
   created_at?: string;
-  land_title?: string; // سنحاول عرضه إذا توفر
 };
 
 export default function RequestsPage() {
-  const [requests, setRequests] = useState<RequestItem[]>([]);
-  const [userId, setUserId] = useState<number | null>(null);
+  const [incomingRequests, setIncomingRequests] = useState<RequestItem[]>([]);
+  const [myOrders, setMyOrders] = useState<RequestItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [processingId, setProcessingId] = useState<number | null>(null); // للزر الذي يتم ضغطه
+  const [processingId, setProcessingId] = useState<number | null>(null);
   
   const router = useRouter();
 
@@ -33,21 +32,17 @@ export default function RequestsPage() {
 
   async function fetchData() {
     try {
-      // 1. جلب بيانات المستخدم لمعرفة الـ ID الخاص بي
-      const userRes = await fetch("/api/users/me");
-      if (!userRes.ok) {
-         router.push("/login");
-         return;
-      }
-      const userData = await userRes.json();
-      setUserId(userData.user_id);
+      // 1. جلب الطلبات المرسلة (My Orders)
+      const sentRes = await fetch("/api/requests"); // هذا يجلب sent requests
+      const sentData = sentRes.ok ? await sentRes.json() : [];
 
-      // 2. جلب الطلبات
-      const reqRes = await fetch("/api/requests");
-      if (reqRes.ok) {
-        const reqData = await reqRes.json();
-        setRequests(reqData);
-      }
+      // 2. جلب الطلبات الواردة (Incoming) - الراوت الجديد
+      const receivedRes = await fetch("/api/requests/incoming");
+      const receivedData = receivedRes.ok ? await receivedRes.json() : [];
+
+      setMyOrders(sentData);
+      setIncomingRequests(receivedData);
+
     } catch (e) {
       console.error(e);
     } finally {
@@ -63,16 +58,14 @@ export default function RequestsPage() {
     try {
         const res = await fetch(`/api/requests/${requestId}/${action}`, { method: "POST" });
         if (res.ok) {
-            // تحديث القائمة محلياً
-            setRequests(prev => prev.map(r => 
+            // تحديث القائمة الواردة محلياً
+            setIncomingRequests(prev => prev.map(r => 
                 r.request_id === requestId ? { ...r, status: action === "accept" ? "accepted" : "rejected" } : r
             ));
             
-            if (action === "accept") {
-                alert("تم القبول! يمكنك الآن بدء الدردشة.");
-            }
+            if (action === "accept") alert("تم القبول! يمكنك الآن بدء الدردشة.");
         } else {
-            alert("فشلت العملية، حاول مرة أخرى.");
+            alert("فشلت العملية");
         }
     } catch (e) {
         alert("حدث خطأ في الاتصال");
@@ -80,10 +73,6 @@ export default function RequestsPage() {
         setProcessingId(null);
     }
   }
-
-  // فصل الطلبات إلى قوائم
-  const incomingRequests = requests.filter(r => r.to_user_id === userId);
-  const myOrders = requests.filter(r => r.from_user_id === userId);
 
   return (
     <div className="flex min-h-screen bg-[#F1F3E0]">
@@ -132,7 +121,7 @@ export default function RequestsPage() {
                                             </div>
                                         )}
 
-                                        {/* أزرار التحكم للمالك (تظهر فقط إذا كان الطلب معلقاً) */}
+                                        {/* أزرار التحكم */}
                                         {req.status === 'pending' && (
                                             <div className="flex gap-2 mt-2">
                                                 <button 
@@ -153,7 +142,6 @@ export default function RequestsPage() {
                                             </div>
                                         )}
 
-                                        {/* زر الدردشة عند القبول */}
                                         {req.status === 'accepted' && (
                                             <Link href={`/chats`} className="block w-full bg-[#A1BC98] text-black py-3 rounded-xl font-bold text-center hover:bg-[#8ea885] transition flex items-center justify-center gap-2">
                                                 <MessageCircle className="h-5 w-5"/> بدء المحادثة
@@ -220,7 +208,6 @@ export default function RequestsPage() {
   );
 }
 
-// مكون بسيط لعرض الحالة بألوان مختلفة
 function StatusBadge({ status }: { status: string }) {
     const styles = {
         pending: "bg-yellow-100 text-yellow-800 border-yellow-200",
@@ -235,7 +222,6 @@ function StatusBadge({ status }: { status: string }) {
     };
 
     const s = status as keyof typeof styles;
-
     return (
         <span className={`px-3 py-1 rounded-lg text-xs font-bold border ${styles[s] || "bg-gray-100 text-gray-800"}`}>
             {labels[s] || status}
