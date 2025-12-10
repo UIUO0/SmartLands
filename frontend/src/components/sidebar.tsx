@@ -16,13 +16,6 @@ export function Sidebar() {
   const pathname = usePathname()
   const router = useRouter()
 
-  // 1. التحقق من وجود التوكن لإظهار زر الخروج
-  useEffect(() => {
-    // فحص بسيط: هل الكوكيز تحتوي على التوكن؟
-    const hasToken = document.cookie.includes("sl_token") || document.cookie.includes("session_id");
-    setIsLoggedIn(hasToken);
-  }, []);
-
   const toggleMobileSidebar = () => setIsOpen(!isOpen)
   const toggleDesktopCollapse = () => setIsCollapsed(!isCollapsed)
 

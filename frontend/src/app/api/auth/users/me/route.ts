@@ -1,34 +1,41 @@
 import { NextRequest, NextResponse } from "next/server";
+import { cookies } from "next/headers";
 import { API_URL, COOKIE_NAME } from "@/lib/config";
 
 export async function GET(req: NextRequest) {
-  const token = req.cookies.get(COOKIE_NAME)?.value;
+  // 1. قراءة الكوكيز من المتصفح
+  const cookieStore = await cookies();
+  const token = cookieStore.get(COOKIE_NAME);
+
+  // إذا لم يوجد توكن، المستخدم زائر (401)
   if (!token) {
-    // لا ترجع 401 للواجهة؛ رجّع حالة مصادقة false
-    return NextResponse.json({ authenticated: false, user: null }, { status: 200 });
+    return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
   }
 
-  const r = await fetch(`${API_URL}/users/me`, {
-    method: "GET",
-    headers: {
-      Accept: "application/json",
-      Authorization: `Bearer ${token}`,
-    },
-    cache: "no-store",
-  });
+  try {
+    // 2. إرسال الطلب للباك-إند مع الكوكيز في الهيدر الصحيح
+    const backendRes = await fetch(`${API_URL}/users/me`, {
+      method: "GET",
+      headers: {
+        "Accept": "application/json",
+        // انتبه: الباك-إند يتوقع هيدر Cookie وليس Authorization
+        "Cookie": `${COOKIE_NAME}=${token.value}`,
+      },
+      cache: "no-store",
+    });
 
-  // حاول قراءة JSON، ولو فشل ارجع نص
-  const raw = await r.text();
-  let data: any;
-  try { data = JSON.parse(raw); } catch { data = raw; }
-
-  if (!r.ok) {
-    // 401 من الباك إند = التوكن منتهي/غير صالح
-    if (r.status === 401) {
-      return NextResponse.json({ authenticated: false, user: null }, { status: 200 });
+    if (!backendRes.ok) {
+      // إذا رفض الباك-إند التوكن (منتهي الصلاحية مثلاً)
+      return NextResponse.json({ message: "Session Expired" }, { status: 401 });
     }
-    return NextResponse.json({ authenticated: false, error: data }, { status: r.status });
-  }
 
-  return NextResponse.json({ authenticated: true, user: data }, { status: 200 });
+    const data = await backendRes.json();
+    
+    // نجاح! نرجع بيانات المستخدم JSON
+    return NextResponse.json(data, { status: 200 });
+
+  } catch (error) {
+    console.error("Profile Fetch Error:", error);
+    return NextResponse.json({ message: "Server Error" }, { status: 500 });
+  }
 }
