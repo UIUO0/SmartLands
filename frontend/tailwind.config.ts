@@ -9,44 +9,26 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        border: "hsl(var(--border))",
-        input: "hsl(var(--input))",
-        ring: "hsl(var(--ring))",
-        background: "hsl(var(--background))",
-        foreground: "hsl(var(--foreground))",
-        primary: {
-          DEFAULT: "hsl(var(--primary))",
-          foreground: "hsl(var(--primary-foreground))",
-        },
-        secondary: {
-          DEFAULT: "hsl(var(--secondary))",
-          foreground: "hsl(var(--secondary-foreground))",
-        },
-        destructive: {
-          DEFAULT: "hsl(var(--destructive))",
-          foreground: "hsl(var(--destructive-foreground))",
-        },
-        muted: {
-          DEFAULT: "hsl(var(--muted))",
-          foreground: "hsl(var(--muted-foreground))",
-        },
-        accent: {
-          DEFAULT: "hsl(var(--accent))",
-          foreground: "hsl(var(--accent-foreground))",
-        },
-        popover: {
-          DEFAULT: "hsl(var(--popover))",
-          foreground: "hsl(var(--popover-foreground))",
-        },
-        card: {
-          DEFAULT: "hsl(var(--card))",
-          foreground: "hsl(var(--card-foreground))",
-        },
+        // ألوان Smart Lands الرسمية
+        background: "#F1F3E0",       // الخلفية الكريمي
+        foreground: "#000000",       // النصوص
+        
+        card: "#D2DCB6",             // لون البطاقات والسايدبار (أخضر فاتح)
+        "card-foreground": "#000000",
+        
+        primary: "#A1BC98",          // لون الأزرار والتمييز (أخضر عشبي)
+        "primary-foreground": "#000000",
+        
+        secondary: "#E2E8D5",        // لون العناصر الثانوية
+        "secondary-foreground": "#3a4430",
+        
+        muted: "#9CA3AF",
+        border: "#A1BC98",           // لون الحدود
       },
       borderRadius: {
-        lg: "var(--radius)",
-        md: "calc(var(--radius) - 2px)",
-        sm: "calc(var(--radius) - 4px)",
+        lg: "1rem",
+        md: "0.75rem",
+        sm: "0.5rem",
       },
     },
   },

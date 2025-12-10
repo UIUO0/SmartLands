@@ -11,7 +11,6 @@ interface PropertyCardProps {
 export function PropertyCard({ property }: PropertyCardProps) {
   const [isFavorited, setIsFavorited] = useState(false)
 
-  // تنسيق السعر
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat('en-SA', {
       style: 'currency',
@@ -21,58 +20,42 @@ export function PropertyCard({ property }: PropertyCardProps) {
   }
 
   return (
-    <div className="group bg-card rounded-2xl overflow-hidden border border-border hover:border-primary/50 hover:shadow-xl transition-all duration-300 flex flex-col h-full">
-      {/* قسم الصورة */}
-      <div className="relative h-56 sm:h-64 overflow-hidden bg-secondary/50">
+    <div className="group bg-[#D2DCB6] rounded-3xl overflow-hidden border border-[#A1BC98]/50 hover:shadow-2xl transition-all duration-300 flex flex-col h-full">
+      {/* الصورة: قللنا الارتفاع ليكون أنيقاً */}
+      <div className="relative h-48 overflow-hidden bg-gray-200">
         <img
           src={property.image || "/placeholder.svg"}
           alt={property.title}
           className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700 ease-in-out"
         />
         
-        <div className="absolute top-3 right-3 sm:top-4 sm:right-4 z-10">
-          <button
-            onClick={(e) => {
-              e.preventDefault();
-              setIsFavorited(!isFavorited);
-            }}
-            className="bg-white/90 backdrop-blur-sm rounded-full p-2.5 shadow-sm hover:shadow-md transition-all hover:scale-105 active:scale-95"
-          >
-            <Heart
-              className={`h-5 w-5 transition-colors ${isFavorited ? "fill-red-500 text-red-500" : "text-gray-600"}`}
-            />
-          </button>
-        </div>
-
-        <div className="absolute top-3 left-3 sm:top-4 sm:left-4 bg-primary/90 backdrop-blur-md text-white px-3 py-1 rounded-full text-xs font-bold shadow-sm uppercase tracking-wider">
+        <div className="absolute top-3 left-3 bg-black/80 backdrop-blur-md text-white px-3 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider">
           {property.status || "For Sale"}
         </div>
       </div>
 
-      {/* تفاصيل العقار */}
-      <div className="p-5 flex flex-col flex-1">
-        <div className="flex-1">
-          <h3 className="text-lg font-bold text-gray-900 mb-2 line-clamp-1">{property.title}</h3>
-
-          <div className="flex items-center gap-1.5 text-gray-500 mb-4">
-            <MapPin className="h-4 w-4 text-primary" />
-            <p className="text-sm font-medium">{property.location}</p>
-          </div>
-
-          <p className="text-2xl font-bold text-primary mb-5">
-            {formatPrice(property.price)}
-          </p>
-
-          {/* المميزات: تم إبقاء المساحة فقط وحذف الغرف والحمامات */}
-          <div className="grid grid-cols-1 gap-2 py-4 border-t border-dashed border-gray-200">
-            <div className="flex items-center justify-center gap-2 p-2 rounded-lg bg-secondary/30">
-              <Square className="h-4 w-4 text-gray-600" />
-              <span className="text-sm font-semibold text-gray-700">{property.sqft} m²</span>
-            </div>
+      {/* المحتوى */}
+      <div className="p-5 flex flex-col flex-1 gap-3">
+        <div>
+          <h3 className="text-lg font-bold text-black mb-1 line-clamp-1">{property.title}</h3>
+          
+          <div className="flex items-center gap-1.5 text-[#3a4430] text-sm">
+            <MapPin className="h-3.5 w-3.5" />
+            <span className="truncate">{property.location}</span>
           </div>
         </div>
 
-        <button className="w-full mt-4 bg-gray-900 text-white font-medium py-3 rounded-xl hover:bg-primary hover:text-black transition-colors flex items-center justify-center gap-2 group-hover:gap-3">
+        <div className="flex items-end justify-between mt-1">
+             <p className="text-xl font-bold text-black">
+                {formatPrice(property.price)}
+             </p>
+             <div className="flex items-center gap-1 bg-[#A1BC98]/40 px-2 py-1 rounded-md text-xs font-semibold">
+                <Square className="h-3 w-3" />
+                <span>{property.sqft} m²</span>
+             </div>
+        </div>
+
+        <button className="w-full mt-auto bg-black text-white text-sm font-bold py-3 rounded-xl hover:bg-[#333] transition-colors flex items-center justify-center gap-2 group-hover:gap-3">
           View Details <ArrowRight className="h-4 w-4" />
         </button>
       </div>
