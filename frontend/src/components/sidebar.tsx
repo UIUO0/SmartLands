@@ -5,7 +5,7 @@ import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
 import { 
   Menu, X, LayoutDashboard, Map, User, LogOut, 
-  Bot, FileText, ChevronLeft, ChevronRight 
+  Bot, FileText, ChevronLeft, ChevronRight, MessageCircle // <-- إضافة هذه
 } from "lucide-react"
 
 export function Sidebar() {
@@ -29,9 +29,10 @@ export function Sidebar() {
   // 2. القائمة الجديدة كما طلبت
   const navItems = [
     { icon: LayoutDashboard, label: "الصفحة الرئيسية", href: "/dashboard" },
-    { icon: Bot, label: "المساعد", href: "/assistant" },     // تأكد من إنشاء هذا المسار لاحقاً
+    { icon: Bot, label: "المساعد", href: "/assistant" },
     { icon: Map, label: "أراضي", href: "/mylands" },
-    { icon: FileText, label: "الطلبات", href: "/requests" }, // تأكد من إنشاء هذا المسار لاحقاً
+    { icon: MessageCircle, label: "الدردشات", href: "/chats" }, // <-- الرابط الجديد
+    { icon: FileText, label: "الطلبات", href: "/requests" },
     { icon: User, label: "الحساب", href: "/profile" },
   ]
 
