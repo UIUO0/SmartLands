@@ -122,30 +122,42 @@ export default function MyLandsPage() {
     finally { setIsSubmitting(false); }
   }
 
-  // 4. دالة رفع الصورة
+  // 4. دالة رفع الصورة (محدثة)
   async function handleImageUpload(e: React.FormEvent) {
     e.preventDefault();
     if (!selectedLand || !selectedFile) return;
-    
-    // ملاحظة: نحتاج لإنشاء Route Handler للرفع لاحقاً إذا لم يعمل مباشرة
-    // لكن سنحاول استخدام الـ FormData القياسي
+
     setIsSubmitting(true);
     const landId = selectedLand.land_id || selectedLand.id;
     
-    // ملاحظة مهمة: رفع الملفات في Next.js يحتاج تعامل خاص في الـ API Route
-    // هنا سنفترض وجود endpoint جاهز في /api/lands/[id]/images/upload
-    // إذا لم يكن موجوداً سننشئه في الخطوة القادمة
+    // تجهيز الملف حسب طلب الباك إند 
     const formPayload = new FormData();
-    formPayload.append("file", selectedFile);
+    formPayload.append("file", selectedFile); // الاسم 'file' ضروري جداً
 
     try {
-        // نستخدم رابط مباشر للباك إند مؤقتاً أو ننشئ بروكسي للرفع
-        // بما أن الرفع معقد، سأشرح لك كيفية عمل البروكسي له في الخطوة التالية
-        alert("Image upload requires a Backend Proxy setup. Check the chat for instructions.");
-    } catch (error: any) { alert(error.message); }
-    finally { setIsSubmitting(false); }
-  }
+        // إرسال الطلب للبروكسي الذي أنشأناه في الخطوة 1
+        const res = await fetch(`/api/lands/${landId}/images`, { 
+            method: "POST", 
+            body: formPayload 
+        });
 
+        if (!res.ok) {
+            const errData = await res.json();
+            throw new Error(errData.detail || "Failed to upload image");
+        }
+
+        // نجاح! نغلق النافذة ونحدث البيانات
+        setIsUploadOpen(false); 
+        setSelectedFile(null); 
+        load(); 
+        
+    } catch (error: any) { 
+        alert(`Upload Error: ${error.message}`); 
+    } finally { 
+        setIsSubmitting(false); 
+    }
+  }
+  
   // Helpers لفتح المودلز
   const openEditModal = (land: Land) => {
     setSelectedLand(land);
