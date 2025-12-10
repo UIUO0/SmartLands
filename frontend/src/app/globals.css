@@ -1,17 +1,27 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
 
-/* تعريف الألوان كمتغيرات CSS قياسية */
-:root {
-  --background: #F1F3E0;
-  --foreground: #000000;
-  --card: #D2DCB6;
-  --primary: #A1BC98;
+@theme {
+  /* تعريف ألوان Smart Lands بالطريقة الجديدة v4 */
+  --color-background: #F1F3E0;
+  --color-foreground: #000000;
+  
+  --color-card: #D2DCB6;
+  --color-card-foreground: #000000;
+  
+  --color-primary: #A1BC98;
+  --color-primary-foreground: #000000;
+  
+  --color-secondary: #E2E8D5;
+  --color-muted: #6B7280;
+  
+  --color-border: #A1BC98;
 }
 
-/* تطبيق الألوان على الصفحة */
-body {
-  background-color: var(--background);
-  color: var(--foreground);
+/* تنسيقات المتصفح الأساسية */
+@layer base {
+  body {
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+    font-family: ui-sans-serif, system-ui, sans-serif; /* لإصلاح خط Times New Roman */
+  }
 }
