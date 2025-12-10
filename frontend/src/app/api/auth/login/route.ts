@@ -1,46 +1,56 @@
 import { NextRequest, NextResponse } from "next/server";
+import { API_URL, COOKIE_NAME } from "@/lib/config";
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    
-    // رابط الباك-إند
-    const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "https://smartlands-production.up.railway.app";
 
-    // 1. إرسال بيانات الدخول للباك-إند
-    const backendRes = await fetch(`${BASE_URL}/auth/login`, {
+    // 1. إرسال طلب الدخول للباك-إند
+    const backendRes = await fetch(`${API_URL}/auth/login`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
     });
 
-    // 2. التحقق من نجاح الدخول
-    if (!backendRes.ok) {
-      const errorData = await backendRes.json();
-      return NextResponse.json(errorData, { status: backendRes.status });
-    }
-
     const data = await backendRes.json();
 
-    // 3. إنشاء الرد للواجهة
+    if (!backendRes.ok) {
+      return NextResponse.json(data, { status: backendRes.status });
+    }
+
+    // 2. تجهيز الرد للفرونت-إند
     const response = NextResponse.json(data, { status: 200 });
 
-    // 4. (الخطوة الحاسمة) نقل الكوكيز من الباك-إند إلى المتصفح
-    // الباك-إند يرسل 'access_token' في الهيدر، يجب أن نمرره للمستخدم
+    // 3. سحب الكوكيز من الباك-إند وتمريرها للمتصفح
+    // هذه الخطوة الأهم: قراءة Set-Cookie من هيدر الباك-إند
     const setCookieHeader = backendRes.headers.get("set-cookie");
-    
+
     if (setCookieHeader) {
-      // قد يكون هناك أكثر من كوكي، نقسمهم ونضيفهم
+      // تنظيف النص لاستخراج القيمة فقط إذا لزم الأمر، أو تمريره كما هو
+      // Next.js في بعض الاستضافات يحتاج لتقسيم الكوكيز
       const cookies = setCookieHeader.split(/,(?=\s*[^;]+=[^;]+)/);
+      
       cookies.forEach((cookie) => {
+        // نضبط الكوكيز في استجابة Next.js
         response.headers.append("Set-Cookie", cookie);
       });
+    } else {
+        // في حالة لم يرسل الباك إند كوكي (نادر الحدوث مع JWT HttpOnly)
+        // نقوم بإنشاء كوكي يدوياً إذا كان التوكن موجوداً في الـ Body (احتياط)
+        if (data.access_token) {
+            response.cookies.set(COOKIE_NAME, data.access_token, {
+                httpOnly: true,
+                secure: process.env.NODE_ENV === "production",
+                path: "/",
+                maxAge: 60 * 60 * 24 * 7, // أسبوع
+            });
+        }
     }
 
     return response;
 
   } catch (error) {
     console.error("Login Proxy Error:", error);
-    return NextResponse.json({ message: "فشل الاتصال بالخادم" }, { status: 500 });
+    return NextResponse.json({ message: "Connection Failed" }, { status: 500 });
   }
 }
