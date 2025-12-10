@@ -3,19 +3,18 @@
 import { Sidebar } from "@/components/sidebar";
 import { Header } from "@/components/header";
 import { useEffect, useState } from "react";
-import { Plus, MapPin, Ruler, Tag, Trash2, Edit, X, Loader2, Save } from "lucide-react";
+import { Plus, MapPin, Ruler, Trash2, Edit, X, Loader2, Save } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
 export default function MyLandsPage() {
+  // تهيئة الحالة بمصفوفة فارغة لتجنب الخطأ قبل التحميل
   const [lands, setLands] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   
-  // حالات النافذة المنبثقة (Add Modal)
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   
-  // نموذج إضافة الأرض
   const [formData, setFormData] = useState({
     title: "",
     description: "",
@@ -24,7 +23,6 @@ export default function MyLandsPage() {
     city: "Riyadh",
     region: "",
     address_line: "",
-    // إحداثيات افتراضية للرياض
     latitude: 24.7136, 
     longitude: 46.6753
   });
@@ -35,34 +33,54 @@ export default function MyLandsPage() {
     fetchMyLands();
   }, []);
 
+  // --- التعديل هنا (دالة جلب البيانات الآمنة) ---
   async function fetchMyLands() {
     try {
       const res = await fetch("/api/lands/mine");
+      
       if (res.status === 401) {
           router.push("/login");
           return;
       }
+
       if (res.ok) {
         const data = await res.json();
-        setLands(data);
+        console.log("📦 Lands Data Received:", data); // لنرى شكل البيانات في الكونسول
+
+        // التحقق من نوع البيانات قبل وضعها في الحالة
+        if (Array.isArray(data)) {
+            // الحالة 1: البيانات مصفوفة مباشرة
+            setLands(data);
+        } else if (data && Array.isArray(data.items)) {
+            // الحالة 2: البيانات داخل خاصية items (تصفح الصفحات)
+            setLands(data.items);
+        } else if (data && Array.isArray(data.lands)) {
+             // الحالة 3: البيانات داخل خاصية lands
+            setLands(data.lands);
+        } else {
+            // الحالة 4: صيغة غير معروفة، نضع مصفوفة فارغة لتجنب الكراش
+            console.warn("⚠️ Unexpected data format, defaulting to empty list.");
+            setLands([]);
+        }
       }
     } catch (e) {
-      console.error(e);
+      console.error("Fetch Error:", e);
+      setLands([]); // عند الخطأ نضمن أنها مصفوفة
     } finally {
       setLoading(false);
     }
   }
+  // ------------------------------------------------
 
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault();
     setIsSubmitting(true);
     
-    // تحويل الأرقام لنوع number
     const payload = {
         ...formData,
         price_amount: Number(formData.price_amount),
         area_sq_m: Number(formData.area_sq_m),
-        country: "SA" // ثابت حالياً
+        country: "SA"
     };
 
     try {
@@ -75,8 +93,8 @@ export default function MyLandsPage() {
         if (res.ok) {
             alert("✅ تمت إضافة الأرض بنجاح!");
             setIsModalOpen(false);
-            setFormData({ ...formData, title: "", description: "", price_amount: "", area_sq_m: "" }); // تصفير الحقول
-            fetchMyLands(); // تحديث القائمة
+            setFormData({ ...formData, title: "", description: "", price_amount: "", area_sq_m: "" });
+            fetchMyLands();
         } else {
             const err = await res.json();
             alert("❌ فشل الإضافة: " + (err.detail || "تأكد من البيانات"));
@@ -120,6 +138,7 @@ export default function MyLandsPage() {
                 </div>
             ) : (
                 <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
+                    {/* هنا كان يحدث الخطأ، الآن lands مضمونة أنها مصفوفة */}
                     {lands.map((land) => (
                         <div key={land.land_id} className="bg-white rounded-3xl p-5 shadow-sm border border-[#A1BC98]/30 group hover:border-[#A1BC98] transition">
                             <div className="flex justify-between items-start mb-3">
