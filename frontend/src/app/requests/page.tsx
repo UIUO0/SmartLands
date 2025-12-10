@@ -2,25 +2,202 @@
 
 import { Sidebar } from "@/components/sidebar";
 import { Header } from "@/components/header";
-import { FileText } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Check, X, MessageCircle, Clock, FileText, ArrowUpRight, ArrowDownLeft, Loader2 } from "lucide-react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+
+type RequestItem = {
+  request_id: number;
+  land_id: number;
+  from_user_id: number;
+  to_user_id: number;
+  status: "pending" | "accepted" | "rejected";
+  amount?: number;
+  created_at?: string;
+};
 
 export default function RequestsPage() {
+  const [incomingRequests, setIncomingRequests] = useState<RequestItem[]>([]);
+  const [myOrders, setMyOrders] = useState<RequestItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [processingId, setProcessingId] = useState<number | null>(null);
+  
+  const router = useRouter();
+
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  async function fetchData() {
+    try {
+      // 1. جلب طلباتي المرسلة (من الباك-إند الحقيقي)
+      const sentRes = await fetch("/api/requests"); 
+      const sentData = sentRes.ok ? await sentRes.json() : [];
+      setMyOrders(sentData);
+
+      // 2. جلب الطلبات الواردة (من الملف الوهمي الذي أنشأناه)
+      const receivedRes = await fetch("/api/requests/incoming");
+      const receivedData = receivedRes.ok ? await receivedRes.json() : [];
+      setIncomingRequests(receivedData);
+
+    } catch (e) {
+      console.error("Fetch error:", e);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  // دالة التعامل مع القبول والرفض
+  async function handleAction(requestId: number, action: "accept" | "reject") {
+    // محاكاة النجاح لأن الباك-إند قد لا يقبل الـ ID الوهمي
+    if (!confirm(action === "accept" ? "هل أنت متأكد من قبول البيع؟" : "هل تريد رفض الطلب؟")) return;
+    
+    setProcessingId(requestId);
+    
+    // محاكاة تأخير الشبكة
+    setTimeout(() => {
+        setIncomingRequests(prev => prev.map(r => 
+            r.request_id === requestId ? { ...r, status: action === "accept" ? "accepted" : "rejected" } : r
+        ));
+        
+        if (action === "accept") alert("تم القبول! (محاكاة)");
+        setProcessingId(null);
+    }, 1000);
+
+    /* // --- الكود الحقيقي يتم تفعيله عند إصلاح الباك-إند ---
+    try {
+        const res = await fetch(`/api/requests/${requestId}/${action}`, { method: "POST" });
+        if (res.ok) {
+           // تحديث الحالة...
+        }
+    } catch (e) { ... }
+    */
+  }
+
+  function StatusBadge({ status }: { status: string }) {
+    const styles: any = {
+        pending: "bg-yellow-100 text-yellow-800 border-yellow-200",
+        accepted: "bg-green-100 text-green-800 border-green-200",
+        rejected: "bg-red-50 text-red-800 border-red-100",
+    };
+    const labels: any = {
+        pending: "قيد الانتظار",
+        accepted: "تمت الموافقة",
+        rejected: "مرفوض",
+    };
+    return (
+        <span className={`px-3 py-1 rounded-lg text-xs font-bold border ${styles[status] || "bg-gray-100 text-gray-800"}`}>
+            {labels[status] || status}
+        </span>
+    );
+  }
+
   return (
-    <div className="flex min-h-screen bg-background">
+    <div className="flex min-h-screen bg-[#F1F3E0]">
       <Sidebar />
       <main className="flex-1 flex flex-col h-screen overflow-hidden">
         <Header />
+        
         <div className="flex-1 overflow-y-auto p-6 lg:p-8">
-             <div className="max-w-5xl mx-auto">
-                <h1 className="text-2xl font-bold mb-6 flex items-center gap-2">
-                    <FileText className="h-6 w-6"/> Requests & Offers
-                </h1>
-                
-                {/* Placeholder للقائمة */}
-                <div className="bg-card rounded-3xl p-8 text-center border border-border">
-                    <p className="text-muted-foreground">You have no pending requests.</p>
+            <h1 className="text-3xl font-bold mb-8 text-black flex items-center gap-2">
+                <FileText className="h-8 w-8"/> إدارة الطلبات
+            </h1>
+
+            {loading ? (
+                 <div className="text-center py-20 text-[#556b4d] animate-pulse">جارِ تحميل الطلبات...</div>
+            ) : (
+                <div className="space-y-10">
+                    
+                    {/* === الطلبات الواردة (وهمية حالياً) === */}
+                    <section>
+                        <h2 className="text-xl font-bold mb-4 text-[#3a4430] flex items-center gap-2">
+                            <ArrowDownLeft className="h-6 w-6 text-green-700"/>
+                            طلبات الشراء الواردة (Incoming)
+                        </h2>
+                        
+                        {incomingRequests.length === 0 ? (
+                            <div className="bg-[#D2DCB6]/30 p-8 rounded-2xl text-center text-gray-500 border border-[#A1BC98]/30">
+                                لا توجد طلبات شراء لأراضيك حالياً.
+                            </div>
+                        ) : (
+                            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                                {incomingRequests.map((req) => (
+                                    <div key={req.request_id} className="bg-white p-6 rounded-2xl shadow-sm border border-[#A1BC98]/30 relative overflow-hidden">
+                                        <div className="flex justify-between items-start mb-4">
+                                            <div>
+                                                <p className="text-xs font-bold text-[#556b4d] uppercase mb-1">رقم الطلب #{req.request_id}</p>
+                                                <p className="font-bold text-lg">أرض رقم {req.land_id}</p>
+                                                <p className="text-sm text-gray-500">من المستخدم #{req.from_user_id}</p>
+                                            </div>
+                                            <StatusBadge status={req.status} />
+                                        </div>
+
+                                        {req.amount && (
+                                            <div className="bg-[#F1F3E0] p-3 rounded-xl mb-4 text-center">
+                                                <span className="text-xs text-gray-500 font-bold block">العرض المقدم</span>
+                                                <span className="text-xl font-bold text-black">{req.amount.toLocaleString()} ر.س</span>
+                                            </div>
+                                        )}
+
+                                        {/* أزرار التحكم */}
+                                        {req.status === 'pending' && (
+                                            <div className="flex gap-2 mt-2">
+                                                <button 
+                                                    onClick={() => handleAction(req.request_id, "reject")}
+                                                    disabled={processingId === req.request_id}
+                                                    className="flex-1 bg-red-50 text-red-700 py-2.5 rounded-xl font-bold hover:bg-red-100 transition flex justify-center items-center gap-2"
+                                                >
+                                                    <X className="h-4 w-4"/> رفض
+                                                </button>
+                                                <button 
+                                                    onClick={() => handleAction(req.request_id, "accept")}
+                                                    disabled={processingId === req.request_id}
+                                                    className="flex-1 bg-black text-white py-2.5 rounded-xl font-bold hover:bg-[#333] transition flex justify-center items-center gap-2"
+                                                >
+                                                    {processingId === req.request_id ? <Loader2 className="animate-spin h-4 w-4"/> : <Check className="h-4 w-4"/>}
+                                                    قبول
+                                                </button>
+                                            </div>
+                                        )}
+
+                                        {req.status === 'accepted' && (
+                                            <Link href={`/chats`} className="block w-full bg-[#A1BC98] text-black py-3 rounded-xl font-bold text-center hover:bg-[#8ea885] transition flex items-center justify-center gap-2">
+                                                <MessageCircle className="h-5 w-5"/> بدء المحادثة
+                                            </Link>
+                                        )}
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </section>
+
+                    <div className="border-t border-[#A1BC98]/30"></div>
+
+                    {/* === طلباتي المرسلة (حقيقية) === */}
+                    <section>
+                        <h2 className="text-xl font-bold mb-4 text-[#3a4430] flex items-center gap-2">
+                            <ArrowUpRight className="h-6 w-6 text-blue-700"/>
+                            طلباتي المرسلة (My Orders)
+                        </h2>
+                        {myOrders.length === 0 ? (
+                            <div className="text-center text-gray-500 py-4">لا توجد طلبات مرسلة.</div>
+                        ) : (
+                            <div className="space-y-4">
+                                {myOrders.map((req) => (
+                                    <div key={req.request_id} className="bg-white/60 p-5 rounded-2xl flex justify-between items-center border border-white">
+                                        <div>
+                                            <h3 className="font-bold">طلب شراء أرض #{req.land_id}</h3>
+                                            <p className="text-sm text-gray-500">الحالة: {req.status}</p>
+                                        </div>
+                                        <StatusBadge status={req.status} />
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </section>
                 </div>
-             </div>
+            )}
         </div>
       </main>
     </div>
