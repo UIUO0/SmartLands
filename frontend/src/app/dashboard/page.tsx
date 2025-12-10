@@ -1,5 +1,5 @@
 "use client";
-//هذا اخر واحدد
+
 import { Suspense } from "react"; 
 import { Sidebar } from "@/components/sidebar";
 import { Header } from "@/components/header";
