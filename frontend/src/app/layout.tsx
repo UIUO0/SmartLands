@@ -1,6 +1,6 @@
-import "./globals.css";
+import "./globals.css"; // ✅ استدعاء ملف الستايل
 import type { Metadata } from "next";
-import { GoogleAuthProvider } from  "@/components/GoogleProvider"; // 👈 استدعاء الغلاف الجديد
+import { GoogleAuthProvider } from "@/components/GoogleProvider";
 
 export const metadata: Metadata = {
   title: "Smart Lands",
@@ -10,12 +10,10 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
-      <body>
-        {/* قمنا بإحاطة الأطفال بالبروفايدر 
-            ليتمكن أي زر تسجيل دخول في الموقع من الوصول لجوجل 
-        */}
+      {/* 👇 هنا التعديل المهم: أضفنا الكلاسات لتفعيل الخلفية والخط */}
+      <body className="bg-background text-foreground font-sans antialiased">
         <GoogleAuthProvider>
-           {children}
+            {children}
         </GoogleAuthProvider>
       </body>
     </html>
