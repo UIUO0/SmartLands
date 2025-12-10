@@ -1,52 +1,41 @@
 import { NextRequest, NextResponse } from "next/server";
-import { API_URL, COOKIE_NAME } from "@/lib/config";
+import { cookies } from "next/headers";
 
-// نضمن قراءة التوكن حتى لو تغيّر مصدره
-function extractToken(req: NextRequest): string | undefined {
-  // 1) من HttpOnly cookie
-  const fromCookie = req.cookies.get(COOKIE_NAME)?.value;
-  if (fromCookie) return fromCookie;
+const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "https://smartlands-production.up.railway.app";
 
-  // 2) من هيدر Authorization لو موجود (احتياط)
-  const auth = req.headers.get("authorization") || req.headers.get("Authorization");
-  if (auth?.toLowerCase().startsWith("bearer ")) return auth.slice(7).trim();
+// دالة جلب البيانات (موجودة سابقاً)
+export async function GET() {
+  const cookieStore = await cookies();
+  const token = cookieStore.get("access_token")?.value || cookieStore.get("session_id")?.value;
 
-  // 3) من الهيدر Cookie (fallback نادر)
-  const cookieHeader = req.headers.get("cookie") || req.headers.get("Cookie");
-  if (cookieHeader) {
-    const parts = cookieHeader.split(";").map((s) => s.trim());
-    const kv = parts.find((p) => p.startsWith(`${COOKIE_NAME}=`));
-    if (kv) return kv.split("=")[1];
-  }
+  if (!token) return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
 
-  return undefined;
-}
-
-export async function GET(req: NextRequest) {
-  const token = extractToken(req);
-  if (!token) {
-    return NextResponse.json({ authenticated: false }, { status: 401 });
-  }
-
-  const upstream = await fetch(`${API_URL}/users/me`, {
-    method: "GET",
-    headers: {
-      Authorization: `Bearer ${token}`,
-      "Accept": "application/json",
-    },
-    // مهم جداً حتى لا يُخزّن على الحافة
-    cache: "no-store",
+  const res = await fetch(`${BASE_URL}/users/me`, {
+    headers: { "Cookie": `access_token=${token}` },
   });
 
-  // حاول قراءة JSON حتى مع الأخطاء
-  const data = await upstream.json().catch(() => null);
+  const data = await res.json();
+  return NextResponse.json(data, { status: res.status });
+}
 
-  if (!upstream.ok) {
-    return NextResponse.json(
-      { authenticated: false, error: data || { message: "unauthorized" } },
-      { status: upstream.status }
-    );
-  }
+// دالة التعديل (الجديدة)
+export async function PATCH(request: NextRequest) {
+  const cookieStore = await cookies();
+  const token = cookieStore.get("access_token")?.value || cookieStore.get("session_id")?.value;
 
-  return NextResponse.json({ authenticated: true, user: data }, { status: 200 });
+  if (!token) return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
+
+  const body = await request.json();
+
+  const res = await fetch(`${BASE_URL}/users/me`, {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json",
+      "Cookie": `access_token=${token}`,
+    },
+    body: JSON.stringify(body),
+  });
+
+  const data = await res.json();
+  return NextResponse.json(data, { status: res.status });
 }
