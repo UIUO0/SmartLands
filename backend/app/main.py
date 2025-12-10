@@ -75,9 +75,25 @@ async def lifespan(app: FastAPI):
         logger.info("🔄 Checking/Creating database tables...")
         from app.db.database import engine, Base
         
-        async with engine.begin() as conn:
-            await conn.run_sync(Base.metadata.create_all)
-        logger.info("✅ Database tables verified/created")
+        async with engine.connect() as conn:
+            try:
+                # DEBUG: Get raw create table statements
+                r = await conn.execute(text("SHOW CREATE TABLE lands"))
+                row = r.fetchone()
+                # row is (Table, Create Table)
+                print(f"MY_DEBUG_DDL_LANDS: {row[1]}", flush=True)
+                
+                r2 = await conn.execute(text("SHOW CREATE TABLE users"))
+                row2 = r2.fetchone()
+                print(f"MY_DEBUG_DDL_USERS: {row2[1]}", flush=True)
+            except Exception as e:
+                logger.error(f"DEBUG DDL ERROR: {e}")
+
+        # SKIP CREATE_ALL TEMPORARILY
+        # async with engine.begin() as conn:
+        #     await conn.run_sync(Base.metadata.create_all)
+        
+        logger.info("✅ Database tables verification skipped for debugging")
         
     else:
         logger.error("❌ Database connection failed")
