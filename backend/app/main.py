@@ -69,25 +69,6 @@ async def lifespan(app: FastAPI):
     # Test database connection
     db_ok = await ping_database()
     if db_ok:
-        logger.info("✅ Database connection successful")
-        
-        # Auto-create tables (Migration fix)
-        logger.info("🔄 Checking/Creating database tables...")
-        from app.db.database import engine, Base
-        
-
-
-        # SKIP CREATE_ALL TEMPORARILY
-        # async with engine.begin() as conn:
-        #     await conn.run_sync(Base.metadata.create_all)
-        
-        logger.info("✅ Database tables verification skipped for debugging")
-        
-    else:
-        logger.error("❌ Database connection failed")
-        raise RuntimeError("Failed to connect to database")
-    
-    logger.info("✅ Smart Lands API started successfully")
     
     yield
     
@@ -196,30 +177,7 @@ def health_check():
         "database": "connected" if ok else "disconnected"
     }
 
-@app.get("/debug/ddl", tags=["debug"])
-async def debug_ddl():
-    """Debug endpoint to get raw CREATE TABLE statements"""
-    from app.db.database import engine
-    from sqlalchemy import text
-    
-    res = {}
-    try:
-        async with engine.connect() as conn:
-            try:
-                r = await conn.execute(text("SHOW CREATE TABLE lands"))
-                res["lands"] = r.fetchone()[1]
-            except Exception as e:
-                res["lands"] = str(e)
-                
-            try:
-                r = await conn.execute(text("SHOW CREATE TABLE users"))
-                res["users"] = r.fetchone()[1]
-            except Exception as e:
-                res["users"] = str(e)
-    except Exception as e:
-        res["error"] = str(e)
-        
-    return res
+
 
 # ===== Include Routers =====
 app.include_router(auth_router)
