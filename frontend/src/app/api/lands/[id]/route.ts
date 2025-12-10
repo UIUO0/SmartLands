@@ -1,36 +1,33 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { cookies } from "next/headers";
 
-// 👇 التعديل هنا: استخدام رابط Railway بدلاً من localhost
-const BACKEND_URL = "https://smartlands-production.up.railway.app";
+// تأكد أن هذا الرابط يطابق ما استخدمته في الملفات السابقة
+const BACKEND_URL = "http://localhost:8000"; 
 
-// 1. GET: لجلب قائمة صور الأرض
+// 1. GET: جلب تفاصيل أرض محددة
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params;
   try {
-    const { id } = await params;
-    // نطلب قائمة الصور من الباك-إند
-    const res = await fetch(`${BACKEND_URL}/lands/${id}/images`, {
+    const res = await fetch(`${BACKEND_URL}/lands/${id}`, {
       cache: "no-store",
     });
 
     if (!res.ok) {
-        // إذا لم توجد صور أو حدث خطأ، نرجع مصفوفة فارغة لكي لا يتوقف الموقع
-        return NextResponse.json([], { status: res.status });
+        return NextResponse.json({ error: "Land not found" }, { status: res.status });
     }
-    
+
     const data = await res.json();
     return NextResponse.json(data);
   } catch (error) {
-    console.error("GET Images Error:", error);
-    return NextResponse.json([], { status: 500 });
+    return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
   }
 }
 
-// 2. POST: لرفع صورة جديدة
-export async function POST(
+// 2. PATCH: تعديل بيانات الأرض (للمالك)
+export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
@@ -38,34 +35,52 @@ export async function POST(
   const cookieStore = await cookies();
   const token = cookieStore.get("sl_token")?.value || cookieStore.get("session_id")?.value;
 
-  if (!token) {
-    return NextResponse.json({ detail: "Unauthorized" }, { status: 401 });
-  }
+  if (!token) return NextResponse.json({ detail: "Unauthorized" }, { status: 401 });
 
   try {
-    const formData = await request.formData();
-    
-    const res = await fetch(`${BACKEND_URL}/lands/${id}/images/upload`, {
-      method: "POST",
+    const body = await request.json();
+    const res = await fetch(`${BACKEND_URL}/lands/${id}`, {
+      method: "PATCH",
       headers: {
+        "Content-Type": "application/json",
         "Authorization": `Bearer ${token}`,
       },
-      body: formData, 
+      body: JSON.stringify(body),
     });
 
     if (!res.ok) {
-      const errorData = await res.json().catch(() => ({}));
-      return NextResponse.json(errorData, { status: res.status });
+        const err = await res.json();
+        return NextResponse.json(err, { status: res.status });
     }
 
     const data = await res.json();
-    return NextResponse.json(data, { status: 201 });
-
-  } catch (error: any) {
-    console.error("Proxy Upload Error:", error);
-    return NextResponse.json(
-      { detail: error.message || "Internal Server Error" },
-      { status: 500 }
-    );
+    return NextResponse.json(data);
+  } catch (error) {
+    return NextResponse.json({ error: "Update Failed" }, { status: 500 });
   }
 }
+
+// 3. DELETE: حذف الأرض (للمالك)
+export async function DELETE(
+    request: NextRequest,
+    { params }: { params: Promise<{ id: string }> }
+  ) {
+    const { id } = await params;
+    const cookieStore = await cookies();
+    const token = cookieStore.get("sl_token")?.value || cookieStore.get("session_id")?.value;
+  
+    if (!token) return NextResponse.json({ detail: "Unauthorized" }, { status: 401 });
+  
+    try {
+      const res = await fetch(`${BACKEND_URL}/lands/${id}`, {
+        method: "DELETE",
+        headers: { "Authorization": `Bearer ${token}` },
+      });
+  
+      if (!res.ok) return NextResponse.json({ error: "Delete failed" }, { status: res.status });
+  
+      return new NextResponse(null, { status: 204 });
+    } catch (error) {
+      return NextResponse.json({ error: "Delete Error" }, { status: 500 });
+    }
+  }
