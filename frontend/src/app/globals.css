@@ -6,34 +6,28 @@
   :root {
     /* Smart Lands Theme: Sage Green & Creamy White */
     
-    /* Background: #F1F3E0 */
+    /* القيم هنا بدون hsl() لأننا سنضيفها لاحقاً في الكونفيج أو الاستخدام */
     --background: 74 38% 92%; 
-    --foreground: 0 0% 0%; /* Black text */
+    --foreground: 0 0% 0%;
 
-    /* Cards/Header: #D2DCB6 */
     --card: 76 34% 79%;
     --card-foreground: 0 0% 0%;
 
-    /* Popover is same as card */
     --popover: 76 34% 79%;
     --popover-foreground: 0 0% 0%;
 
-    /* Primary Accent: #A1BC98 */
     --primary: 104 19% 67%;
     --primary-foreground: 0 0% 0%;
 
-    /* Secondary (lighter elements): #F1F3E0 mixed */
     --secondary: 74 38% 85%;
     --secondary-foreground: 0 0% 0%;
 
-    /* Muted Text */
     --muted: 74 20% 85%;
-    --muted-foreground: 76 10% 30%; 
+    --muted-foreground: 76 10% 30%;
 
-    /* Borders */
     --accent: 104 19% 67%;
     --accent-foreground: 0 0% 0%;
-    
+
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 0 0% 98%;
 
@@ -47,10 +41,13 @@
 
 @layer base {
   * {
-    /* ✅ التعديل هنا: استخدام CSS مباشر بدلاً من @apply لتجنب الخطأ */
-    border-color: hsl(var(--border)); 
+    /* حل مشكلة الحدود: استخدام CSS عادي */
+    border-color: hsl(var(--border));
   }
+  
   body {
-    @apply bg-background text-foreground;
+    /* حل مشكلة الخلفية: استخدام CSS عادي بدلاً من @apply */
+    background-color: hsl(var(--background));
+    color: hsl(var(--foreground));
   }
 }

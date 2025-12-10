@@ -29,7 +29,7 @@ export default function DashboardPage() {
             {/* شريط البحث */}
             <SearchBar />
 
-            {/* شبكة الأراضي (التي تجلب البيانات تلقائياً الآن) */}
+            {/* شبكة الأراضي */}
             <PropertyGrid />
             
           </div>

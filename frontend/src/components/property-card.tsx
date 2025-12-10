@@ -1,9 +1,8 @@
 "use client"
 
-import { Heart, MapPin, BedDouble, Bath, Square, ArrowRight } from "lucide-react"
+import { Heart, MapPin, Square, ArrowRight } from "lucide-react"
 import { useState } from "react"
 import type { Property } from "@/types/property"
-import Image from "next/image"
 
 interface PropertyCardProps {
   property: Property
@@ -12,7 +11,7 @@ interface PropertyCardProps {
 export function PropertyCard({ property }: PropertyCardProps) {
   const [isFavorited, setIsFavorited] = useState(false)
 
-  // دالة لتنسيق السعر (مثلاً: 1,000,000 ر.س)
+  // تنسيق السعر
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat('en-SA', {
       style: 'currency',
@@ -22,17 +21,15 @@ export function PropertyCard({ property }: PropertyCardProps) {
   }
 
   return (
-    <div className="group bg-card rounded-2xl overflow-hidden border border-border/50 hover:border-primary/50 hover:shadow-xl transition-all duration-300 flex flex-col h-full">
+    <div className="group bg-card rounded-2xl overflow-hidden border border-border hover:border-primary/50 hover:shadow-xl transition-all duration-300 flex flex-col h-full">
       {/* قسم الصورة */}
       <div className="relative h-56 sm:h-64 overflow-hidden bg-secondary/50">
-        {/* نستخدم img العادية مؤقتاً لتجنب مشاكل إعدادات Next.js مع الروابط الخارجية */}
         <img
           src={property.image || "/placeholder.svg"}
           alt={property.title}
           className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700 ease-in-out"
         />
         
-        {/* زر المفضلة */}
         <div className="absolute top-3 right-3 sm:top-4 sm:right-4 z-10">
           <button
             onClick={(e) => {
@@ -47,7 +44,6 @@ export function PropertyCard({ property }: PropertyCardProps) {
           </button>
         </div>
 
-        {/* حالة العقار (Badge) */}
         <div className="absolute top-3 left-3 sm:top-4 sm:left-4 bg-primary/90 backdrop-blur-md text-white px-3 py-1 rounded-full text-xs font-bold shadow-sm uppercase tracking-wider">
           {property.status || "For Sale"}
         </div>
@@ -67,25 +63,11 @@ export function PropertyCard({ property }: PropertyCardProps) {
             {formatPrice(property.price)}
           </p>
 
-          {/* المميزات (تظهر فقط إذا كانت القيم أكبر من صفر) */}
-          <div className="grid grid-cols-3 gap-2 py-4 border-t border-dashed border-gray-200">
-            {property.beds > 0 && (
-              <div className="flex flex-col items-center justify-center p-2 rounded-lg bg-secondary/30">
-                <BedDouble className="h-4 w-4 text-gray-600 mb-1" />
-                <span className="text-xs font-semibold text-gray-700">{property.beds} Beds</span>
-              </div>
-            )}
-            
-            {property.baths > 0 && (
-              <div className="flex flex-col items-center justify-center p-2 rounded-lg bg-secondary/30">
-                <Bath className="h-4 w-4 text-gray-600 mb-1" />
-                <span className="text-xs font-semibold text-gray-700">{property.baths} Baths</span>
-              </div>
-            )}
-
-            <div className="flex flex-col items-center justify-center p-2 rounded-lg bg-secondary/30">
-              <Square className="h-4 w-4 text-gray-600 mb-1" />
-              <span className="text-xs font-semibold text-gray-700">{property.sqft} m²</span>
+          {/* المميزات: تم إبقاء المساحة فقط وحذف الغرف والحمامات */}
+          <div className="grid grid-cols-1 gap-2 py-4 border-t border-dashed border-gray-200">
+            <div className="flex items-center justify-center gap-2 p-2 rounded-lg bg-secondary/30">
+              <Square className="h-4 w-4 text-gray-600" />
+              <span className="text-sm font-semibold text-gray-700">{property.sqft} m²</span>
             </div>
           </div>
         </div>

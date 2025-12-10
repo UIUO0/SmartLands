@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react"
 import { PropertyCard } from "./property-card"
-// تأكدنا الآن أن البيانات المرسلة تتطابق تماماً مع الـ Property Interface
 import { Loader2 } from "lucide-react"
 
 export function PropertyGrid() {
@@ -13,14 +12,24 @@ export function PropertyGrid() {
   useEffect(() => {
     async function fetchLands() {
       try {
+        console.log("Fetching lands..."); // للتجربة: هل بدأ الجلب؟
         const res = await fetch("/api/lands")
-        if (!res.ok) throw new Error("Failed to fetch lands")
+        
+        if (!res.ok) {
+            console.error("API Error:", res.status, res.statusText);
+            throw new Error("Failed to fetch lands")
+        }
         
         const data = await res.json()
-        setLands(Array.isArray(data) ? data : data.data || [])
+        console.log("Data received:", data); // للتجربة: ماذا وصلنا من الباك إند؟
+
+        // التعامل مع صيغ مختلفة من الباك إند
+        const landsArray = Array.isArray(data) ? data : (data.data || []);
+        setLands(landsArray)
+        
       } catch (err) {
-        console.error(err)
-        setError("Unable to load properties at the moment.")
+        console.error("Fetch error:", err)
+        setError("Unable to load properties. Check console for details.")
       } finally {
         setLoading(false)
       }
@@ -38,13 +47,14 @@ export function PropertyGrid() {
   }
 
   if (error) {
-    return <div className="text-center text-red-500 py-10">{error}</div>
+    return <div className="text-center text-red-500 py-10 bg-red-50 rounded-xl">{error}</div>
   }
 
   if (lands.length === 0) {
     return (
-      <div className="text-center py-10">
-        <p className="text-muted-foreground text-lg">No properties found.</p>
+      <div className="text-center py-20 bg-secondary/20 rounded-2xl border border-dashed border-border">
+        <p className="text-muted-foreground text-lg font-medium">No properties found inside the database.</p>
+        <p className="text-sm text-gray-500 mt-2">Try adding a new land from the "My Lands" page.</p>
       </div>
     )
   }
@@ -61,10 +71,9 @@ export function PropertyGrid() {
             price: land.price || 0,
             image: land.image_url || "/placeholder.svg",
             sqft: land.area || land.sqft || 0,
-            status: land.status || "New",
-            // ✅ الحل هنا: إضافة القيم المفقودة كأصفار
-            beds: land.beds || 0,
-            baths: land.baths || 0,
+            status: land.status || "For Sale",
+            beds: 0, // تم التصفير
+            baths: 0, // تم التصفير
           }} 
         />
       ))}
