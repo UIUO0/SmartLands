@@ -1,106 +1,149 @@
-import { notFound } from "next/navigation";
+"use client";
 
-// رابط الباك-إند
-const BACKEND_URL = "https://smartlands-production.up.railway.app";
+import { useEffect, useState, use } from "react";
+import { useRouter } from "next/navigation";
 
-async function getLandDetails(id: string) {
-  const res = await fetch(`${BACKEND_URL}/lands/${id}`, { cache: "no-store" });
-  if (!res.ok) return null;
-  return res.json();
-}
+type LandDetail = {
+  land_id: number;
+  title: string;
+  description?: string;
+  price_amount?: number;
+  area_sq_m?: number;
+  city?: string;
+  region?: string;
+  status?: "available" | "reserved" | "sold";
+  owner_id?: number;
+};
 
-async function getLandImages(id: string) {
-  const res = await fetch(`${BACKEND_URL}/lands/${id}/images`, { cache: "no-store" });
-  if (!res.ok) return [];
-  return res.json();
-}
+export default function LandDetailsPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = use(params);
+  const router = useRouter();
 
-export default async function LandDetailsPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params;
+  const [land, setLand] = useState<LandDetail | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [requestStatus, setRequestStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
+  const [msg, setMsg] = useState("");
 
-  const [land, images] = await Promise.all([
-    getLandDetails(id),
-    getLandImages(id)
-  ]);
+  // 1. جلب تفاصيل الأرض
+  useEffect(() => {
+    async function loadData() {
+      try {
+        const BASE = process.env.NEXT_PUBLIC_API_URL || "https://smartlands-production.up.railway.app";
+        const res = await fetch(`${BASE}/lands/${id}`, { cache: "no-store" });
+        
+        if (!res.ok) throw new Error(res.status === 404 ? "Land not found" : "Error");
+        
+        setLand(await res.json());
+      } catch (e) {
+        setMsg("تعذر تحميل بيانات الأرض");
+      } finally {
+        setLoading(false);
+      }
+    }
+    if (id) loadData();
+  }, [id]);
 
-  if (!land) return notFound();
+  // 2. دالة إرسال طلب الشراء
+  async function handleRequestBuy() {
+    if (!confirm("هل أنت متأكد من إرسال طلب شراء للمالك؟")) return;
+    
+    setRequestStatus('loading');
+    setMsg("");
 
-  const coverImage = images.find((img: any) => img.is_cover) || images[0];
+    try {
+      // Endpoint حسب التوثيق: POST /lands/{land_id}/request
+      const res = await fetch(`/api/lands/${id}/request`, { // سنحتاج لعمل هذا الروت في الـ API Proxy
+        method: "POST",
+      });
+
+      if (res.status === 401) {
+        router.push("/login"); // توجيه لتسجيل الدخول إذا لم يكن مسجلاً
+        return;
+      }
+
+      if (!res.ok) {
+        const txt = await res.text();
+        throw new Error(txt || "فشل الطلب");
+      }
+
+      setRequestStatus('success');
+      setMsg("✅ تم إرسال الطلب للمالك بنجاح! سيتم فتح الدردشة عند القبول.");
+    } catch (e: any) {
+      setRequestStatus('error');
+      setMsg("❌ حدث خطأ: " + (e.message || "فشل الإرسال"));
+    }
+  }
+
+  if (loading) return <div className="min-h-screen bg-[#F1F3E0] flex items-center justify-center text-[#556b4d] animate-pulse">جارِ التحميل...</div>;
+
+  if (!land) return <div className="min-h-screen bg-[#F1F3E0] flex items-center justify-center">لم يتم العثور على الأرض</div>;
 
   return (
-    <main className="min-h-screen bg-[#F1F3E0] font-sans text-black pb-20">
-      
-      {/* --- قسم الصور --- */}
-      <div className="max-w-4xl mx-auto pt-6 px-4">
-         <a href="/mylands" className="inline-block mb-4 px-4 py-2 bg-white rounded-xl shadow-sm hover:bg-gray-50 font-bold transition text-sm">
-           ← العودة لقائمتي
-         </a>
+    <main className="min-h-screen w-full bg-[#F1F3E0] text-black font-sans p-6">
+      <div className="max-w-4xl mx-auto space-y-6">
+        
+        <button onClick={() => router.back()} className="text-[#556b4d] font-bold hover:underline mb-4">
+          ← عودة للقائمة
+        </button>
 
-         {/* الصورة الكبيرة (ثابتة الارتفاع h-60 أي 240px) */}
-         <div className="w-full h-60 bg-[#D2DCB6] rounded-3xl overflow-hidden shadow-md relative border border-[#A1BC98]">
-            {coverImage ? (
-               <img src={coverImage.file_url} alt={land.title} className="w-full h-full object-cover" />
-            ) : (
-               <div className="flex items-center justify-center h-full text-4xl opacity-20">🏠</div>
+        <article className="bg-[#D2DCB6] rounded-3xl p-8 shadow-sm border border-[#A1BC98]/50">
+          {/* رأس الصفحة */}
+          <div className="flex flex-col md:flex-row justify-between items-start gap-4 mb-6">
+            <div>
+              <h1 className="text-3xl font-bold text-black mb-2">{land.title}</h1>
+              <p className="text-[#3a4430] font-medium">📍 {land.city} {land.region && `- ${land.region}`}</p>
+            </div>
+            {land.price_amount && (
+              <div className="bg-[#F1F3E0] px-5 py-3 rounded-2xl shadow-sm text-center min-w-[150px]">
+                <p className="text-xs text-gray-500 font-bold uppercase">السعر المطلوب</p>
+                <p className="text-2xl font-bold text-black">{Intl.NumberFormat("ar-SA").format(land.price_amount)} ر.س</p>
+              </div>
             )}
+          </div>
+
+          {/* التفاصيل والوصف */}
+          <div className="bg-white/40 p-6 rounded-2xl border border-[#A1BC98]/30 mb-8">
+            <div className="flex gap-4 mb-4 text-sm font-semibold text-[#556b4d]">
+              <span>📐 المساحة: {land.area_sq_m} م²</span>
+              <span>🏷️ الحالة: {land.status === 'available' ? 'متاح' : land.status}</span>
+            </div>
+            <p className="text-black/80 leading-relaxed whitespace-pre-wrap">
+              {land.description || "لا يوجد وصف."}
+            </p>
+          </div>
+
+          {/* منطقة الإجراءات Feedback & Actions */}
+          <div className="border-t border-[#A1BC98]/30 pt-6">
             
-            <div className="absolute top-4 right-4 bg-white/90 backdrop-blur px-3 py-1 rounded-lg font-bold shadow-sm text-sm">
-               {land.price_amount?.toLocaleString()} ر.س
-            </div>
-         </div>
+            {/* رسائل التنبيه */}
+            {msg && (
+              <div className={`p-4 rounded-xl mb-4 text-center font-bold ${
+                requestStatus === 'success' ? 'bg-green-100 text-green-800' : 'bg-red-50 text-red-800'
+              }`}>
+                {msg}
+              </div>
+            )}
 
-         {/* معرض الصور المصغرة (أحجام موحدة وصغيرة) */}
-         {images.length > 0 && (
-           <div className="flex gap-2 mt-3 overflow-x-auto pb-2 scrollbar-hide">
-              {images.map((img: any) => (
-                // shrink-0 + w-16 h-16 يضمن ثبات الحجم
-                <div key={img.image_id} className="w-16 h-16 shrink-0 rounded-lg overflow-hidden border-2 border-[#A1BC98]/50 cursor-pointer hover:border-[#A1BC98] transition">
-                   <img src={img.file_url} alt="land img" className="w-full h-full object-cover" />
-                </div>
-              ))}
-           </div>
-         )}
-      </div>
-
-      {/* --- تفاصيل الأرض --- */}
-      <div className="max-w-4xl mx-auto mt-6 px-4 grid grid-cols-1 md:grid-cols-3 gap-6">
-         {/* القسم الأيمن (النصوص) */}
-         <div className="md:col-span-2 space-y-4">
-            <div className="bg-white/50 p-5 rounded-3xl border border-[#A1BC98]/30">
-               <h1 className="text-2xl font-bold mb-1">{land.title}</h1>
-               <p className="text-sm text-[#3a4430] flex items-center gap-2">
-                 📍 {land.city}، {land.address_line || "عنوان غير محدد"}
-               </p>
-               <hr className="my-3 border-black/10" />
-               <h3 className="font-bold text-base mb-2">الوصف</h3>
-               <p className="leading-relaxed text-sm text-gray-700 whitespace-pre-line">
-                 {land.description || "لا يوجد وصف متاح لهذا العقار."}
-               </p>
+            <div className="flex justify-end gap-3">
+              {requestStatus === 'success' ? (
+                <button 
+                  onClick={() => router.push("/chats")}
+                  className="bg-black text-white font-bold py-3 px-8 rounded-xl hover:bg-[#333] transition"
+                >
+                  الذهاب للدردشات 💬
+                </button>
+              ) : (
+                <button
+                  onClick={handleRequestBuy}
+                  disabled={requestStatus === 'loading' || land.status !== 'available'}
+                  className="bg-[#A1BC98] hover:bg-[#8ea885] disabled:opacity-50 disabled:cursor-not-allowed text-black font-bold py-3 px-8 rounded-xl transition shadow-sm w-full md:w-auto"
+                >
+                  {requestStatus === 'loading' ? 'جارِ الإرسال...' : 'إرسال طلب شراء 📝'}
+                </button>
+              )}
             </div>
-         </div>
-
-         {/* القسم الأيسر (المخلص) */}
-         <div className="space-y-4">
-            <div className="bg-[#D2DCB6] p-5 rounded-3xl shadow-sm border border-[#A1BC98]/50 text-sm">
-               <h3 className="font-bold text-lg mb-3">تفاصيل سريعة</h3>
-               <ul className="space-y-2">
-                  <li className="flex justify-between">
-                    <span className="opacity-70">المساحة</span>
-                    <span className="font-bold">{land.area_sq_m} م²</span>
-                  </li>
-                  <li className="flex justify-between">
-                    <span className="opacity-70">الحالة</span>
-                    <span className="font-bold">
-                      {land.status === 'sold' ? 'مباع ❌' : 'متاح ✅'}
-                    </span>
-                  </li>
-                  <li className="flex justify-between">
-                    <span className="opacity-70">المنطقة</span>
-                    <span className="font-bold">{land.region || "-"}</span>
-                  </li>
-               </ul>
-            </div>
-         </div>
+          </div>
+        </article>
       </div>
     </main>
   );
