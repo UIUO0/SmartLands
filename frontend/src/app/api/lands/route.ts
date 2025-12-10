@@ -1,36 +1,63 @@
-import { NextRequest, NextResponse } from "next/server";
-import { API_URL, COOKIE_NAME } from "@/lib/config";
+import { NextResponse, type NextRequest } from "next/server";
 import { cookies } from "next/headers";
 
-export async function POST(req: NextRequest) {
-  const cookieStore = await cookies();
-  const token = cookieStore.get(COOKIE_NAME)?.value;
+const BACKEND_URL = "https://smartlands-production.up.railway.app";
 
-  if (!token) return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
+export async function GET(req: NextRequest) {
+  const cookieStore = await cookies();
+  const token = cookieStore.get("sl_token")?.value || cookieStore.get("session_id")?.value;
 
   try {
-    const body = await req.json();
-    
-    // Endpoint حسب التوثيق: POST /lands
-    const res = await fetch(`${API_URL}/lands`, {
-      method: "POST",
+    // 1. استخراج فلاتر البحث من رابط الطلب القادم من الفرونت
+    // مثال: يمسك ?q=villa&city=Riyadh
+    const searchParams = req.nextUrl.searchParams;
+    const queryString = searchParams.toString();
+
+    // 2. إرسال الفلاتر إلى الباك-إند
+    const res = await fetch(`${BACKEND_URL}/lands?${queryString}`, {
+      method: "GET",
       headers: {
-        "Authorization": `Bearer ${token}`,
         "Content-Type": "application/json",
-        "Accept": "application/json",
+        ...(token && { "Authorization": `Bearer ${token}` }),
       },
-      body: JSON.stringify(body),
+      cache: "no-store",
     });
 
     if (!res.ok) {
-        const err = await res.json();
-        return NextResponse.json(err, { status: res.status });
+      return NextResponse.json({ error: "Failed to fetch lands" }, { status: res.status });
     }
 
     const data = await res.json();
-    return NextResponse.json(data, { status: 201 });
+    return NextResponse.json(data);
 
-  } catch (e) {
-    return NextResponse.json({ message: "Server Error" }, { status: 500 });
+  } catch (error: any) {
+    return NextResponse.json(
+      { detail: "Internal Server Error" },
+      { status: 500 }
+    );
   }
+}
+
+// أبقِ دالة POST كما هي إذا كانت موجودة في نفس الملف
+export async function POST(req: NextRequest) {
+    // ... (نفس كود الإضافة السابق)
+    const cookieStore = await cookies();
+    const token = cookieStore.get("sl_token")?.value || cookieStore.get("session_id")?.value;
+    if (!token) return NextResponse.json({ detail: "Unauthorized" }, { status: 401 });
+    try {
+        const body = await req.json();
+        const res = await fetch(`${BACKEND_URL}/lands`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
+            body: JSON.stringify(body),
+        });
+        if (!res.ok) {
+             const err = await res.json();
+             return NextResponse.json(err, { status: res.status });
+        }
+        const data = await res.json();
+        return NextResponse.json(data, { status: 201 });
+    } catch (e: any) {
+        return NextResponse.json({ detail: e.message }, { status: 500 });
+    }
 }
