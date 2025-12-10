@@ -20,22 +20,23 @@ export function PropertyCard({ property }: PropertyCardProps) {
   }
 
   return (
-    <div className="group bg-[#D2DCB6] rounded-3xl overflow-hidden border border-[#A1BC98]/50 hover:shadow-2xl transition-all duration-300 flex flex-col h-full">
-      {/* الصورة: قللنا الارتفاع ليكون أنيقاً */}
-      <div className="relative h-48 overflow-hidden bg-gray-200">
+    <div className="group bg-[#D2DCB6] rounded-3xl overflow-hidden border border-[#A1BC98] shadow-sm hover:shadow-xl transition-all h-full flex flex-col">
+      
+      {/* 🛑 الحل للصور: ارتفاع ثابت (h-52) وتغطية كاملة (object-cover) */}
+      <div className="relative h-52 w-full overflow-hidden bg-gray-200">
         <img
-          src={property.image || "/placeholder.svg"}
+          src={property.image}
           alt={property.title}
-          className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700 ease-in-out"
+          className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
         />
-        
-        <div className="absolute top-3 left-3 bg-black/80 backdrop-blur-md text-white px-3 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider">
-          {property.status || "For Sale"}
+        {/* البادج */}
+        <div className="absolute top-3 left-3 bg-black/70 text-white px-3 py-1 rounded-full text-[10px] font-bold uppercase">
+          {property.status}
         </div>
       </div>
 
       {/* المحتوى */}
-      <div className="p-5 flex flex-col flex-1 gap-3">
+      <div className="p-5 flex flex-col gap-3 flex-1">
         <div>
           <h3 className="text-lg font-bold text-black mb-1 line-clamp-1">{property.title}</h3>
           
