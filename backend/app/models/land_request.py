@@ -4,8 +4,8 @@ from datetime import datetime
 from typing import Optional
 
 from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy.dialects.mysql import BIGINT
 from sqlalchemy import (
-    BigInteger,
     Integer,
     ForeignKey,
     Enum,
@@ -24,13 +24,13 @@ class LandRequest(Base):
     )
 
     land_id: Mapped[int] = mapped_column(
-        BigInteger,
+        BIGINT(unsigned=True),
         ForeignKey("lands.land_id", ondelete="CASCADE"),
         nullable=False,
     )
 
     buyer_id: Mapped[int] = mapped_column(
-        BigInteger,
+        BIGINT(unsigned=True),
         ForeignKey("users.user_id", ondelete="CASCADE"),
         nullable=False,
     )
