@@ -69,6 +69,21 @@ async def lifespan(app: FastAPI):
     # Test database connection
     db_ok = await ping_database()
     if db_ok:
+        logger.info("✅ Database connection successful")
+        
+        # Auto-create tables (Migration fix)
+        logger.info("🔄 Checking/Creating database tables...")
+        from app.db.database import engine, Base
+        
+        async with engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
+        logger.info("✅ Database tables verified/created")
+        
+    else:
+        logger.error("❌ Database connection failed")
+        raise RuntimeError("Failed to connect to database")
+    
+    logger.info("✅ Smart Lands API started successfully")
     
     yield
     
