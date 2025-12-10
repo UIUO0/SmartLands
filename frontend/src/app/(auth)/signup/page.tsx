@@ -33,6 +33,8 @@ function SignupForm() {
 
     setLoading(false);
 
+
+    
     if (r.ok) {
       router.push(`/login?next=${encodeURIComponent(next)}`);
     } else {
