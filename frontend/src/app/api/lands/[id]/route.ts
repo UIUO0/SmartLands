@@ -1,39 +1,36 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { cookies } from "next/headers";
 
-// 👇 التعديل هنا: استخدم رابط Railway بدلاً من localhost
-const BACKEND_URL = "https://smartlands-production.up.railway.app"; 
+// 👇 التعديل هنا: استخدام رابط Railway بدلاً من localhost
+const BACKEND_URL = "https://smartlands-production.up.railway.app";
 
-// 1. GET: جلب تفاصيل أرض محددة
+// 1. GET: لجلب قائمة صور الأرض
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const { id } = await params;
   try {
-    // طباعة للتأكد من الرابط في الـ Console تبع السيرفر
-    console.log(`Fetching land ${id} from: ${BACKEND_URL}/lands/${id}`);
-
-    const res = await fetch(`${BACKEND_URL}/lands/${id}`, {
+    const { id } = await params;
+    // نطلب قائمة الصور من الباك-إند
+    const res = await fetch(`${BACKEND_URL}/lands/${id}/images`, {
       cache: "no-store",
     });
 
     if (!res.ok) {
-        // إذا رجع الباك إند 404 يعني الأرض غير موجودة
-        console.error(`Backend returned ${res.status} for land ${id}`);
-        return NextResponse.json({ error: "Land not found" }, { status: res.status });
+        // إذا لم توجد صور أو حدث خطأ، نرجع مصفوفة فارغة لكي لا يتوقف الموقع
+        return NextResponse.json([], { status: res.status });
     }
-
+    
     const data = await res.json();
     return NextResponse.json(data);
   } catch (error) {
-    console.error("GET Land Error:", error);
-    return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
+    console.error("GET Images Error:", error);
+    return NextResponse.json([], { status: 500 });
   }
 }
 
-// ... (باقي دوال PATCH و DELETE كما هي)
-export async function PATCH(
+// 2. POST: لرفع صورة جديدة
+export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
@@ -41,51 +38,34 @@ export async function PATCH(
   const cookieStore = await cookies();
   const token = cookieStore.get("sl_token")?.value || cookieStore.get("session_id")?.value;
 
-  if (!token) return NextResponse.json({ detail: "Unauthorized" }, { status: 401 });
+  if (!token) {
+    return NextResponse.json({ detail: "Unauthorized" }, { status: 401 });
+  }
 
   try {
-    const body = await request.json();
-    const res = await fetch(`${BACKEND_URL}/lands/${id}`, {
-      method: "PATCH",
+    const formData = await request.formData();
+    
+    const res = await fetch(`${BACKEND_URL}/lands/${id}/images/upload`, {
+      method: "POST",
       headers: {
-        "Content-Type": "application/json",
         "Authorization": `Bearer ${token}`,
       },
-      body: JSON.stringify(body),
+      body: formData, 
     });
 
     if (!res.ok) {
-        const err = await res.json();
-        return NextResponse.json(err, { status: res.status });
+      const errorData = await res.json().catch(() => ({}));
+      return NextResponse.json(errorData, { status: res.status });
     }
 
     const data = await res.json();
-    return NextResponse.json(data);
-  } catch (error) {
-    return NextResponse.json({ error: "Update Failed" }, { status: 500 });
+    return NextResponse.json(data, { status: 201 });
+
+  } catch (error: any) {
+    console.error("Proxy Upload Error:", error);
+    return NextResponse.json(
+      { detail: error.message || "Internal Server Error" },
+      { status: 500 }
+    );
   }
 }
-
-export async function DELETE(
-    request: NextRequest,
-    { params }: { params: Promise<{ id: string }> }
-  ) {
-    const { id } = await params;
-    const cookieStore = await cookies();
-    const token = cookieStore.get("sl_token")?.value || cookieStore.get("session_id")?.value;
-  
-    if (!token) return NextResponse.json({ detail: "Unauthorized" }, { status: 401 });
-  
-    try {
-      const res = await fetch(`${BACKEND_URL}/lands/${id}`, {
-        method: "DELETE",
-        headers: { "Authorization": `Bearer ${token}` },
-      });
-  
-      if (!res.ok) return NextResponse.json({ error: "Delete failed" }, { status: res.status });
-  
-      return new NextResponse(null, { status: 204 });
-    } catch (error) {
-      return NextResponse.json({ error: "Delete Error" }, { status: 500 });
-    }
-  }
