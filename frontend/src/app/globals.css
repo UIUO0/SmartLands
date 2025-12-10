@@ -28,7 +28,7 @@
 
     /* Muted Text */
     --muted: 74 20% 85%;
-    --muted-foreground: 76 10% 30%; /* Darker green-grey for subtext */
+    --muted-foreground: 76 10% 30%; 
 
     /* Borders */
     --accent: 104 19% 67%;
@@ -37,17 +37,18 @@
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 0 0% 98%;
 
-    --border: 104 19% 60%; /* Slightly darker than primary for borders */
+    --border: 104 19% 60%;
     --input: 104 19% 60%;
     --ring: 104 19% 67%;
 
-    --radius: 1rem; /* Rounded-2xl default, customized in components */
+    --radius: 1rem;
   }
 }
 
 @layer base {
   * {
-    @apply border-border;
+    /* ✅ التعديل هنا: استخدام CSS مباشر بدلاً من @apply لتجنب الخطأ */
+    border-color: hsl(var(--border)); 
   }
   body {
     @apply bg-background text-foreground;
