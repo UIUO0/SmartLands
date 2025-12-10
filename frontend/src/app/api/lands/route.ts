@@ -1,7 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { cookies } from "next/headers";
 
-<<<<<<< Updated upstream
 const BACKEND_URL = "https://smartlands-production.up.railway.app";
 
 export async function GET(req: NextRequest) {
@@ -36,38 +35,6 @@ export async function GET(req: NextRequest) {
       { detail: "Internal Server Error" },
       { status: 500 }
     );
-=======
-export async function GET(req: NextRequest) {
-  // 1. نقل الـ Query Parameters (مثل البحث والفلترة)
-  const searchParams = req.nextUrl.searchParams.toString();
-  
-  [cite_start]// 2. محاولة جلب التوكن (اختياري هنا لأن عرض الأراضي عام) [cite: 20]
-  const cookieStore = await cookies();
-  const token = cookieStore.get(COOKIE_NAME)?.value;
-
-  const headers: any = {
-    "Accept": "application/json",
-  };
-
-  if (token) {
-    headers["Authorization"] = `Bearer ${token}`;
-  }
-
-  try {
-    // 3. الطلب من الباك-إند
-    const res = await fetch(`${API_URL}/lands?${searchParams}`, {
-      headers: headers,
-      cache: "no-store",
-    });
-
-    if (!res.ok) return NextResponse.json([], { status: res.status });
-
-    const data = await res.json();
-    return NextResponse.json(data, { status: 200 });
-
-  } catch (e) {
-    return NextResponse.json([], { status: 500 });
->>>>>>> Stashed changes
   }
 }
 
