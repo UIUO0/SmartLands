@@ -1,28 +1,28 @@
-import { NextRequest, NextResponse } from "next/server";
-import { API_URL, COOKIE_NAME } from "@/lib/config";
-import { cookies } from "next/headers";
+import { NextResponse } from "next/server";
 
-export async function GET(req: NextRequest) {
-  const cookieStore = await cookies();
-  const token = cookieStore.get(COOKIE_NAME)?.value;
-
-  if (!token) return NextResponse.json([], { status: 401 });
-
-  // سنحاول طلب endpoint مخصص للطلبات الواردة
-  // ملاحظة: إذا لم يكن هذا الرابط موجوداً في الباك-إند، سيحتاج مبرمج الباك-إند لإضافته
-  const res = await fetch(`${API_URL}/lands/requests/received`, { 
-    headers: {
-      "Authorization": `Bearer ${token}`,
-      "Accept": "application/json",
+// هذا ملف مؤقت لتمثيل الطلبات الواردة حتى يتم إصلاح الباك-إند
+export async function GET() {
+  // بيانات وهمية لطلبين واردين
+  const mockRequests = [
+    {
+      request_id: 901,
+      land_id: 5,       // تأكد أن هذا الرقم يطابق أرضاً موجودة لديك لظهور التفاصيل إن أمكن
+      from_user_id: 99, // مستخدم وهمي
+      to_user_id: 17,   // مفترض أنه أنت
+      amount: 450000,
+      status: "pending",
+      created_at: new Date().toISOString()
     },
-    cache: "no-store",
-  });
+    {
+      request_id: 902,
+      land_id: 8,
+      from_user_id: 102,
+      to_user_id: 17,
+      amount: 120000,
+      status: "pending",
+      created_at: new Date(Date.now() - 86400000).toISOString() // أمس
+    }
+  ];
 
-  if (!res.ok) {
-     // في حال فشل الرابط، نرجع مصفوفة فارغة لتجنب تحطيم الصفحة
-     return NextResponse.json([], { status: 200 }); 
-  }
-
-  const data = await res.json();
-  return NextResponse.json(data, { status: 200 });
+  return NextResponse.json(mockRequests, { status: 200 });
 }

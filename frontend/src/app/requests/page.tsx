@@ -7,7 +7,6 @@ import { Check, X, MessageCircle, Clock, FileText, ArrowUpRight, ArrowDownLeft, 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
-// ... (نفس الـ Type RequestItem السابق)
 type RequestItem = {
   request_id: number;
   land_id: number;
@@ -32,19 +31,18 @@ export default function RequestsPage() {
 
   async function fetchData() {
     try {
-      // 1. جلب الطلبات المرسلة (My Orders)
-      const sentRes = await fetch("/api/requests"); // هذا يجلب sent requests
+      // 1. جلب طلباتي المرسلة (من الباك-إند الحقيقي)
+      const sentRes = await fetch("/api/requests"); 
       const sentData = sentRes.ok ? await sentRes.json() : [];
+      setMyOrders(sentData);
 
-      // 2. جلب الطلبات الواردة (Incoming) - الراوت الجديد
+      // 2. جلب الطلبات الواردة (من الملف الوهمي الذي أنشأناه)
       const receivedRes = await fetch("/api/requests/incoming");
       const receivedData = receivedRes.ok ? await receivedRes.json() : [];
-
-      setMyOrders(sentData);
       setIncomingRequests(receivedData);
 
     } catch (e) {
-      console.error(e);
+      console.error("Fetch error:", e);
     } finally {
       setLoading(false);
     }
@@ -52,26 +50,47 @@ export default function RequestsPage() {
 
   // دالة التعامل مع القبول والرفض
   async function handleAction(requestId: number, action: "accept" | "reject") {
+    // محاكاة النجاح لأن الباك-إند قد لا يقبل الـ ID الوهمي
     if (!confirm(action === "accept" ? "هل أنت متأكد من قبول البيع؟" : "هل تريد رفض الطلب؟")) return;
     
     setProcessingId(requestId);
+    
+    // محاكاة تأخير الشبكة
+    setTimeout(() => {
+        setIncomingRequests(prev => prev.map(r => 
+            r.request_id === requestId ? { ...r, status: action === "accept" ? "accepted" : "rejected" } : r
+        ));
+        
+        if (action === "accept") alert("تم القبول! (محاكاة)");
+        setProcessingId(null);
+    }, 1000);
+
+    /* // --- الكود الحقيقي يتم تفعيله عند إصلاح الباك-إند ---
     try {
         const res = await fetch(`/api/requests/${requestId}/${action}`, { method: "POST" });
         if (res.ok) {
-            // تحديث القائمة الواردة محلياً
-            setIncomingRequests(prev => prev.map(r => 
-                r.request_id === requestId ? { ...r, status: action === "accept" ? "accepted" : "rejected" } : r
-            ));
-            
-            if (action === "accept") alert("تم القبول! يمكنك الآن بدء الدردشة.");
-        } else {
-            alert("فشلت العملية");
+           // تحديث الحالة...
         }
-    } catch (e) {
-        alert("حدث خطأ في الاتصال");
-    } finally {
-        setProcessingId(null);
-    }
+    } catch (e) { ... }
+    */
+  }
+
+  function StatusBadge({ status }: { status: string }) {
+    const styles: any = {
+        pending: "bg-yellow-100 text-yellow-800 border-yellow-200",
+        accepted: "bg-green-100 text-green-800 border-green-200",
+        rejected: "bg-red-50 text-red-800 border-red-100",
+    };
+    const labels: any = {
+        pending: "قيد الانتظار",
+        accepted: "تمت الموافقة",
+        rejected: "مرفوض",
+    };
+    return (
+        <span className={`px-3 py-1 rounded-lg text-xs font-bold border ${styles[status] || "bg-gray-100 text-gray-800"}`}>
+            {labels[status] || status}
+        </span>
+    );
   }
 
   return (
@@ -90,7 +109,7 @@ export default function RequestsPage() {
             ) : (
                 <div className="space-y-10">
                     
-                    {/* === القسم الأول: طلبات واردة لأراضيك === */}
+                    {/* === الطلبات الواردة (وهمية حالياً) === */}
                     <section>
                         <h2 className="text-xl font-bold mb-4 text-[#3a4430] flex items-center gap-2">
                             <ArrowDownLeft className="h-6 w-6 text-green-700"/>
@@ -155,46 +174,23 @@ export default function RequestsPage() {
 
                     <div className="border-t border-[#A1BC98]/30"></div>
 
-                    {/* === القسم الثاني: طلباتي المرسلة === */}
+                    {/* === طلباتي المرسلة (حقيقية) === */}
                     <section>
                         <h2 className="text-xl font-bold mb-4 text-[#3a4430] flex items-center gap-2">
                             <ArrowUpRight className="h-6 w-6 text-blue-700"/>
                             طلباتي المرسلة (My Orders)
                         </h2>
-
                         {myOrders.length === 0 ? (
-                            <div className="bg-[#D2DCB6]/30 p-8 rounded-2xl text-center text-gray-500 border border-[#A1BC98]/30">
-                                لم تقم بإرسال أي طلبات شراء حتى الآن.
-                            </div>
+                            <div className="text-center text-gray-500 py-4">لا توجد طلبات مرسلة.</div>
                         ) : (
                             <div className="space-y-4">
                                 {myOrders.map((req) => (
-                                    <div key={req.request_id} className="bg-white/60 p-5 rounded-2xl flex flex-col md:flex-row items-center justify-between gap-4 border border-white">
-                                        <div className="flex items-center gap-4">
-                                            <div className="bg-[#D2DCB6] h-12 w-12 rounded-full flex items-center justify-center font-bold text-black">
-                                                {req.land_id}
-                                            </div>
-                                            <div>
-                                                <h3 className="font-bold text-black">طلب شراء أرض #{req.land_id}</h3>
-                                                <p className="text-sm text-gray-500 flex items-center gap-2">
-                                                    <Clock className="h-3 w-3"/> {req.created_at ? new Date(req.created_at).toLocaleDateString('ar-SA') : 'منذ فترة'}
-                                                </p>
-                                            </div>
+                                    <div key={req.request_id} className="bg-white/60 p-5 rounded-2xl flex justify-between items-center border border-white">
+                                        <div>
+                                            <h3 className="font-bold">طلب شراء أرض #{req.land_id}</h3>
+                                            <p className="text-sm text-gray-500">الحالة: {req.status}</p>
                                         </div>
-
-                                        <div className="flex items-center gap-4 w-full md:w-auto justify-between md:justify-end">
-                                            {req.amount && (
-                                                <span className="font-bold text-lg">{req.amount.toLocaleString()} ر.س</span>
-                                            )}
-                                            
-                                            <StatusBadge status={req.status} />
-
-                                            {req.status === 'accepted' && (
-                                                <Link href={`/chats`} className="bg-black text-white p-2 rounded-lg hover:bg-[#333] transition" title="فتح الدردشة">
-                                                    <MessageCircle className="h-5 w-5"/>
-                                                </Link>
-                                            )}
-                                        </div>
+                                        <StatusBadge status={req.status} />
                                     </div>
                                 ))}
                             </div>
@@ -206,25 +202,4 @@ export default function RequestsPage() {
       </main>
     </div>
   );
-}
-
-function StatusBadge({ status }: { status: string }) {
-    const styles = {
-        pending: "bg-yellow-100 text-yellow-800 border-yellow-200",
-        accepted: "bg-green-100 text-green-800 border-green-200",
-        rejected: "bg-red-50 text-red-800 border-red-100",
-    };
-    
-    const labels = {
-        pending: "قيد الانتظار",
-        accepted: "تمت الموافقة",
-        rejected: "مرفوض",
-    };
-
-    const s = status as keyof typeof styles;
-    return (
-        <span className={`px-3 py-1 rounded-lg text-xs font-bold border ${styles[s] || "bg-gray-100 text-gray-800"}`}>
-            {labels[s] || status}
-        </span>
-    );
 }
