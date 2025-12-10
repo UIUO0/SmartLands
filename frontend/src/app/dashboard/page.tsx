@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense } from "react"; // 1. استيراد Suspense
+import { Suspense } from "react"; // 1. استيراد Suspense ضروري جداً
 import { Sidebar } from "@/components/sidebar";
 import { Header } from "@/components/header";
 import { PropertyGrid } from "@/components/property-grid";
@@ -28,7 +28,7 @@ export default function DashboardPage() {
               </p>
             </div>
 
-            {/* 2. تغليف مكون البحث بـ Suspense لحل مشكلة البناء */}
+            {/* 2. تغليف SearchBar بـ Suspense هو الحل للمشكلة */}
             <Suspense fallback={<div className="h-12 w-full bg-gray-200 rounded-xl animate-pulse"></div>}>
                 <SearchBar />
             </Suspense>
