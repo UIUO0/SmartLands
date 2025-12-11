@@ -1,7 +1,6 @@
 "use client"
 
 import { MapPin, Square, ArrowRight } from "lucide-react"
-import Image from "next/image"
 import Link from "next/link" // 👈 استيراد مهم
 import type { Property } from "@/types/property"
 
@@ -23,11 +22,10 @@ export function PropertyCard({ property }: PropertyCardProps) {
 
       {/* الصورة */}
       <div className="relative h-52 w-full overflow-hidden bg-gray-200">
-        <Image
+        <img
           src={property.image || "/placeholder.svg"}
           alt={property.title}
-          fill
-          className="object-cover transition-transform duration-500 group-hover:scale-110"
+          className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
         />
         <div className="absolute top-3 left-3 bg-black/70 backdrop-blur-md text-white px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider">
           {property.status || "For Sale"}
