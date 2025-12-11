@@ -3,7 +3,7 @@
 import { useEffect, useState, use } from "react";
 import { useRouter } from "next/navigation";
 import { LandImage } from "@/components/LandImage";
-import { Trash, Edit, ArrowRight, Loader2 } from "lucide-react";
+import { Trash, Edit, ArrowRight, Loader2, ChevronLeft, ChevronRight } from "lucide-react";
 import Link from "next/link";
 
 export default function OwnerLandDetailsPage({ params }: { params: Promise<{ id: string }> }) {
@@ -12,6 +12,10 @@ export default function OwnerLandDetailsPage({ params }: { params: Promise<{ id:
     const [land, setLand] = useState<any | null>(null);
     const [loading, setLoading] = useState(true);
     const [isDeleting, setIsDeleting] = useState(false);
+
+    // Carousel state
+    const [images, setImages] = useState<any[]>([]);
+    const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
     useEffect(() => {
         async function loadData() {
@@ -26,9 +30,10 @@ export default function OwnerLandDetailsPage({ params }: { params: Promise<{ id:
                 try {
                     const imgRes = await fetch(`/api/lands/${id}/images`);
                     if (imgRes.ok) {
-                        const images = await imgRes.json();
-                        console.log("🖼️ Images fetched:", images);
-                        const cover = images.find((img: any) => img.is_cover) || images[0];
+                        const fetchedImages = await imgRes.json();
+                        console.log("🖼️ Images fetched:", fetchedImages);
+                        setImages(fetchedImages);
+                        const cover = fetchedImages.find((img: any) => img.is_cover) || fetchedImages[0];
                         if (cover) {
                             landData.image = cover.file_url;
                             console.log("🖼️ Set cover image:", cover.file_url);
@@ -47,6 +52,14 @@ export default function OwnerLandDetailsPage({ params }: { params: Promise<{ id:
         }
         if (id) loadData();
     }, [id]);
+
+    function nextImage() {
+        setCurrentImageIndex((prev) => (prev + 1) % images.length);
+    }
+
+    function prevImage() {
+        setCurrentImageIndex((prev) => (prev - 1 + images.length) % images.length);
+    }
 
     async function handleDelete() {
         if (!confirm("⚠️ هل أنت متأكد من حذف هذه الأرض؟ لا يمكن التراجع عن هذا الإجراء.")) return;
@@ -92,9 +105,42 @@ export default function OwnerLandDetailsPage({ params }: { params: Promise<{ id:
                         </div>
                     </div>
 
-                    {/* Image */}
-                    <div className="h-96 w-full rounded-2xl overflow-hidden mb-6 bg-gray-200 border border-[#A1BC98]/30">
-                        <LandImage land={land} />
+                    {/* Image Carousel */}
+                    <div className="relative h-96 w-full rounded-2xl overflow-hidden mb-6 bg-gray-200 border border-[#A1BC98]/30">
+                        {images.length > 0 ? (
+                            <>
+                                <img
+                                    src={images[currentImageIndex].file_url.startsWith('http') ? images[currentImageIndex].file_url : `https://smartlands-production.up.railway.app${images[currentImageIndex].file_url}`}
+                                    alt={land.title}
+                                    className="w-full h-full object-contain bg-gray-100"
+                                />
+
+                                {/* Navigation Arrows */}
+                                {images.length > 1 && (
+                                    <>
+                                        <button
+                                            onClick={prevImage}
+                                            className="absolute left-4 top-1/2 -translate-y-1/2 bg-black/70 hover:bg-black text-white p-3 rounded-full transition shadow-lg"
+                                        >
+                                            <ChevronLeft className="h-6 w-6" />
+                                        </button>
+                                        <button
+                                            onClick={nextImage}
+                                            className="absolute right-4 top-1/2 -translate-y-1/2 bg-black/70 hover:bg-black text-white p-3 rounded-full transition shadow-lg"
+                                        >
+                                            <ChevronRight className="h-6 w-6" />
+                                        </button>
+
+                                        {/* Image Counter */}
+                                        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-black/70 text-white px-4 py-2 rounded-full text-sm font-bold">
+                                            {currentImageIndex + 1} / {images.length}
+                                        </div>
+                                    </>
+                                )}
+                            </>
+                        ) : (
+                            <LandImage land={land} />
+                        )}
                     </div>
 
                     {/* Details */}
