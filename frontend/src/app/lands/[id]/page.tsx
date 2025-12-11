@@ -30,11 +30,11 @@ export default function LandDetailsPage({ params }: { params: Promise<{ id: stri
       try {
         const BASE = process.env.NEXT_PUBLIC_API_URL || "https://smartlands-production.up.railway.app";
         const res = await fetch(`${BASE}/lands/${id}`, { cache: "no-store" });
-        
+
         if (!res.ok) throw new Error(res.status === 404 ? "Land not found" : "Error");
-        
+
         setLand(await res.json());
-      } catch (e) {
+      } catch {
         setMsg("تعذر تحميل بيانات الأرض");
       } finally {
         setLoading(false);
@@ -46,7 +46,7 @@ export default function LandDetailsPage({ params }: { params: Promise<{ id: stri
   // 2. دالة إرسال طلب الشراء
   async function handleRequestBuy() {
     if (!confirm("هل أنت متأكد من إرسال طلب شراء للمالك؟")) return;
-    
+
     setRequestStatus('loading');
     setMsg("");
 
@@ -81,7 +81,7 @@ export default function LandDetailsPage({ params }: { params: Promise<{ id: stri
   return (
     <main className="min-h-screen w-full bg-[#F1F3E0] text-black font-sans p-6">
       <div className="max-w-4xl mx-auto space-y-6">
-        
+
         <button onClick={() => router.back()} className="text-[#556b4d] font-bold hover:underline mb-4">
           ← عودة للقائمة
         </button>
@@ -114,19 +114,18 @@ export default function LandDetailsPage({ params }: { params: Promise<{ id: stri
 
           {/* منطقة الإجراءات Feedback & Actions */}
           <div className="border-t border-[#A1BC98]/30 pt-6">
-            
+
             {/* رسائل التنبيه */}
             {msg && (
-              <div className={`p-4 rounded-xl mb-4 text-center font-bold ${
-                requestStatus === 'success' ? 'bg-green-100 text-green-800' : 'bg-red-50 text-red-800'
-              }`}>
+              <div className={`p-4 rounded-xl mb-4 text-center font-bold ${requestStatus === 'success' ? 'bg-green-100 text-green-800' : 'bg-red-50 text-red-800'
+                }`}>
                 {msg}
               </div>
             )}
 
             <div className="flex justify-end gap-3">
               {requestStatus === 'success' ? (
-                <button 
+                <button
                   onClick={() => router.push("/chats")}
                   className="bg-black text-white font-bold py-3 px-8 rounded-xl hover:bg-[#333] transition"
                 >

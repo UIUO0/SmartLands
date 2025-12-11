@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { API_URL, COOKIE_NAME } from "@/lib/config";
 
-export async function GET(req: NextRequest) {
+export async function GET() {
   // 1. قراءة الكوكيز من المتصفح
   const cookieStore = await cookies();
   const token = cookieStore.get(COOKIE_NAME);
@@ -30,7 +30,7 @@ export async function GET(req: NextRequest) {
     }
 
     const data = await backendRes.json();
-    
+
     // نجاح! نرجع بيانات المستخدم JSON
     return NextResponse.json(data, { status: 200 });
 

@@ -1,17 +1,17 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
-import { 
-  Menu, X, LayoutDashboard, Map, User, LogOut, 
+import {
+  Menu, X, LayoutDashboard, Map, User, LogOut,
   Bot, FileText, ChevronLeft, ChevronRight, MessageCircle // <-- إضافة هذه
 } from "lucide-react"
 
 export function Sidebar() {
   const [isOpen, setIsOpen] = useState(false)       // للجوال
   const [isCollapsed, setIsCollapsed] = useState(false) // للديسك توب
-  const [isLoggedIn, setIsLoggedIn] = useState(false)   // لفحص حالة الدخول
+  const [isLoggedIn] = useState(false)   // لفحص حالة الدخول
 
   const pathname = usePathname()
   const router = useRouter()
@@ -65,15 +65,15 @@ export function Sidebar() {
       >
         {/* زر تصغير القائمة (يظهر فقط في الديسك توب) */}
         <button
-            onClick={toggleDesktopCollapse}
-            className="hidden md:flex absolute -right-3 top-20 bg-black text-white p-1 rounded-full border border-white shadow-md z-50 hover:scale-110 transition-transform"
-            style={{ left: isCollapsed ? "calc(100% - 12px)" : "calc(100% - 12px)" }} // تثبيت الزر على الحافة
+          onClick={toggleDesktopCollapse}
+          className="hidden md:flex absolute -right-3 top-20 bg-black text-white p-1 rounded-full border border-white shadow-md z-50 hover:scale-110 transition-transform"
+          style={{ left: isCollapsed ? "calc(100% - 12px)" : "calc(100% - 12px)" }} // تثبيت الزر على الحافة
         >
-            {isCollapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
+          {isCollapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
         </button>
 
         <div className={`p-6 flex flex-col h-full ${isCollapsed ? "items-center" : ""}`}>
-          
+
           {/* الشعار */}
           <div className={`flex items-center gap-3 mb-10 transition-all ${isCollapsed ? "justify-center" : ""}`}>
             <div className="h-10 w-10 min-w-[2.5rem] bg-black rounded-xl flex items-center justify-center text-white font-bold text-xl shadow-sm">
@@ -97,15 +97,15 @@ export function Sidebar() {
                   title={isCollapsed ? item.label : ""} // Tooltip عند التصغير
                   className={`
                     flex items-center gap-4 px-4 py-3.5 rounded-xl transition-all duration-200 font-medium
-                    ${isActive 
-                        ? "bg-black text-white shadow-md" 
-                        : "text-gray-800 hover:bg-[#A1BC98]/50 hover:text-black"
+                    ${isActive
+                      ? "bg-black text-white shadow-md"
+                      : "text-gray-800 hover:bg-[#A1BC98]/50 hover:text-black"
                     }
                     ${isCollapsed ? "justify-center px-0 w-12 h-12 mx-auto" : ""}
                   `}
                 >
                   <item.icon className={`h-6 w-6 ${isActive ? "text-white" : "text-gray-700"}`} />
-                  
+
                   {!isCollapsed && (
                     <span className="whitespace-nowrap overflow-hidden">{item.label}</span>
                   )}
@@ -117,7 +117,7 @@ export function Sidebar() {
           {/* تسجيل الخروج (مشروط) */}
           {isLoggedIn && (
             <div className={`mt-auto pt-6 border-t border-[#A1BC98]/30 w-full`}>
-              <button 
+              <button
                 onClick={handleLogout}
                 className={`
                     flex items-center gap-3 px-4 py-3 rounded-xl text-red-700 hover:bg-red-100/50 transition-colors w-full font-semibold
