@@ -249,23 +249,34 @@ async def fix_enums_endpoint():
     async with engine.begin() as conn:
         # 1. Lands
         try:
+            # Check current
+            # await conn.execute(text("SHOW COLUMNS FROM lands LIKE 'status'"))
+            # Run Fix
             await conn.execute(text("ALTER TABLE lands MODIFY COLUMN status ENUM('available', 'reserved', 'sold', 'archived') NOT NULL DEFAULT 'available';"))
-            results["lands"] = "Fixed"
+            results["lands"] = "Fixed (ALTER executed)"
         except Exception as e:
-            results["lands"] = str(e)
+            results["lands"] = f"Error: {e}"
 
         # 2. Requests
         try:
             await conn.execute(text("ALTER TABLE requests MODIFY COLUMN status ENUM('pending', 'accepted', 'rejected') NOT NULL DEFAULT 'pending';"))
-            results["requests"] = "Fixed"
+            results["requests"] = "Fixed (ALTER executed)"
         except Exception as e:
-            results["requests"] = str(e)
+            results["requests"] = f"Error: {e}"
 
         # 3. Agreements
         try:
             await conn.execute(text("ALTER TABLE agreements MODIFY COLUMN status ENUM('pending', 'completed', 'cancelled') NOT NULL DEFAULT 'pending';"))
-            results["agreements"] = "Fixed"
+            results["agreements"] = "Fixed (ALTER executed)"
         except Exception as e:
-            results["agreements"] = str(e)
+            results["agreements"] = f"Error: {e}"
             
-    return results
+        # 4. Agreements - Fix foreign key if needed (Bonus)
+        # We saw an issue with foreign key relationship earlier.
+        # But this is just ENUM fix.
+            
+    return {
+        "message": "Database schema update attempted.",
+        "details": results,
+        "instruction": "If you see 'Fixed', try your action again."
+    }
