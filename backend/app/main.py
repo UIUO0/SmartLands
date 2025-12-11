@@ -77,6 +77,25 @@ async def lifespan(app: FastAPI):
         
         async with engine.begin() as conn:
             await conn.run_sync(Base.metadata.create_all)
+            
+            # --- Auto-Migration for Enums (Fixing 'Data truncated' error) ---
+            logger.info("🔧 Running auto-migration for Enums...")
+            try:
+                await conn.execute(text("ALTER TABLE lands MODIFY COLUMN status ENUM('available', 'reserved', 'sold', 'archived') NOT NULL DEFAULT 'available';"))
+            except Exception as e:
+                logger.warning(f"Metadata update for lands failed (might be already correct): {e}")
+
+            try:
+                await conn.execute(text("ALTER TABLE requests MODIFY COLUMN status ENUM('pending', 'accepted', 'rejected') NOT NULL DEFAULT 'pending';"))
+            except Exception as e:
+                logger.warning(f"Metadata update for requests failed: {e}")
+
+            try:
+                await conn.execute(text("ALTER TABLE agreements MODIFY COLUMN status ENUM('pending', 'completed', 'cancelled') NOT NULL DEFAULT 'pending';"))
+            except Exception as e:
+                 logger.warning(f"Metadata update for agreements failed: {e}")
+            # ----------------------------------------------------------------
+
         logger.info("✅ Database tables verified/created")
         
     else:
