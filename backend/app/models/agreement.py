@@ -43,7 +43,7 @@ class Agreement(Base):
 
     request_id: Mapped[int] = mapped_column(
         BIGINT(unsigned=True),
-        ForeignKey("land_requests.request_id", ondelete="CASCADE"),
+        ForeignKey("requests.request_id", ondelete="CASCADE"),
         nullable=False,
     )
 
