@@ -1,27 +1,11 @@
-import { NextRequest, NextResponse } from "next/server";
-import { API_URL, COOKIE_NAME } from "@/lib/config";
-import { cookies } from "next/headers";
+import { type NextRequest } from "next/server";
+import { forwardToBackend } from "@/lib/fetcher";
 
-export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+export async function POST(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
   const { id } = await params;
-  const cookieStore = await cookies();
-  const token = cookieStore.get(COOKIE_NAME)?.value;
-
-  if (!token) return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
-
-  const res = await fetch(`${API_URL}/lands/requests/${id}/accept`, {
-    method: "POST",
-    headers: {
-      "Authorization": `Bearer ${token}`,
-      "Accept": "application/json",
-    },
-  });
-
-  if (!res.ok) {
-     const err = await res.json().catch(() => ({}));
-     return NextResponse.json(err, { status: res.status });
-  }
-
-  const data = await res.json();
-  return NextResponse.json(data, { status: 200 });
+  // Backend expects: POST /lands/requests/{request_id}/accept
+  return forwardToBackend(req, `/lands/requests/${id}/accept`);
 }
