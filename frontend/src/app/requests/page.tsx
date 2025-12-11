@@ -7,6 +7,8 @@ import { Check, X, MessageCircle, Clock, FileText, ArrowUpRight, ArrowDownLeft, 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
+import { handleLogout } from "@/lib/utils";
+
 type RequestItem = {
     request_id: number;
     land_id: number;
@@ -35,7 +37,7 @@ export default function RequestsPage() {
             const sentRes = await fetch("/api/requests/outgoing");
 
             if (sentRes.status === 401) {
-                router.push("/login");
+                handleLogout(router);
                 return;
             }
 
