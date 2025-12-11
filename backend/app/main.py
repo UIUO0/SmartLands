@@ -77,6 +77,25 @@ async def lifespan(app: FastAPI):
         
         async with engine.begin() as conn:
             await conn.run_sync(Base.metadata.create_all)
+            
+            # --- Auto-Migration for Enums (Fixing 'Data truncated' error) ---
+            logger.info("🔧 Running auto-migration for Enums...")
+            try:
+                await conn.execute(text("ALTER TABLE lands MODIFY COLUMN status ENUM('available', 'reserved', 'sold', 'archived') NOT NULL DEFAULT 'available';"))
+            except Exception as e:
+                logger.warning(f"Metadata update for lands failed (might be already correct): {e}")
+
+            try:
+                await conn.execute(text("ALTER TABLE requests MODIFY COLUMN status ENUM('pending', 'accepted', 'rejected') NOT NULL DEFAULT 'pending';"))
+            except Exception as e:
+                logger.warning(f"Metadata update for requests failed: {e}")
+
+            try:
+                await conn.execute(text("ALTER TABLE agreements MODIFY COLUMN status ENUM('pending', 'completed', 'cancelled') NOT NULL DEFAULT 'pending';"))
+            except Exception as e:
+                 logger.warning(f"Metadata update for agreements failed: {e}")
+            # ----------------------------------------------------------------
+
         logger.info("✅ Database tables verified/created")
         
     else:
@@ -198,6 +217,10 @@ def health_check():
 app.include_router(auth_router)
 app.include_router(users_router)
 app.include_router(lands_router)
+from app.routers.chats import router as chats_router
+app.include_router(chats_router)
+from app.routers.ai_agent import router as ai_agent_router
+app.include_router(ai_agent_router)
 
 # ===== Root Endpoint =====
 @app.get("/", tags=["root"])
@@ -212,7 +235,9 @@ def read_root():
         "endpoints": {
             "auth": "/auth",
             "users": "/users",
-            "lands": "/lands"
+            "lands": "/lands",
+            "chats": "/chats",
+            "ai": "/ai"
         }
     }
 
@@ -230,3 +255,47 @@ if os.getenv("ENVIRONMENT", "production") == "development":
             "jwt_configured": bool(os.getenv("JWT_SECRET")),
         }
     logger.info("🔧 Development mode: Debug info endpoint enabled at /__dev/info")
+
+
+# ===== Temporary Fix Endpoint =====
+@app.get("/fix-enums", tags=["debug"])
+async def fix_enums_endpoint():
+    """Reserved for fixing DB schema issues (run once)"""
+    from sqlalchemy import text
+    from app.db.database import engine
+    
+    results = {}
+    async with engine.begin() as conn:
+        # 1. Lands
+        try:
+            # Check current
+            # await conn.execute(text("SHOW COLUMNS FROM lands LIKE 'status'"))
+            # Run Fix
+            await conn.execute(text("ALTER TABLE lands MODIFY COLUMN status ENUM('available', 'reserved', 'sold', 'archived') NOT NULL DEFAULT 'available';"))
+            results["lands"] = "Fixed (ALTER executed)"
+        except Exception as e:
+            results["lands"] = f"Error: {e}"
+
+        # 2. Requests
+        try:
+            await conn.execute(text("ALTER TABLE requests MODIFY COLUMN status ENUM('pending', 'accepted', 'rejected') NOT NULL DEFAULT 'pending';"))
+            results["requests"] = "Fixed (ALTER executed)"
+        except Exception as e:
+            results["requests"] = f"Error: {e}"
+
+        # 3. Agreements
+        try:
+            await conn.execute(text("ALTER TABLE agreements MODIFY COLUMN status ENUM('pending', 'completed', 'cancelled') NOT NULL DEFAULT 'pending';"))
+            results["agreements"] = "Fixed (ALTER executed)"
+        except Exception as e:
+            results["agreements"] = f"Error: {e}"
+            
+        # 4. Agreements - Fix foreign key if needed (Bonus)
+        # We saw an issue with foreign key relationship earlier.
+        # But this is just ENUM fix.
+            
+    return {
+        "message": "Database schema update attempted.",
+        "details": results,
+        "instruction": "If you see 'Fixed', try your action again."
+    }
