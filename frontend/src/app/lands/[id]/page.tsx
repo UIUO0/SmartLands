@@ -101,6 +101,21 @@ export default function LandDetailsPage({ params }: { params: Promise<{ id: stri
             )}
           </div>
 
+
+          {/* صورة العقار */}
+          <div className="relative h-96 w-full rounded-2xl overflow-hidden mb-6 bg-gray-200 border border-[#A1BC98]/30">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={(land as any).image || (land as any).cover_image_url || (land as any).picture_url || "/placeholder.svg"}
+              alt={land.title}
+              className="w-full h-full object-cover"
+              onError={(e) => {
+                (e.target as HTMLImageElement).src = "/placeholder.svg";
+              }}
+            />
+          </div>
+
+
           {/* التفاصيل والوصف */}
           <div className="bg-white/40 p-6 rounded-2xl border border-[#A1BC98]/30 mb-8">
             <div className="flex gap-4 mb-4 text-sm font-semibold text-[#556b4d]">

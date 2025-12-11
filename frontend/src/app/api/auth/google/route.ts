@@ -1,14 +1,15 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
+import { COOKIE_NAME } from "@/lib/config";
 
 const BACKEND_URL = "https://smartlands-production.up.railway.app";
 
 export async function POST(req: Request) {
   try {
     const { id_token } = await req.json();
-    
 
-    
+
+
     // إرسال التوكن للباك-إند
     const res = await fetch(`${BACKEND_URL}/auth/google`, {
       method: "POST",
@@ -22,20 +23,20 @@ export async function POST(req: Request) {
     if (!res.ok) {
       // طباعة الخطأ في التيرمنال لنعرف السبب
       console.error("❌ Backend Google Auth Error:", data);
-      
+
       // إرجاع تفاصيل الخطأ للفرونت
       return NextResponse.json(
-        { detail: data.detail || "رفض الباك-إند عملية الدخول" }, 
+        { detail: data.detail || "رفض الباك-إند عملية الدخول" },
         { status: res.status }
       );
     }
 
     // النجاح
     const cookieStore = await cookies();
-    cookieStore.set("sl_token", data.access_token, {
+    cookieStore.set(COOKIE_NAME, data.access_token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
-      maxAge: 60 * 60 * 24 * 7, 
+      maxAge: 60 * 60 * 24 * 7,
       path: "/",
     });
 
