@@ -12,7 +12,11 @@ export default function MyLandsPage() {
     const [loading, setLoading] = useState(true);
 
     const [isModalOpen, setIsModalOpen] = useState(false);
+    const [isImageModalOpen, setIsImageModalOpen] = useState(false);
+    const [selectedLandId, setSelectedLandId] = useState<string | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [isUploading, setIsUploading] = useState(false);
+    const [selectedImage, setSelectedImage] = useState<File | null>(null);
 
     const [formData, setFormData] = useState({
         title: "",
@@ -102,6 +106,36 @@ export default function MyLandsPage() {
         }
     }
 
+    async function handleUpload(e: React.FormEvent) {
+        e.preventDefault();
+        if (!selectedLandId || !selectedImage) return;
+
+        setIsUploading(true);
+        const formData = new FormData();
+        formData.append("file", selectedImage);
+
+        try {
+            const res = await fetch(`/api/lands/${selectedLandId}/images`, {
+                method: "POST",
+                body: formData
+            });
+
+            if (res.ok) {
+                alert("✅ تم رفع المحتوى بنجاح!");
+                setIsImageModalOpen(false);
+                setSelectedImage(null);
+                fetchMyLands();
+            } else {
+                const err = await res.json();
+                alert("❌ فشل الرفع: " + (err.detail || "خطأ غير معروف"));
+            }
+        } catch {
+            alert("خطأ في الاتصال");
+        } finally {
+            setIsUploading(false);
+        }
+    }
+
     return (
         <div className="flex min-h-screen bg-[#F1F3E0]">
             <Sidebar />
@@ -136,7 +170,7 @@ export default function MyLandsPage() {
                         <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
                             {lands.map((land) => {
                                 // منطق تحديد رابط الصورة: يبحث في عدة حقول محتملة
-                                const imageSrc = land.cover_image_url || land.picture_url || (land.images && land.images.length > 0 ? land.images[0].url : null);
+                                const imageSrc = land.image || land.cover_image_url || land.picture_url || (land.images && land.images.length > 0 ? land.images[0].url : null);
 
                                 return (
                                     <div key={land.land_id} className="bg-white rounded-3xl p-5 shadow-sm border border-[#A1BC98]/30 group hover:border-[#A1BC98] transition flex flex-col">
@@ -189,6 +223,12 @@ export default function MyLandsPage() {
                                             <Link href={`/lands/${land.land_id}`} className="text-sm bg-black text-white px-5 py-2.5 rounded-xl hover:bg-[#333] transition shadow-md">
                                                 التفاصيل
                                             </Link>
+                                            <button
+                                                onClick={() => { setSelectedLandId(String(land.land_id)); setIsImageModalOpen(true); }}
+                                                className="text-sm bg-[#A1BC98] text-black px-4 py-2.5 rounded-xl hover:bg-[#8ea885] transition shadow-md font-bold"
+                                            >
+                                                📷 أضف صور
+                                            </button>
                                         </div>
                                     </div>
                                 );
@@ -246,6 +286,40 @@ export default function MyLandsPage() {
                                 >
                                     {isSubmitting ? <Loader2 className="animate-spin" /> : <Save className="h-5 w-5" />}
                                     نشر الإعلان
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                )}
+                {/* Image Upload Modal */}
+                {isImageModalOpen && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in">
+                        <div className="bg-[#F1F3E0] w-full max-w-md rounded-3xl p-8 shadow-2xl">
+                            <div className="flex justify-between items-center mb-6 border-b border-[#A1BC98]/30 pb-4">
+                                <h2 className="text-2xl font-bold">رفع صور للعقار</h2>
+                                <button onClick={() => setIsImageModalOpen(false)}><X className="h-6 w-6 hover:text-red-500" /></button>
+                            </div>
+                            <form onSubmit={handleUpload} className="space-y-4">
+                                <div className="border-2 border-dashed border-[#A1BC98] rounded-xl p-8 text-center cursor-pointer hover:bg-[#EDEFE5] transition relative">
+                                    <input
+                                        type="file"
+                                        accept="image/*"
+                                        required
+                                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                                        onChange={(e) => setSelectedImage(e.target.files ? e.target.files[0] : null)}
+                                    />
+                                    <ImageIcon className="h-12 w-12 mx-auto text-[#556b4d] mb-2" />
+                                    <p className="text-gray-600 font-medium">
+                                        {selectedImage ? selectedImage.name : "اضغط لاختيار صورة"}
+                                    </p>
+                                </div>
+                                <button
+                                    type="submit"
+                                    disabled={isUploading || !selectedImage}
+                                    className="w-full bg-black text-white font-bold py-4 rounded-xl hover:bg-[#333] transition flex justify-center items-center gap-2 mt-4 disabled:opacity-50"
+                                >
+                                    {isUploading ? <Loader2 className="animate-spin" /> : <Save className="h-5 w-5" />}
+                                    تأكيد الرفع
                                 </button>
                             </form>
                         </div>
