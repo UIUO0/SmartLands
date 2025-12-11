@@ -77,6 +77,12 @@ export default function EditLandPage({ params }: { params: Promise<{ id: string 
                 body: JSON.stringify(payload)
             });
 
+            if (res.status === 401) {
+                alert(" انتهت الجلسة، يرجى تسجيل الدخول مرة أخرى.");
+                router.push("/login");
+                return;
+            }
+
             if (res.ok) {
                 alert("✅ تم تحديث العقار بنجاح!");
                 router.push(`/mylands/${id}`);
@@ -105,6 +111,12 @@ export default function EditLandPage({ params }: { params: Promise<{ id: string 
                 method: "POST",
                 body: formData
             });
+
+            if (res.status === 401) {
+                alert(" انتهت الجلسة، يرجى تسجيل الدخول مرة أخرى.");
+                router.push("/login");
+                return;
+            }
 
             if (res.ok) {
                 alert("✅ تم رفع الصورة بنجاح!");
