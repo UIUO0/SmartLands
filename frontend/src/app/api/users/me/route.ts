@@ -9,7 +9,7 @@ async function getToken() {
 }
 
 // 1. جلب البيانات (GET)
-export async function GET(req: NextRequest) {
+export async function GET() {
   const token = await getToken();
   if (!token) return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
 
@@ -23,7 +23,7 @@ export async function GET(req: NextRequest) {
   });
 
   if (!res.ok) return NextResponse.json({ message: "Error" }, { status: res.status });
-  
+
   const data = await res.json();
   return NextResponse.json(data, { status: 200 });
 }
@@ -35,7 +35,7 @@ export async function PATCH(req: NextRequest) {
 
   try {
     const body = await req.json();
-    
+
     const res = await fetch(`${API_URL}/users/me`, {
       method: "PATCH",
       headers: {
@@ -47,14 +47,14 @@ export async function PATCH(req: NextRequest) {
     });
 
     if (!res.ok) {
-        const err = await res.json();
-        return NextResponse.json(err, { status: res.status });
+      const err = await res.json();
+      return NextResponse.json(err, { status: res.status });
     }
-    
+
     const data = await res.json();
     return NextResponse.json(data, { status: 200 });
 
-  } catch (error) {
+  } catch {
     return NextResponse.json({ message: "Server Error" }, { status: 500 });
   }
 }
