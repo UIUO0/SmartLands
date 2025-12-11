@@ -34,12 +34,16 @@ export default function RequestsPage() {
             // 1. جلب طلباتي المرسلة (outgoing)
             const sentRes = await fetch("/api/requests/outgoing");
             const sentData = sentRes.ok ? await sentRes.json() : [];
+            console.log("Outgoing Requests Data:", sentData);
+
             // التأكد من أن البيانات هي مصفوفة (قد تكون ملفوفة في كائن)
             setMyOrders(Array.isArray(sentData) ? sentData : (sentData.items || []));
 
             // 2. جلب الطلبات الواردة (incoming)
             const receivedRes = await fetch("/api/requests/incoming");
             const receivedData = receivedRes.ok ? await receivedRes.json() : [];
+            console.log("Incoming Requests Data:", receivedData);
+
             setIncomingRequests(Array.isArray(receivedData) ? receivedData : (receivedData.items || []));
 
         } catch (e) {
