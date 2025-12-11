@@ -25,8 +25,10 @@ export default function EditLandPage({ params }: { params: Promise<{ id: string 
     });
 
     // Image Upload
+    const [existingImages, setExistingImages] = useState<any[]>([]);
     const [isUploading, setIsUploading] = useState(false);
     const [selectedImage, setSelectedImage] = useState<File | null>(null);
+    const [deletingImageId, setDeletingImageId] = useState<number | null>(null);
 
 
     useEffect(() => {
@@ -45,6 +47,13 @@ export default function EditLandPage({ params }: { params: Promise<{ id: string 
                     region: data.region || "",
                     address_line: data.address_line || ""
                 });
+
+                // Fetch existing images
+                const imgRes = await fetch(`/api/lands/${id}/images`);
+                if (imgRes.ok) {
+                    const images = await imgRes.json();
+                    setExistingImages(images);
+                }
             } catch {
                 // Handle error
             } finally {
@@ -131,6 +140,40 @@ export default function EditLandPage({ params }: { params: Promise<{ id: string 
             alert("خطأ في الاتصال");
         } finally {
             setIsUploading(false);
+        }
+    }
+
+    async function handleDeleteImage(imageId: number) {
+        if (!confirm("هل أنت متأكد من حذف هذه الصورة؟")) return;
+
+        setDeletingImageId(imageId);
+        try {
+            const res = await fetch(`/api/lands/${id}/images/${imageId}`, {
+                method: "DELETE"
+            });
+
+            if (res.status === 401) {
+                alert(" انتهت الجلسة، يرجى تسجيل الدخول مرة أخرى.");
+                router.push("/login");
+                return;
+            }
+
+            if (res.ok) {
+                alert("✅ تم حذف الصورة بنجاح!");
+                // Refresh images
+                const imgRes = await fetch(`/api/lands/${id}/images`);
+                if (imgRes.ok) {
+                    const images = await imgRes.json();
+                    setExistingImages(images);
+                }
+            } else {
+                alert("❌ فشل حذف الصورة");
+            }
+        } catch (e) {
+            console.error(e);
+            alert("خطأ في الاتصال");
+        } finally {
+            setDeletingImageId(null);
         }
     }
 
@@ -231,9 +274,43 @@ export default function EditLandPage({ params }: { params: Promise<{ id: string 
                             {isUploading ? <Loader2 className="animate-spin h-5 w-5" /> : "رفع الصورة"}
                         </button>
                     </form>
+
+                    {/* Existing Images Gallery */}
+                    {existingImages.length > 0 && (
+                        <div className="mt-8 pt-8 border-t border-gray-200">
+                            <h3 className="text-lg font-bold mb-4">الصور الموجودة ({existingImages.length})</h3>
+                            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                                {existingImages.map((img: any) => (
+                                    <div key={img.image_id} className="relative group">
+                                        <img
+                                            src={img.file_url.startsWith('http') ? img.file_url : `https://smartlands-production.up.railway.app${img.file_url}`}
+                                            alt="Land"
+                                            className="w-full h-32 object-cover rounded-xl border border-gray-200"
+                                        />
+                                        <button
+                                            onClick={() => handleDeleteImage(img.image_id)}
+                                            disabled={deletingImageId === img.image_id}
+                                            className="absolute top-2 right-2 bg-red-500 text-white p-2 rounded-lg hover:bg-red-600 transition shadow-lg opacity-0 group-hover:opacity-100 disabled:opacity-50"
+                                        >
+                                            {deletingImageId === img.image_id ? (
+                                                <Loader2 className="h-4 w-4 animate-spin" />
+                                            ) : (
+                                                <X className="h-4 w-4" />
+                                            )}
+                                        </button>
+                                        {img.is_cover && (
+                                            <span className="absolute bottom-2 left-2 bg-green-600 text-white text-xs px-2 py-1 rounded">
+                                                الصورة الرئيسية
+                                            </span>
+                                        )}
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
                 </section>
 
             </div>
-        </main>
+        </main >
     );
 }
