@@ -11,7 +11,6 @@ export function middleware(request: NextRequest) {
   // 1. Handle Protected Routes
   // Define routes that require authentication
   const isProtectedRoute =
-    pathname.startsWith("/dashboard") ||
     pathname.startsWith("/mylands") ||
     pathname.startsWith("/profile") ||
     pathname.startsWith("/lands") ||

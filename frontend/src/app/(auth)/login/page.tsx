@@ -3,6 +3,7 @@
 
 import { Suspense, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { GoogleLogin } from "@react-oauth/google";
 
 export const dynamic = "force-dynamic";
 
@@ -62,6 +63,27 @@ function LoginForm() {
               نسيت كلمة المرور؟
             </a>
           </div>
+        </div>
+
+        {/* زر جوجل للدخول */}
+        <div className="w-full flex justify-center py-2">
+          <GoogleLogin
+            onSuccess={async (credentialResponse) => {
+              const r = await fetch("/api/auth/google", {
+                method: "POST",
+                body: JSON.stringify({ id_token: credentialResponse.credential })
+              });
+              if (r.ok) {
+                router.push(next);
+                router.refresh();
+              } else {
+                alert("Google Login Failed");
+              }
+            }}
+            onError={() => {
+              alert("Google Login Failed");
+            }}
+          />
         </div>
 
         <button className="rounded-xl bg-black text-white py-2" disabled={loading}>
