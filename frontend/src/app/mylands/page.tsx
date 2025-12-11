@@ -7,6 +7,7 @@ import { Plus, MapPin, Ruler, X, Loader2, Save, Image as ImageIcon } from "lucid
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { getAbsoluteImageUrl, handleLogout } from "@/lib/utils";
+import { LandImage } from "@/components/LandImage";
 
 export default function MyLandsPage() {
     const [lands, setLands] = useState<any[]>([]);
@@ -254,32 +255,7 @@ export default function MyLandsPage() {
 
                                         {/* === قسم الصورة المحسن === */}
                                         <div className="h-48 w-full bg-gray-100 rounded-2xl mb-4 overflow-hidden relative border border-gray-100">
-                                            {imageSrc && imageSrc !== "/placeholder.svg" ? (
-                                                // eslint-disable-next-line @next/next/no-img-element
-                                                <img
-                                                    src={imageSrc}
-                                                    alt={land.title}
-                                                    className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-                                                    onError={(e) => {
-                                                        // في حال فشل تحميل الصورة، نخفيها ونعرض الرمز البديل
-                                                        (e.target as HTMLImageElement).style.display = 'none';
-                                                        ((e.target as HTMLImageElement).nextSibling as HTMLElement).style.display = 'flex';
-                                                    }}
-                                                />
-                                            ) : null}
-
-                                            {/* الرمز البديل (يظهر إذا لم يكن هناك رابط، أو إذا فشل التحميل) */}
-                                            <div
-                                                className="flex flex-col items-center justify-center h-full text-gray-400 w-full absolute top-0 left-0 bg-[#F9FAFB]"
-                                                style={{ display: imageSrc && imageSrc !== "/placeholder.svg" ? 'none' : 'flex' }}
-                                            >
-                                                <ImageIcon className="h-10 w-10 mb-2 opacity-50" />
-                                                <span className="text-xs">لا توجد صورة</span>
-                                            </div>
-
-                                            <span className={`absolute top-3 right-3 text-xs font-bold px-2 py-1 rounded-lg shadow-sm z-10 ${land.status === 'available' ? 'bg-white text-green-700' : 'bg-gray-800 text-white'}`}>
-                                                {land.status === 'available' ? 'متاح' : land.status}
-                                            </span>
+                                            <LandImage land={land} showStatus={true} />
                                         </div>
 
                                         <div className="flex justify-between items-start mb-2">
