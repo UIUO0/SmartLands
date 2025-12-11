@@ -21,9 +21,7 @@ export default function EditLandPage({ params }: { params: Promise<{ id: string 
         area_sq_m: "",
         city: "",
         region: "",
-        address_line: "",
-        latitude: "",
-        longitude: ""
+        address_line: ""
     });
 
     // Image Upload
@@ -45,9 +43,7 @@ export default function EditLandPage({ params }: { params: Promise<{ id: string 
                     area_sq_m: data.area_sq_m || "",
                     city: data.city || "",
                     region: data.region || "",
-                    address_line: data.address_line || "",
-                    latitude: data.latitude || "",
-                    longitude: data.longitude || ""
+                    address_line: data.address_line || ""
                 });
             } catch {
                 // Handle error
