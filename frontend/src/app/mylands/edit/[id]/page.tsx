@@ -3,7 +3,7 @@
 import { useEffect, useState, use } from "react";
 import { useRouter } from "next/navigation";
 import { LandImage } from "@/components/LandImage";
-import { Save, ArrowRight, Loader2, Image as ImageIcon, X, Edit } from "lucide-react";
+import { Save, ArrowRight, Loader2, Image as ImageIcon, X, Edit, Star } from "lucide-react";
 import Link from "next/link";
 
 export default function EditLandPage({ params }: { params: Promise<{ id: string }> }) {
@@ -24,11 +24,12 @@ export default function EditLandPage({ params }: { params: Promise<{ id: string 
         address_line: ""
     });
 
-    // Image Upload
+    // Image Management
     const [existingImages, setExistingImages] = useState<any[]>([]);
     const [isUploading, setIsUploading] = useState(false);
     const [selectedImage, setSelectedImage] = useState<File | null>(null);
     const [deletingImageId, setDeletingImageId] = useState<number | null>(null);
+    const [settingCoverId, setSettingCoverId] = useState<number | null>(null);
 
 
     useEffect(() => {
@@ -177,6 +178,38 @@ export default function EditLandPage({ params }: { params: Promise<{ id: string 
         }
     }
 
+    async function handleSetCover(imageId: number) {
+        setSettingCoverId(imageId);
+        try {
+            const res = await fetch(`/api/lands/${id}/cover/${imageId}`, {
+                method: "PATCH"
+            });
+
+            if (res.status === 401) {
+                alert(" انتهت الجلسة، يرجى تسجيل الدخول مرة أخرى.");
+                router.push("/login");
+                return;
+            }
+
+            if (res.ok) {
+                alert("✅ تم تعيين الصورة كغلاف بنجاح!");
+                // Refresh images to update is_cover status
+                const imgRes = await fetch(`/api/lands/${id}/images`);
+                if (imgRes.ok) {
+                    const images = await imgRes.json();
+                    setExistingImages(images);
+                }
+            } else {
+                alert("❌ فشل تعيين الصورة كغلاف");
+            }
+        } catch (e) {
+            console.error(e);
+            alert("خطأ في الاتصال");
+        } finally {
+            setSettingCoverId(null);
+        }
+    }
+
     if (loading) return <div className="min-h-screen bg-[#F1F3E0] flex items-center justify-center text-[#556b4d] animate-pulse">جارِ التحميل...</div>;
     if (!land) return <div className="min-h-screen bg-[#F1F3E0] flex items-center justify-center">لم يتم العثور على الأرض</div>;
 
@@ -287,17 +320,41 @@ export default function EditLandPage({ params }: { params: Promise<{ id: string 
                                             alt="Land"
                                             className="w-full h-32 object-cover rounded-xl border border-gray-200"
                                         />
-                                        <button
-                                            onClick={() => handleDeleteImage(img.image_id)}
-                                            disabled={deletingImageId === img.image_id}
-                                            className="absolute top-2 right-2 bg-red-500 text-white p-2 rounded-lg hover:bg-red-600 transition shadow-lg opacity-0 group-hover:opacity-100 disabled:opacity-50"
-                                        >
-                                            {deletingImageId === img.image_id ? (
-                                                <Loader2 className="h-4 w-4 animate-spin" />
-                                            ) : (
-                                                <X className="h-4 w-4" />
-                                            )}
-                                        </button>
+
+                                        {/* Action Buttons Container */}
+                                        <div className="absolute top-2 right-2 flex gap-2 opacity-0 group-hover:opacity-100 transition">
+                                            {/* Set as Cover Button */}
+                                            <button
+                                                onClick={() => handleSetCover(img.image_id)}
+                                                disabled={settingCoverId === img.image_id || img.is_cover}
+                                                className={`p-2 rounded-lg transition shadow-lg ${img.is_cover
+                                                        ? 'bg-yellow-500 text-white cursor-default'
+                                                        : 'bg-green-500 text-white hover:bg-green-600 disabled:opacity-50'
+                                                    }`}
+                                                title={img.is_cover ? "الصورة الرئيسية الحالية" : "تعيين كصورة رئيسية"}
+                                            >
+                                                {settingCoverId === img.image_id ? (
+                                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                                ) : (
+                                                    <Star className={`h-4 w-4 ${img.is_cover ? 'fill-current' : ''}`} />
+                                                )}
+                                            </button>
+
+                                            {/* Delete Button */}
+                                            <button
+                                                onClick={() => handleDeleteImage(img.image_id)}
+                                                disabled={deletingImageId === img.image_id}
+                                                className="bg-red-500 text-white p-2 rounded-lg hover:bg-red-600 transition shadow-lg disabled:opacity-50"
+                                                title="حذف الصورة"
+                                            >
+                                                {deletingImageId === img.image_id ? (
+                                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                                ) : (
+                                                    <X className="h-4 w-4" />
+                                                )}
+                                            </button>
+                                        </div>
+
                                         {img.is_cover && (
                                             <span className="absolute bottom-2 left-2 bg-green-600 text-white text-xs px-2 py-1 rounded">
                                                 الصورة الرئيسية
