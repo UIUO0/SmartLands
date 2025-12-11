@@ -22,14 +22,18 @@ export default function ChatsPage() {
                 const res = await fetch('/api/chats');
                 if (res.ok) {
                     const data = await res.json();
-                    setConversations(data);
+                    console.log("Conversations response:", data);
+                    // Handle different response formats
+                    const convArray = Array.isArray(data) ? data : (data.conversations || []);
+                    setConversations(convArray);
                     // Auto-select first conversation
-                    if (data.length > 0 && !selectedConversationId) {
-                        setSelectedConversationId(data[0].conversation_id);
+                    if (convArray.length > 0 && !selectedConversationId) {
+                        setSelectedConversationId(convArray[0].conversation_id);
                     }
                 }
             } catch (e) {
                 console.error("Failed to load conversations:", e);
+                setConversations([]); // Ensure it's always an array
             } finally {
                 setLoading(false);
             }
@@ -47,10 +51,16 @@ export default function ChatsPage() {
                 const res = await fetch(`/api/chats/${selectedConversationId}/messages`);
                 if (res.ok) {
                     const data = await res.json();
-                    setMessages(data);
+                    console.log("Messages response:", data);
+                    // Handle different response formats
+                    const msgArray = Array.isArray(data) ? data : (data.messages || []);
+                    setMessages(msgArray);
+                } else {
+                    setMessages([]);
                 }
             } catch (e) {
                 console.error("Failed to load messages:", e);
+                setMessages([]);
             } finally {
                 setLoadingMessages(false);
             }
