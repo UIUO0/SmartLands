@@ -16,4 +16,3 @@ python-multipart
 sendgrid
 google-auth
 requests
-#d
