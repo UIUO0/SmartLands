@@ -31,6 +31,8 @@ export default function MyLandsPage() {
         longitude: 46.6753
     });
 
+    const [editingLand, setEditingLand] = useState<any>(null);
+
     const router = useRouter();
 
     useEffect(() => {
@@ -56,7 +58,7 @@ export default function MyLandsPage() {
                     const rawList = data;
                     const landsWithImages = await Promise.all(rawList.map(async (land: any) => {
                         // Check for image in various fields
-                        if (land.image || land.image_url || land.cover_image_url || land.picture_url) return land;
+                        if (land.image || land.image_url || land.cover_image_url || land.picture_url || (land.cover_image && land.cover_image.file_url)) return land;
 
                         // If no image, try to fetch from /api/lands/{id}/images
                         try {
@@ -95,7 +97,7 @@ export default function MyLandsPage() {
         fetchMyLands();
     }, [fetchMyLands]);
 
-    async function handleCreate(e: React.FormEvent) {
+    async function handleSave(e: React.FormEvent) {
         e.preventDefault();
         setIsSubmitting(true);
 
@@ -107,25 +109,54 @@ export default function MyLandsPage() {
         };
 
         try {
-            const res = await fetch("/api/lands", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(payload)
-            });
+            let res;
+            if (editingLand) {
+                // Update existing
+                res = await fetch(`/api/lands/${editingLand.land_id}`, {
+                    method: "PATCH",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(payload)
+                });
+            } else {
+                // Create new
+                res = await fetch("/api/lands", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(payload)
+                });
+            }
 
             if (res.ok) {
-                alert("✅ تمت إضافة الأرض بنجاح!");
+                alert(editingLand ? "✅ تم تحديث العقار بنجاح!" : "✅ تمت إضافة الأرض بنجاح!");
                 setIsModalOpen(false);
-                setFormData({ ...formData, title: "", description: "", price_amount: "", area_sq_m: "" });
+                setEditingLand(null);
+                setFormData({ title: "", description: "", price_amount: "", area_sq_m: "", city: "Riyadh", region: "", address_line: "", latitude: 24.7136, longitude: 46.6753 });
                 fetchMyLands();
             } else {
                 const err = await res.json();
-                alert("❌ فشل الإضافة: " + (err.detail || "تأكد من البيانات"));
+                alert("❌ فشل العملية: " + (err.detail || "تأكد من البيانات"));
             }
         } catch {
             alert("خطأ في الاتصال");
         } finally {
             setIsSubmitting(false);
+        }
+    }
+
+    async function handleDelete(landId: string) {
+        if (!confirm("⚠️ هل أنت متأكد من حذف هذه الأرض؟ لا يمكن التراجع عن هذا الإجراء.")) return;
+
+        try {
+            const res = await fetch(`/api/lands/${landId}`, { method: "DELETE" });
+            if (res.ok) {
+                alert("تم حذف العقار بنجاح");
+                fetchMyLands();
+            } else {
+                alert("فشلت عملية الحذف");
+            }
+        } catch (e) {
+            console.error(e);
+            alert("حدث خطأ أثناء الحذف");
         }
     }
 
@@ -159,6 +190,28 @@ export default function MyLandsPage() {
         }
     }
 
+    const openCreateModal = () => {
+        setEditingLand(null);
+        setFormData({ title: "", description: "", price_amount: "", area_sq_m: "", city: "Riyadh", region: "", address_line: "", latitude: 24.7136, longitude: 46.6753 });
+        setIsModalOpen(true);
+    };
+
+    const openEditModal = (land: any) => {
+        setEditingLand(land);
+        setFormData({
+            title: land.title || "",
+            description: land.description || "",
+            price_amount: land.price_amount || "",
+            area_sq_m: land.area_sq_m || "",
+            city: land.city || "Riyadh",
+            region: land.region || "",
+            address_line: land.address_line || "",
+            latitude: land.latitude || 24.7136,
+            longitude: land.longitude || 46.6753
+        });
+        setIsModalOpen(true);
+    };
+
     return (
         <div className="flex min-h-screen bg-[#F1F3E0]">
             <Sidebar />
@@ -171,7 +224,7 @@ export default function MyLandsPage() {
                             <MapPin className="h-8 w-8" /> أراضيّ المعروضة
                         </h1>
                         <button
-                            onClick={() => setIsModalOpen(true)}
+                            onClick={openCreateModal}
                             className="bg-black text-white px-5 py-3 rounded-xl font-bold hover:bg-[#333] transition flex items-center gap-2 shadow-lg"
                         >
                             <Plus className="h-5 w-5" /> إضافة أرض جديدة
@@ -187,13 +240,13 @@ export default function MyLandsPage() {
                             </div>
                             <h2 className="text-xl font-bold mb-2">لا تملك أي أراضي معروضة حالياً</h2>
                             <p className="text-gray-500 mb-6">ابدأ بإضافة أول عقار لك ليتمكن المشترون من العثور عليه.</p>
-                            <button onClick={() => setIsModalOpen(true)} className="text-[#556b4d] font-bold underline">إضافة أرض الآن</button>
+                            <button onClick={openCreateModal} className="text-[#556b4d] font-bold underline">إضافة أرض الآن</button>
                         </div>
                     ) : (
                         <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
                             {lands.map((land) => {
                                 // Enhanced image resolution logic
-                                const rawImage = land.image || land.image_url || land.cover_image_url || land.picture_url || (land.images && land.images.length > 0 ? land.images[0].url : null);
+                                const rawImage = land.image || land.image_url || land.cover_image_url || land.picture_url || (land.cover_image && land.cover_image.file_url) || (land.images && land.images.length > 0 ? land.images[0].url : null);
                                 const imageSrc = getAbsoluteImageUrl(rawImage);
 
                                 return (
@@ -242,17 +295,38 @@ export default function MyLandsPage() {
                                             <span className="flex items-center gap-1 bg-[#F1F3E0] px-2 py-1 rounded-lg"><MapPin className="h-3.5 w-3.5" /> {land.city}</span>
                                         </div>
 
-                                        <div className="flex items-center justify-between border-t border-gray-100 pt-4 mt-2">
-                                            <span className="font-bold text-lg text-black">{Intl.NumberFormat('en-US').format(land.price_amount)} ر.س</span>
-                                            <Link href={`/lands/${land.land_id}`} className="text-sm bg-black text-white px-5 py-2.5 rounded-xl hover:bg-[#333] transition shadow-md">
-                                                التفاصيل
-                                            </Link>
+                                        {/* Action Buttons */}
+                                        <div className="flex items-center gap-2 border-t border-gray-100 pt-4 mt-2">
+                                            <span className="font-bold text-lg text-black flex-1">{Intl.NumberFormat('en-US').format(land.price_amount)} ر.س</span>
+
                                             <button
                                                 onClick={() => { setSelectedLandId(String(land.land_id)); setIsImageModalOpen(true); }}
-                                                className="text-sm bg-[#A1BC98] text-black px-4 py-2.5 rounded-xl hover:bg-[#8ea885] transition shadow-md font-bold"
+                                                className="p-2 rounded-xl bg-gray-100 hover:bg-gray-200 transition text-[#556b4d]"
+                                                title="إضافة صور"
                                             >
-                                                📷 أضف صور
+                                                <ImageIcon className="h-5 w-5" />
                                             </button>
+
+                                            <button
+                                                onClick={() => openEditModal(land)}
+                                                className="p-2 rounded-xl bg-blue-50 text-blue-600 hover:bg-blue-100 transition"
+                                                title="تعديل"
+                                            >
+                                                <Loader2 className="h-5 w-5 hidden" /> {/* Placeholder for consistent sizing if needed */}
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" /><path d="m15 5 4 4" /></svg>
+                                            </button>
+
+                                            <button
+                                                onClick={() => handleDelete(land.land_id)}
+                                                className="p-2 rounded-xl bg-red-50 text-red-600 hover:bg-red-100 transition"
+                                                title="حذف"
+                                            >
+                                                <X className="h-5 w-5" />
+                                            </button>
+
+                                            <Link href={`/lands/${land.land_id}`} className="text-sm bg-black text-white px-4 py-2.5 rounded-xl hover:bg-[#333] transition shadow-md">
+                                                التفاصيل
+                                            </Link>
                                         </div>
                                     </div>
                                 );
@@ -266,11 +340,11 @@ export default function MyLandsPage() {
                     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in">
                         <div className="bg-[#F1F3E0] w-full max-w-2xl rounded-3xl p-8 shadow-2xl max-h-[90vh] overflow-y-auto">
                             <div className="flex justify-between items-center mb-6 border-b border-[#A1BC98]/30 pb-4">
-                                <h2 className="text-2xl font-bold">إضافة عقار جديد</h2>
+                                <h2 className="text-2xl font-bold">{editingLand ? "تعديل العقار" : "إضافة عقار جديد"}</h2>
                                 <button onClick={() => setIsModalOpen(false)}><X className="h-6 w-6 hover:text-red-500" /></button>
                             </div>
 
-                            <form onSubmit={handleCreate} className="space-y-4">
+                            <form onSubmit={handleSave} className="space-y-4">
                                 <div className="grid md:grid-cols-2 gap-4">
                                     <div>
                                         <label className="block text-sm font-bold mb-1">عنوان الإعلان</label>
@@ -309,7 +383,7 @@ export default function MyLandsPage() {
                                     className="w-full bg-black text-white font-bold py-4 rounded-xl hover:bg-[#333] transition flex justify-center items-center gap-2 mt-4"
                                 >
                                     {isSubmitting ? <Loader2 className="animate-spin" /> : <Save className="h-5 w-5" />}
-                                    نشر الإعلان
+                                    {editingLand ? "حفظ التعديلات" : "نشر الإعلان"}
                                 </button>
                             </form>
                         </div>
