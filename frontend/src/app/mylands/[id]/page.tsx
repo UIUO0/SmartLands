@@ -20,6 +20,15 @@ export default function OwnerLandDetailsPage({ params }: { params: Promise<{ id:
                 const res = await fetch(`/api/lands/${id}`, { cache: "no-store" });
                 if (!res.ok) throw new Error("Land not found");
                 const landData = await res.json();
+                console.log("🖼️ Owner Details - Land Data:", landData);
+                console.log("🖼️ Image fields check:", {
+                    image: landData.image,
+                    image_url: landData.image_url,
+                    cover_image_url: landData.cover_image_url,
+                    picture_url: landData.picture_url,
+                    cover_image: landData.cover_image,
+                    images: landData.images
+                });
                 setLand(landData);
             } catch {
                 // Redirect if not found, or show error
