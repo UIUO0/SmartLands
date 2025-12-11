@@ -68,7 +68,11 @@ export default function ChatsPage() {
         if (!selectedConversationId) return;
 
         async function loadMessages() {
-            setLoadingMessages(true);
+            // Only show loading on initial load (when messages is empty)
+            if (messages.length === 0) {
+                setLoadingMessages(true);
+            }
+
             try {
                 const res = await fetch(`/api/chats/${selectedConversationId}/messages`);
                 if (res.ok) {
@@ -83,7 +87,9 @@ export default function ChatsPage() {
                 console.error("Failed to load messages:", e);
                 setMessages([]);
             } finally {
-                setLoadingMessages(false);
+                if (messages.length === 0) {
+                    setLoadingMessages(false);
+                }
             }
         }
 
