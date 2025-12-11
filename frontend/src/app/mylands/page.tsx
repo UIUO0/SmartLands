@@ -6,6 +6,7 @@ import { useEffect, useState, useCallback } from "react";
 import { Plus, MapPin, Ruler, X, Loader2, Save, Image as ImageIcon } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { getAbsoluteImageUrl } from "@/lib/utils";
 
 export default function MyLandsPage() {
     const [lands, setLands] = useState<any[]>([]);
@@ -170,7 +171,8 @@ export default function MyLandsPage() {
                         <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
                             {lands.map((land) => {
                                 // منطق تحديد رابط الصورة: يبحث في عدة حقول محتملة
-                                const imageSrc = land.image || land.cover_image_url || land.picture_url || (land.images && land.images.length > 0 ? land.images[0].url : null);
+                                const rawImage = land.image || land.cover_image_url || land.picture_url || (land.images && land.images.length > 0 ? land.images[0].url : null);
+                                const imageSrc = getAbsoluteImageUrl(rawImage);
 
                                 return (
                                     <div key={land.land_id} className="bg-white rounded-3xl p-5 shadow-sm border border-[#A1BC98]/30 group hover:border-[#A1BC98] transition flex flex-col">
