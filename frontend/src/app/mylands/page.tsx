@@ -113,6 +113,15 @@ export default function MyLandsPage() {
                 body: JSON.stringify(payload)
             });
 
+
+            if (res.status === 401) {
+                alert(" انتهت الجلسة، يرجى تسجيل الدخول مرة أخرى.");
+                router.push("/login");
+                setIsSubmitting(false);
+                setIsModalOpen(false);
+                return;
+            }
+
             if (res.ok) {
                 alert("✅ تمت إضافة الأرض بنجاح!");
                 setIsModalOpen(false);
