@@ -16,5 +16,5 @@ export async function POST(
 ) {
   const { id } = await params;
   // Forward to backend - trying /upload as /images returned 405
-  return forwardToBackend(req, `/lands/${id}/images`);
+  return forwardToBackend(req, `/lands/${id}/images/upload`);
 }
