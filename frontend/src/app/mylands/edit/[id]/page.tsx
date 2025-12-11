@@ -63,11 +63,13 @@ export default function EditLandPage({ params }: { params: Promise<{ id: string 
         setIsSubmitting(true);
 
         const payload = {
-            ...formData,
+            title: formData.title,
+            description: formData.description,
             price_amount: Number(formData.price_amount),
             area_sq_m: Number(formData.area_sq_m),
-            latitude: Number(formData.latitude),
-            longitude: Number(formData.longitude),
+            city: formData.city,
+            region: formData.region,
+            // address_line: formData.address_line, // Optional, uncomment if needed
         };
 
         try {
@@ -186,18 +188,7 @@ export default function EditLandPage({ params }: { params: Promise<{ id: string 
                                 value={formData.description} onChange={e => setFormData({ ...formData, description: e.target.value })} />
                         </div>
 
-                        <div className="grid md:grid-cols-2 gap-6">
-                            <div>
-                                <label className="block text-sm font-bold mb-2">خط العرض (Latitude)</label>
-                                <input type="number" step="any" className="w-full p-4 rounded-xl border border-[#A1BC98] bg-[#F9FAFB]"
-                                    value={formData.latitude} onChange={e => setFormData({ ...formData, latitude: e.target.value })} />
-                            </div>
-                            <div>
-                                <label className="block text-sm font-bold mb-2">خط الطول (Longitude)</label>
-                                <input type="number" step="any" className="w-full p-4 rounded-xl border border-[#A1BC98] bg-[#F9FAFB]"
-                                    value={formData.longitude} onChange={e => setFormData({ ...formData, longitude: e.target.value })} />
-                            </div>
-                        </div>
+
 
                         <button
                             type="submit"
