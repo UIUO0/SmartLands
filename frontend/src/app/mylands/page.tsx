@@ -23,9 +23,7 @@ export default function MyLandsPage() {
         area_sq_m: "",
         city: "Riyadh",
         region: "",
-        address_line: "",
-        latitude: 24.7136,
-        longitude: 46.6753
+        address_line: ""
     });
 
     const router = useRouter();
@@ -97,9 +95,13 @@ export default function MyLandsPage() {
         setIsSubmitting(true);
 
         const payload = {
-            ...formData,
+            title: formData.title,
+            description: formData.description,
             price_amount: Number(formData.price_amount),
             area_sq_m: Number(formData.area_sq_m),
+            city: formData.city,
+            region: formData.region,
+            address_line: formData.address_line,
             country: "SA"
         };
 
@@ -114,7 +116,7 @@ export default function MyLandsPage() {
             if (res.ok) {
                 alert("✅ تمت إضافة الأرض بنجاح!");
                 setIsModalOpen(false);
-                setFormData({ title: "", description: "", price_amount: "", area_sq_m: "", city: "Riyadh", region: "", address_line: "", latitude: 24.7136, longitude: 46.6753 });
+                setFormData({ title: "", description: "", price_amount: "", area_sq_m: "", city: "Riyadh", region: "", address_line: "" });
                 fetchMyLands();
             } else {
                 const err = await res.json();
@@ -146,7 +148,7 @@ export default function MyLandsPage() {
     }
 
     const openCreateModal = () => {
-        setFormData({ title: "", description: "", price_amount: "", area_sq_m: "", city: "Riyadh", region: "", address_line: "", latitude: 24.7136, longitude: 46.6753 });
+        setFormData({ title: "", description: "", price_amount: "", area_sq_m: "", city: "Riyadh", region: "", address_line: "" });
         setIsModalOpen(true);
     };
 
