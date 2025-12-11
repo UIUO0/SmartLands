@@ -21,14 +21,23 @@ export default function OwnerLandDetailsPage({ params }: { params: Promise<{ id:
                 if (!res.ok) throw new Error("Land not found");
                 const landData = await res.json();
                 console.log("🖼️ Owner Details - Land Data:", landData);
-                console.log("🖼️ Image fields check:", {
-                    image: landData.image,
-                    image_url: landData.image_url,
-                    cover_image_url: landData.cover_image_url,
-                    picture_url: landData.picture_url,
-                    cover_image: landData.cover_image,
-                    images: landData.images
-                });
+
+                // Fetch images separately if not included
+                try {
+                    const imgRes = await fetch(`/api/lands/${id}/images`);
+                    if (imgRes.ok) {
+                        const images = await imgRes.json();
+                        console.log("🖼️ Images fetched:", images);
+                        const cover = images.find((img: any) => img.is_cover) || images[0];
+                        if (cover) {
+                            landData.image = cover.file_url;
+                            console.log("🖼️ Set cover image:", cover.file_url);
+                        }
+                    }
+                } catch (err) {
+                    console.warn("Failed to fetch images for land", id);
+                }
+
                 setLand(landData);
             } catch {
                 // Redirect if not found, or show error
