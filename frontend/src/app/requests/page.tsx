@@ -33,6 +33,12 @@ export default function RequestsPage() {
         try {
             // 1. جلب طلباتي المرسلة (outgoing)
             const sentRes = await fetch("/api/requests/outgoing");
+
+            if (sentRes.status === 401) {
+                router.push("/login");
+                return;
+            }
+
             const sentData = sentRes.ok ? await sentRes.json() : [];
             console.log("Outgoing Requests Data:", sentData);
 
