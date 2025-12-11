@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { COOKIE_NAME } from "@/lib/config";
 
 export async function POST() {
