@@ -198,6 +198,8 @@ def health_check():
 app.include_router(auth_router)
 app.include_router(users_router)
 app.include_router(lands_router)
+from app.routers.chats import router as chats_router
+app.include_router(chats_router)
 
 # ===== Root Endpoint =====
 @app.get("/", tags=["root"])
@@ -212,7 +214,8 @@ def read_root():
         "endpoints": {
             "auth": "/auth",
             "users": "/users",
-            "lands": "/lands"
+            "lands": "/lands",
+            "chats": "/chats"
         }
     }
 
