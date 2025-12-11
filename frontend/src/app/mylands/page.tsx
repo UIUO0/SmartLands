@@ -3,7 +3,7 @@
 import { Sidebar } from "@/components/sidebar"; // تأكد من حالة الحرف S (Sidebar)
 import { Header } from "@/components/header";
 import { useEffect, useState, useCallback } from "react";
-import { Plus, MapPin, Ruler, X, Loader2, Save, Image as ImageIcon } from "lucide-react";
+import { Plus, MapPin, Ruler, X, Loader2, Save } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { getAbsoluteImageUrl, handleLogout } from "@/lib/utils";
@@ -14,11 +14,7 @@ export default function MyLandsPage() {
     const [loading, setLoading] = useState(true);
 
     const [isModalOpen, setIsModalOpen] = useState(false);
-    const [isImageModalOpen, setIsImageModalOpen] = useState(false);
-    const [selectedLandId, setSelectedLandId] = useState<string | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
-    const [isUploading, setIsUploading] = useState(false);
-    const [selectedImage, setSelectedImage] = useState<File | null>(null);
 
     const [formData, setFormData] = useState({
         title: "",
@@ -27,12 +23,8 @@ export default function MyLandsPage() {
         area_sq_m: "",
         city: "Riyadh",
         region: "",
-        address_line: "",
-        latitude: 24.7136,
-        longitude: 46.6753
+        address_line: ""
     });
-
-    const [editingLand, setEditingLand] = useState<any>(null);
 
     const router = useRouter();
 
@@ -103,35 +95,37 @@ export default function MyLandsPage() {
         setIsSubmitting(true);
 
         const payload = {
-            ...formData,
+            title: formData.title,
+            description: formData.description,
             price_amount: Number(formData.price_amount),
             area_sq_m: Number(formData.area_sq_m),
+            city: formData.city,
+            region: formData.region,
+            address_line: formData.address_line,
             country: "SA"
         };
 
         try {
-            let res;
-            if (editingLand) {
-                // Update existing
-                res = await fetch(`/api/lands/${editingLand.land_id}`, {
-                    method: "PATCH",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify(payload)
-                });
-            } else {
-                // Create new
-                res = await fetch("/api/lands", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify(payload)
-                });
+            // Create new
+            const res = await fetch("/api/lands", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(payload)
+            });
+
+
+            if (res.status === 401) {
+                alert(" انتهت الجلسة، يرجى تسجيل الدخول مرة أخرى.");
+                router.push("/login");
+                setIsSubmitting(false);
+                setIsModalOpen(false);
+                return;
             }
 
             if (res.ok) {
-                alert(editingLand ? "✅ تم تحديث العقار بنجاح!" : "✅ تمت إضافة الأرض بنجاح!");
+                alert("✅ تمت إضافة الأرض بنجاح!");
                 setIsModalOpen(false);
-                setEditingLand(null);
-                setFormData({ title: "", description: "", price_amount: "", area_sq_m: "", city: "Riyadh", region: "", address_line: "", latitude: 24.7136, longitude: 46.6753 });
+                setFormData({ title: "", description: "", price_amount: "", area_sq_m: "", city: "Riyadh", region: "", address_line: "" });
                 fetchMyLands();
             } else {
                 const err = await res.json();
@@ -143,6 +137,7 @@ export default function MyLandsPage() {
             setIsSubmitting(false);
         }
     }
+
 
     async function handleDelete(landId: string) {
         if (!confirm("⚠️ هل أنت متأكد من حذف هذه الأرض؟ لا يمكن التراجع عن هذا الإجراء.")) return;
@@ -161,55 +156,8 @@ export default function MyLandsPage() {
         }
     }
 
-    async function handleUpload(e: React.FormEvent) {
-        e.preventDefault();
-        if (!selectedLandId || !selectedImage) return;
-
-        setIsUploading(true);
-        const formData = new FormData();
-        formData.append("file", selectedImage);
-
-        try {
-            const res = await fetch(`/api/lands/${selectedLandId}/images`, {
-                method: "POST",
-                body: formData
-            });
-
-            if (res.ok) {
-                alert("✅ تم رفع المحتوى بنجاح!");
-                setIsImageModalOpen(false);
-                setSelectedImage(null);
-                fetchMyLands();
-            } else {
-                const err = await res.json();
-                alert("❌ فشل الرفع: " + (err.detail || "خطأ غير معروف"));
-            }
-        } catch {
-            alert("خطأ في الاتصال");
-        } finally {
-            setIsUploading(false);
-        }
-    }
-
     const openCreateModal = () => {
-        setEditingLand(null);
-        setFormData({ title: "", description: "", price_amount: "", area_sq_m: "", city: "Riyadh", region: "", address_line: "", latitude: 24.7136, longitude: 46.6753 });
-        setIsModalOpen(true);
-    };
-
-    const openEditModal = (land: any) => {
-        setEditingLand(land);
-        setFormData({
-            title: land.title || "",
-            description: land.description || "",
-            price_amount: land.price_amount || "",
-            area_sq_m: land.area_sq_m || "",
-            city: land.city || "Riyadh",
-            region: land.region || "",
-            address_line: land.address_line || "",
-            latitude: land.latitude || 24.7136,
-            longitude: land.longitude || 46.6753
-        });
+        setFormData({ title: "", description: "", price_amount: "", area_sq_m: "", city: "Riyadh", region: "", address_line: "" });
         setIsModalOpen(true);
     };
 
@@ -275,22 +223,13 @@ export default function MyLandsPage() {
                                         <div className="flex items-center gap-2 border-t border-gray-100 pt-4 mt-2">
                                             <span className="font-bold text-lg text-black flex-1">{Intl.NumberFormat('en-US').format(land.price_amount)} ر.س</span>
 
-                                            <button
-                                                onClick={() => { setSelectedLandId(String(land.land_id)); setIsImageModalOpen(true); }}
-                                                className="p-2 rounded-xl bg-gray-100 hover:bg-gray-200 transition text-[#556b4d]"
-                                                title="إضافة صور"
-                                            >
-                                                <ImageIcon className="h-5 w-5" />
-                                            </button>
-
-                                            <button
-                                                onClick={() => openEditModal(land)}
+                                            <Link
+                                                href={`/mylands/edit/${land.land_id}`}
                                                 className="p-2 rounded-xl bg-blue-50 text-blue-600 hover:bg-blue-100 transition"
                                                 title="تعديل"
                                             >
-                                                <Loader2 className="h-5 w-5 hidden" /> {/* Placeholder for consistent sizing if needed */}
                                                 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" /><path d="m15 5 4 4" /></svg>
-                                            </button>
+                                            </Link>
 
                                             <button
                                                 onClick={() => handleDelete(land.land_id)}
@@ -300,7 +239,7 @@ export default function MyLandsPage() {
                                                 <X className="h-5 w-5" />
                                             </button>
 
-                                            <Link href={`/lands/${land.land_id}`} className="text-sm bg-black text-white px-4 py-2.5 rounded-xl hover:bg-[#333] transition shadow-md">
+                                            <Link href={`/mylands/${land.land_id}`} className="text-sm bg-black text-white px-4 py-2.5 rounded-xl hover:bg-[#333] transition shadow-md">
                                                 التفاصيل
                                             </Link>
                                         </div>
@@ -316,7 +255,7 @@ export default function MyLandsPage() {
                     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in">
                         <div className="bg-[#F1F3E0] w-full max-w-2xl rounded-3xl p-8 shadow-2xl max-h-[90vh] overflow-y-auto">
                             <div className="flex justify-between items-center mb-6 border-b border-[#A1BC98]/30 pb-4">
-                                <h2 className="text-2xl font-bold">{editingLand ? "تعديل العقار" : "إضافة عقار جديد"}</h2>
+                                <h2 className="text-2xl font-bold">إضافة عقار جديد</h2>
                                 <button onClick={() => setIsModalOpen(false)}><X className="h-6 w-6 hover:text-red-500" /></button>
                             </div>
 
@@ -359,46 +298,14 @@ export default function MyLandsPage() {
                                     className="w-full bg-black text-white font-bold py-4 rounded-xl hover:bg-[#333] transition flex justify-center items-center gap-2 mt-4"
                                 >
                                     {isSubmitting ? <Loader2 className="animate-spin" /> : <Save className="h-5 w-5" />}
-                                    {editingLand ? "حفظ التعديلات" : "نشر الإعلان"}
+                                    نشر الإعلان
                                 </button>
                             </form>
                         </div>
                     </div>
                 )}
                 {/* Image Upload Modal */}
-                {isImageModalOpen && (
-                    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in">
-                        <div className="bg-[#F1F3E0] w-full max-w-md rounded-3xl p-8 shadow-2xl">
-                            <div className="flex justify-between items-center mb-6 border-b border-[#A1BC98]/30 pb-4">
-                                <h2 className="text-2xl font-bold">رفع صور للعقار</h2>
-                                <button onClick={() => setIsImageModalOpen(false)}><X className="h-6 w-6 hover:text-red-500" /></button>
-                            </div>
-                            <form onSubmit={handleUpload} className="space-y-4">
-                                <div className="border-2 border-dashed border-[#A1BC98] rounded-xl p-8 text-center cursor-pointer hover:bg-[#EDEFE5] transition relative">
-                                    <input
-                                        type="file"
-                                        accept="image/*"
-                                        required
-                                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                                        onChange={(e) => setSelectedImage(e.target.files ? e.target.files[0] : null)}
-                                    />
-                                    <ImageIcon className="h-12 w-12 mx-auto text-[#556b4d] mb-2" />
-                                    <p className="text-gray-600 font-medium">
-                                        {selectedImage ? selectedImage.name : "اضغط لاختيار صورة"}
-                                    </p>
-                                </div>
-                                <button
-                                    type="submit"
-                                    disabled={isUploading || !selectedImage}
-                                    className="w-full bg-black text-white font-bold py-4 rounded-xl hover:bg-[#333] transition flex justify-center items-center gap-2 mt-4 disabled:opacity-50"
-                                >
-                                    {isUploading ? <Loader2 className="animate-spin" /> : <Save className="h-5 w-5" />}
-                                    تأكيد الرفع
-                                </button>
-                            </form>
-                        </div>
-                    </div>
-                )}
+
             </main>
         </div>
     );
