@@ -54,30 +54,30 @@ export default function RequestsPage() {
     }
 
     // دالة التعامل مع القبول والرفض
+    // دالة التعامل مع القبول والرفض
     async function handleAction(requestId: number, action: "accept" | "reject") {
-        // محاكاة النجاح لأن الباك-إند قد لا يقبل الـ ID الوهمي
         if (!confirm(action === "accept" ? "هل أنت متأكد من قبول البيع؟" : "هل تريد رفض الطلب؟")) return;
 
         setProcessingId(requestId);
 
-        // محاكاة تأخير الشبكة
-        setTimeout(() => {
-            setIncomingRequests(prev => prev.map(r =>
-                r.request_id === requestId ? { ...r, status: action === "accept" ? "accepted" : "rejected" } : r
-            ));
-
-            if (action === "accept") alert("تم القبول! (محاكاة)");
-            setProcessingId(null);
-        }, 1000);
-
-        /* // --- الكود الحقيقي يتم تفعيله عند إصلاح الباك-إند ---
         try {
             const res = await fetch(`/api/requests/${requestId}/${action}`, { method: "POST" });
             if (res.ok) {
-               // تحديث الحالة...
+                alert(action === "accept" ? "✅ تم قبول الطلب بنجاح!" : "✅ تم رفض الطلب.");
+                // تحديث القائمة محلياً
+                setIncomingRequests(prev => prev.map(r =>
+                    r.request_id === requestId ? { ...r, status: action === "accept" ? "accepted" : "rejected" } : r
+                ));
+            } else {
+                const err = await res.json();
+                alert("❌ حدث خطأ: " + (err.detail || "فشلت العملية"));
             }
-        } catch (e) { ... }
-        */
+        } catch (e) {
+            console.error(e);
+            alert("خطأ في الاتصال");
+        } finally {
+            setProcessingId(null);
+        }
     }
 
     function StatusBadge({ status }: { status: string }) {
