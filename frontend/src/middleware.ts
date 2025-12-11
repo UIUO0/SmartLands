@@ -1,37 +1,51 @@
-import { NextResponse } from 'next/server'
-import type { NextRequest } from 'next/server'
-import { COOKIE_NAME } from '@/lib/config'
+import { NextResponse } from "next/server";
+import type { NextRequest } from "next/server";
+import { COOKIE_NAME } from "@/lib/config";
+
+
 
 export function middleware(request: NextRequest) {
-  const token = request.cookies.get(COOKIE_NAME)?.value;
   const { pathname } = request.nextUrl;
+  const token = request.cookies.get(COOKIE_NAME)?.value;
 
-  // قائمة المسارات المحمية (التي تتطلب تسجيل دخول)
-  // لا تضع /api/users/me هنا، دع الراوت نفسه يتعامل معها
-  const protectedRoutes = ['/dashboard', '/mylands', '/profile'];
+  // 1. Handle Protected Routes
+  // Define routes that require authentication
+  const isProtectedRoute =
+    pathname.startsWith("/dashboard") ||
+    pathname.startsWith("/mylands") ||
+    pathname.startsWith("/profile") ||
+    pathname.startsWith("/lands") ||
+    pathname.startsWith("/requests") ||
+    pathname.startsWith("/transactions") ||
+    pathname.startsWith("/assistant");
 
-  // إذا كان المستخدم يحاول دخول صفحة محمية وهو غير مسجل
-  if (protectedRoutes.some(route => pathname.startsWith(route))) {
-    if (!token) {
-        const loginUrl = new URL('/login', request.url);
-        // loginUrl.searchParams.set('from', pathname); // اختياري: للعودة للصفحة السابقة
-        return NextResponse.redirect(loginUrl);
-    }
+  // If trying to access a protected route without a token, redirect to login
+  if (isProtectedRoute && !token) {
+    const loginUrl = new URL("/login", request.url);
+    // Add the current path as a 'next' search parameter to redirect back after login
+    loginUrl.searchParams.set("next", pathname + request.nextUrl.search);
+    return NextResponse.redirect(loginUrl);
+  }
+
+  // 2. Handle Auth Pages (Login/Signup)
+  // If user is already logged in and tries to access login/signup, redirect to dashboard
+  if (token && (pathname === "/login" || pathname === "/signup")) {
+    return NextResponse.redirect(new URL("/dashboard", request.url));
   }
 
   return NextResponse.next();
 }
 
-// تحديد المسارات التي يعمل عليها الميدل وير
 export const config = {
   matcher: [
     /*
      * Match all request paths except for the ones starting with:
+     * - api (API routes)
      * - _next/static (static files)
      * - _next/image (image optimization files)
      * - favicon.ico (favicon file)
-     * - public folder
+     * - public folder files with extension
      */
-    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+    "/((?!api|_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
   ],
-}
+};

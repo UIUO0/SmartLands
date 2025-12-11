@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { API_URL, COOKIE_NAME } from "@/lib/config";
 import { cookies } from "next/headers";
 
-export async function GET(req: NextRequest) {
+export async function GET() {
   const cookieStore = await cookies();
   const token = cookieStore.get(COOKIE_NAME)?.value;
 

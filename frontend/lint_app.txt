@@ -1,0 +1,73 @@
+
+D:\SmartLands\SmartLands\frontend\src\app\(auth)\signup\page.tsx
+  24:34  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  46:58  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  76:56  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  85:29  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  95:29  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+D:\SmartLands\SmartLands\frontend\src\app\R_Pw\page.tsx
+  38:19  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  72:19  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+D:\SmartLands\SmartLands\frontend\src\app\api\auth\google\route.ts
+  44:19  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+D:\SmartLands\SmartLands\frontend\src\app\api\auth\logout\route.ts
+  1:10  warning  'NextRequest' is defined but never used  @typescript-eslint/no-unused-vars
+
+D:\SmartLands\SmartLands\frontend\src\app\api\auth\signup\route.ts
+  5:52  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+D:\SmartLands\SmartLands\frontend\src\app\api\auth\users\me\route.ts
+  5:27  warning  'req' is defined but never used  @typescript-eslint/no-unused-vars
+
+D:\SmartLands\SmartLands\frontend\src\app\api\lands\[id]\images\route.ts
+  64:19  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+D:\SmartLands\SmartLands\frontend\src\app\api\lands\[id]\route.ts
+  64:12  warning  'error' is defined but never used  @typescript-eslint/no-unused-vars
+  88:14  warning  'error' is defined but never used  @typescript-eslint/no-unused-vars
+
+D:\SmartLands\SmartLands\frontend\src\app\api\lands\mine\route.ts
+  5:27  warning  'req' is defined but never used  @typescript-eslint/no-unused-vars
+
+D:\SmartLands\SmartLands\frontend\src\app\api\lands\route.ts
+  33:12  warning  'error' is defined but never used         @typescript-eslint/no-unused-vars
+  33:19  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  60:17  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+D:\SmartLands\SmartLands\frontend\src\app\api\requests\route.ts
+  5:27  warning  'req' is defined but never used  @typescript-eslint/no-unused-vars
+
+D:\SmartLands\SmartLands\frontend\src\app\api\users\me\route.ts
+  12:27  warning  'req' is defined but never used    @typescript-eslint/no-unused-vars
+  57:12  warning  'error' is defined but never used  @typescript-eslint/no-unused-vars
+
+D:\SmartLands\SmartLands\frontend\src\app\lands\[id]\page.tsx
+  37:16  warning  'e' is defined but never used             @typescript-eslint/no-unused-vars
+  71:17  error    Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+D:\SmartLands\SmartLands\frontend\src\app\mylands\page.tsx
+   11:38  error    Unexpected any. Specify a different type                                                                                                                                                                                                                                                 @typescript-eslint/no-explicit-any
+   33:6   warning  React Hook useEffect has a missing dependency: 'fetchMyLands'. Either include it or remove the dependency array                                                                                                                                                                          react-hooks/exhaustive-deps
+   93:14  warning  'e' is defined but never used                                                                                                                                                                                                                                                            @typescript-eslint/no-unused-vars
+  142:41  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+
+D:\SmartLands\SmartLands\frontend\src\app\profile\page.tsx
+  11:36  error    Unexpected any. Specify a different type                                                                                                                                                                                                                                                 @typescript-eslint/no-explicit-any
+  39:13  warning  'e' is defined but never used                                                                                                                                                                                                                                                            @typescript-eslint/no-unused-vars
+  98:37  warning  Using `<img>` could result in slower LCP and higher bandwidth. Consider using `<Image />` from `next/image` or a custom image loader to automatically optimize images. This may incur additional usage or cost from your provider. See: https://nextjs.org/docs/messages/no-img-element  @next/next/no-img-element
+
+D:\SmartLands\SmartLands\frontend\src\app\requests\page.tsx
+   6:35  warning  'Clock' is defined but never used            @typescript-eslint/no-unused-vars
+  26:9   warning  'router' is assigned a value but never used  @typescript-eslint/no-unused-vars
+  79:19  error    Unexpected any. Specify a different type     @typescript-eslint/no-explicit-any
+  84:19  error    Unexpected any. Specify a different type     @typescript-eslint/no-explicit-any
+
+D:\SmartLands\SmartLands\frontend\src\app\transactions\page.tsx
+   5:38  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  19:25  error  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+??? 36 problems (19 errors, 17 warnings)
+

@@ -30,7 +30,7 @@ export async function GET(req: NextRequest) {
     const data = await res.json();
     return NextResponse.json(data);
 
-  } catch (error: any) {
+  } catch {
     return NextResponse.json(
       { detail: "Internal Server Error" },
       { status: 500 }
@@ -40,24 +40,24 @@ export async function GET(req: NextRequest) {
 
 // أبقِ دالة POST كما هي إذا كانت موجودة في نفس الملف
 export async function POST(req: NextRequest) {
-    // ... (نفس كود الإضافة السابق)
-    const cookieStore = await cookies();
-    const token = cookieStore.get("sl_token")?.value || cookieStore.get("session_id")?.value;
-    if (!token) return NextResponse.json({ detail: "Unauthorized" }, { status: 401 });
-    try {
-        const body = await req.json();
-        const res = await fetch(`${BACKEND_URL}/lands`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
-            body: JSON.stringify(body),
-        });
-        if (!res.ok) {
-             const err = await res.json();
-             return NextResponse.json(err, { status: res.status });
-        }
-        const data = await res.json();
-        return NextResponse.json(data, { status: 201 });
-    } catch (e: any) {
-        return NextResponse.json({ detail: e.message }, { status: 500 });
+  // ... (نفس كود الإضافة السابق)
+  const cookieStore = await cookies();
+  const token = cookieStore.get("sl_token")?.value || cookieStore.get("session_id")?.value;
+  if (!token) return NextResponse.json({ detail: "Unauthorized" }, { status: 401 });
+  try {
+    const body = await req.json();
+    const res = await fetch(`${BACKEND_URL}/lands`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
+      body: JSON.stringify(body),
+    });
+    if (!res.ok) {
+      const err = await res.json();
+      return NextResponse.json(err, { status: res.status });
     }
+    const data = await res.json();
+    return NextResponse.json(data, { status: 201 });
+  } catch (e: any) {
+    return NextResponse.json({ detail: e.message }, { status: 500 });
+  }
 }
