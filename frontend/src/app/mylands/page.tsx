@@ -6,7 +6,7 @@ import { useEffect, useState, useCallback } from "react";
 import { Plus, MapPin, Ruler, X, Loader2, Save, Image as ImageIcon } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { getAbsoluteImageUrl } from "@/lib/utils";
+import { getAbsoluteImageUrl, handleLogout } from "@/lib/utils";
 
 export default function MyLandsPage() {
     const [lands, setLands] = useState<any[]>([]);
@@ -43,7 +43,7 @@ export default function MyLandsPage() {
             const res = await fetch("/api/lands/mine");
 
             if (res.status === 401) {
-                router.push("/login");
+                handleLogout(router);
                 return;
             }
 
@@ -55,7 +55,9 @@ export default function MyLandsPage() {
                     // Update: Fetch images for each land if missing, similar to PropertyGrid
                     const rawList = data;
                     const landsWithImages = await Promise.all(rawList.map(async (land: any) => {
-                        if (land.image || land.cover_image_url || land.picture_url) return land;
+                        // Check for image in various fields
+                        if (land.image || land.image_url || land.cover_image_url || land.picture_url) return land;
+
                         // If no image, try to fetch from /api/lands/{id}/images
                         try {
                             const landId = land.land_id || land.id;
@@ -76,7 +78,7 @@ export default function MyLandsPage() {
                     }));
                     setLands(landsWithImages);
                 } else if (data && Array.isArray(data.items)) {
-                    setLands(data.items); // Should probably apply same logic here if needed
+                    setLands(data.items);
                 } else {
                     setLands([]);
                 }
@@ -190,8 +192,8 @@ export default function MyLandsPage() {
                     ) : (
                         <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
                             {lands.map((land) => {
-                                // منطق تحديد رابط الصورة: يبحث في عدة حقول محتملة
-                                const rawImage = land.image || land.cover_image_url || land.picture_url || (land.images && land.images.length > 0 ? land.images[0].url : null);
+                                // Enhanced image resolution logic
+                                const rawImage = land.image || land.image_url || land.cover_image_url || land.picture_url || (land.images && land.images.length > 0 ? land.images[0].url : null);
                                 const imageSrc = getAbsoluteImageUrl(rawImage);
 
                                 return (
@@ -199,7 +201,7 @@ export default function MyLandsPage() {
 
                                         {/* === قسم الصورة المحسن === */}
                                         <div className="h-48 w-full bg-gray-100 rounded-2xl mb-4 overflow-hidden relative border border-gray-100">
-                                            {imageSrc ? (
+                                            {imageSrc && imageSrc !== "/placeholder.svg" ? (
                                                 // eslint-disable-next-line @next/next/no-img-element
                                                 <img
                                                     src={imageSrc}
@@ -216,7 +218,7 @@ export default function MyLandsPage() {
                                             {/* الرمز البديل (يظهر إذا لم يكن هناك رابط، أو إذا فشل التحميل) */}
                                             <div
                                                 className="flex flex-col items-center justify-center h-full text-gray-400 w-full absolute top-0 left-0 bg-[#F9FAFB]"
-                                                style={{ display: imageSrc ? 'none' : 'flex' }}
+                                                style={{ display: imageSrc && imageSrc !== "/placeholder.svg" ? 'none' : 'flex' }}
                                             >
                                                 <ImageIcon className="h-10 w-10 mb-2 opacity-50" />
                                                 <span className="text-xs">لا توجد صورة</span>

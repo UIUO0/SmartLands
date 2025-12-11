@@ -14,3 +14,13 @@ export function getAbsoluteImageUrl(path: string | null | undefined): string {
 
     return `${baseUrl}${cleanPath}`;
 }
+
+export async function handleLogout(router: any) {
+    try {
+        await fetch("/api/auth/logout", { method: "POST" });
+    } catch (e) {
+        console.error("Logout failed", e);
+    }
+    router.push("/login");
+    router.refresh();
+}

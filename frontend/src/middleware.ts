@@ -16,7 +16,8 @@ export function middleware(request: NextRequest) {
     pathname.startsWith("/lands") ||
     pathname.startsWith("/requests") ||
     pathname.startsWith("/transactions") ||
-    pathname.startsWith("/assistant");
+    pathname.startsWith("/assistant") ||
+    pathname.startsWith("/chats");
 
   // If trying to access a protected route without a token, redirect to login
   if (isProtectedRoute && !token) {
