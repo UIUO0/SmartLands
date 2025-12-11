@@ -1,7 +1,8 @@
 "use client"
 
-import { MapPin, Square, ArrowRight } from "lucide-react"
-import Link from "next/link" // 👈 استيراد مهم
+import { Loader2, MapPin, Ruler, Square, ArrowRight } from "lucide-react"
+import Link from "next/link"
+import { getAbsoluteImageUrl } from "@/lib/utils"
 import type { Property } from "@/types/property"
 
 interface PropertyCardProps {
@@ -22,8 +23,9 @@ export function PropertyCard({ property }: PropertyCardProps) {
 
       {/* الصورة */}
       <div className="relative h-52 w-full overflow-hidden bg-gray-200">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
-          src={property.image || "/placeholder.svg"}
+          src={getAbsoluteImageUrl(property.image)}
           alt={property.title}
           className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
         />

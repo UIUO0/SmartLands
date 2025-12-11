@@ -2,6 +2,7 @@
 
 import { useEffect, useState, use } from "react";
 import { useRouter } from "next/navigation";
+import { getAbsoluteImageUrl } from "@/lib/utils";
 
 type LandDetail = {
   land_id: number;
@@ -106,7 +107,7 @@ export default function LandDetailsPage({ params }: { params: Promise<{ id: stri
           <div className="relative h-96 w-full rounded-2xl overflow-hidden mb-6 bg-gray-200 border border-[#A1BC98]/30">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
-              src={(land as any).image || (land as any).cover_image_url || (land as any).picture_url || "/placeholder.svg"}
+              src={getAbsoluteImageUrl((land as any).image || (land as any).cover_image_url || (land as any).picture_url)}
               alt={land.title}
               className="w-full h-full object-cover"
               onError={(e) => {
