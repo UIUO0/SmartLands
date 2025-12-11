@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { cookies } from "next/headers";
+import { COOKIE_NAME } from "@/lib/config";
 
 // 👇 التعديل هنا: استخدم رابط Railway بدلاً من localhost
 const BACKEND_URL = "https://smartlands-production.up.railway.app";
@@ -39,7 +40,7 @@ export async function PATCH(
 ) {
   const { id } = await params;
   const cookieStore = await cookies();
-  const token = cookieStore.get("sl_token")?.value || cookieStore.get("session_id")?.value;
+  const token = cookieStore.get(COOKIE_NAME)?.value;
 
   if (!token) return NextResponse.json({ detail: "Unauthorized" }, { status: 401 });
 
@@ -72,7 +73,7 @@ export async function DELETE(
 ) {
   const { id } = await params;
   const cookieStore = await cookies();
-  const token = cookieStore.get("sl_token")?.value || cookieStore.get("session_id")?.value;
+  const token = cookieStore.get(COOKIE_NAME)?.value;
 
   if (!token) return NextResponse.json({ detail: "Unauthorized" }, { status: 401 });
 
