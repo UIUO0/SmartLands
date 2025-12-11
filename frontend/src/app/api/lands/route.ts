@@ -1,11 +1,12 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { cookies } from "next/headers";
+import { COOKIE_NAME } from "@/lib/config";
 
 const BACKEND_URL = "https://smartlands-production.up.railway.app";
 
 export async function GET(req: NextRequest) {
   const cookieStore = await cookies();
-  const token = cookieStore.get("sl_token")?.value || cookieStore.get("session_id")?.value;
+  const token = cookieStore.get(COOKIE_NAME)?.value;
 
   try {
     // 1. استخراج فلاتر البحث من رابط الطلب القادم من الفرونت
@@ -42,7 +43,7 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   // ... (نفس كود الإضافة السابق)
   const cookieStore = await cookies();
-  const token = cookieStore.get("sl_token")?.value || cookieStore.get("session_id")?.value;
+  const token = cookieStore.get(COOKIE_NAME)?.value;
   if (!token) return NextResponse.json({ detail: "Unauthorized" }, { status: 401 });
   try {
     const body = await req.json();

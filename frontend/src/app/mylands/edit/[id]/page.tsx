@@ -3,7 +3,7 @@
 import { useEffect, useState, use } from "react";
 import { useRouter } from "next/navigation";
 import { LandImage } from "@/components/LandImage";
-import { Save, ArrowRight, Loader2, Image as ImageIcon, X } from "lucide-react";
+import { Save, ArrowRight, Loader2, Image as ImageIcon, X, Edit, Star } from "lucide-react";
 import Link from "next/link";
 
 export default function EditLandPage({ params }: { params: Promise<{ id: string }> }) {
@@ -21,14 +21,15 @@ export default function EditLandPage({ params }: { params: Promise<{ id: string 
         area_sq_m: "",
         city: "",
         region: "",
-        address_line: "",
-        latitude: "",
-        longitude: ""
+        address_line: ""
     });
 
-    // Image Upload
+    // Image Management
+    const [existingImages, setExistingImages] = useState<any[]>([]);
     const [isUploading, setIsUploading] = useState(false);
     const [selectedImage, setSelectedImage] = useState<File | null>(null);
+    const [deletingImageId, setDeletingImageId] = useState<number | null>(null);
+    const [settingCoverId, setSettingCoverId] = useState<number | null>(null);
 
 
     useEffect(() => {
@@ -45,10 +46,15 @@ export default function EditLandPage({ params }: { params: Promise<{ id: string 
                     area_sq_m: data.area_sq_m || "",
                     city: data.city || "",
                     region: data.region || "",
-                    address_line: data.address_line || "",
-                    latitude: data.latitude || "",
-                    longitude: data.longitude || ""
+                    address_line: data.address_line || ""
                 });
+
+                // Fetch existing images
+                const imgRes = await fetch(`/api/lands/${id}/images`);
+                if (imgRes.ok) {
+                    const images = await imgRes.json();
+                    setExistingImages(images);
+                }
             } catch {
                 // Handle error
             } finally {
@@ -63,11 +69,13 @@ export default function EditLandPage({ params }: { params: Promise<{ id: string 
         setIsSubmitting(true);
 
         const payload = {
-            ...formData,
+            title: formData.title,
+            description: formData.description,
             price_amount: Number(formData.price_amount),
             area_sq_m: Number(formData.area_sq_m),
-            latitude: Number(formData.latitude),
-            longitude: Number(formData.longitude),
+            city: formData.city,
+            region: formData.region,
+            // address_line: formData.address_line, // Optional, uncomment if needed
         };
 
         try {
@@ -76,6 +84,12 @@ export default function EditLandPage({ params }: { params: Promise<{ id: string 
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(payload)
             });
+
+            if (res.status === 401) {
+                alert(" انتهت الجلسة، يرجى تسجيل الدخول مرة أخرى.");
+                router.push("/login");
+                return;
+            }
 
             if (res.ok) {
                 alert("✅ تم تحديث العقار بنجاح!");
@@ -106,6 +120,12 @@ export default function EditLandPage({ params }: { params: Promise<{ id: string 
                 body: formData
             });
 
+            if (res.status === 401) {
+                alert(" انتهت الجلسة، يرجى تسجيل الدخول مرة أخرى.");
+                router.push("/login");
+                return;
+            }
+
             if (res.ok) {
                 alert("✅ تم رفع الصورة بنجاح!");
                 setSelectedImage(null);
@@ -121,6 +141,72 @@ export default function EditLandPage({ params }: { params: Promise<{ id: string 
             alert("خطأ في الاتصال");
         } finally {
             setIsUploading(false);
+        }
+    }
+
+    async function handleDeleteImage(imageId: number) {
+        if (!confirm("هل أنت متأكد من حذف هذه الصورة؟")) return;
+
+        setDeletingImageId(imageId);
+        try {
+            const res = await fetch(`/api/lands/${id}/images/${imageId}`, {
+                method: "DELETE"
+            });
+
+            if (res.status === 401) {
+                alert(" انتهت الجلسة، يرجى تسجيل الدخول مرة أخرى.");
+                router.push("/login");
+                return;
+            }
+
+            if (res.ok) {
+                alert("✅ تم حذف الصورة بنجاح!");
+                // Refresh images
+                const imgRes = await fetch(`/api/lands/${id}/images`);
+                if (imgRes.ok) {
+                    const images = await imgRes.json();
+                    setExistingImages(images);
+                }
+            } else {
+                alert("❌ فشل حذف الصورة");
+            }
+        } catch (e) {
+            console.error(e);
+            alert("خطأ في الاتصال");
+        } finally {
+            setDeletingImageId(null);
+        }
+    }
+
+    async function handleSetCover(imageId: number) {
+        setSettingCoverId(imageId);
+        try {
+            const res = await fetch(`/api/lands/${id}/cover/${imageId}`, {
+                method: "PATCH"
+            });
+
+            if (res.status === 401) {
+                alert(" انتهت الجلسة، يرجى تسجيل الدخول مرة أخرى.");
+                router.push("/login");
+                return;
+            }
+
+            if (res.ok) {
+                alert("✅ تم تعيين الصورة كغلاف بنجاح!");
+                // Refresh images to update is_cover status
+                const imgRes = await fetch(`/api/lands/${id}/images`);
+                if (imgRes.ok) {
+                    const images = await imgRes.json();
+                    setExistingImages(images);
+                }
+            } else {
+                alert("❌ فشل تعيين الصورة كغلاف");
+            }
+        } catch (e) {
+            console.error(e);
+            alert("خطأ في الاتصال");
+        } finally {
+            setSettingCoverId(null);
         }
     }
 
@@ -174,18 +260,7 @@ export default function EditLandPage({ params }: { params: Promise<{ id: string 
                                 value={formData.description} onChange={e => setFormData({ ...formData, description: e.target.value })} />
                         </div>
 
-                        <div className="grid md:grid-cols-2 gap-6">
-                            <div>
-                                <label className="block text-sm font-bold mb-2">خط العرض (Latitude)</label>
-                                <input type="number" step="any" className="w-full p-4 rounded-xl border border-[#A1BC98] bg-[#F9FAFB]"
-                                    value={formData.latitude} onChange={e => setFormData({ ...formData, latitude: e.target.value })} />
-                            </div>
-                            <div>
-                                <label className="block text-sm font-bold mb-2">خط الطول (Longitude)</label>
-                                <input type="number" step="any" className="w-full p-4 rounded-xl border border-[#A1BC98] bg-[#F9FAFB]"
-                                    value={formData.longitude} onChange={e => setFormData({ ...formData, longitude: e.target.value })} />
-                            </div>
-                        </div>
+
 
                         <button
                             type="submit"
@@ -232,9 +307,67 @@ export default function EditLandPage({ params }: { params: Promise<{ id: string 
                             {isUploading ? <Loader2 className="animate-spin h-5 w-5" /> : "رفع الصورة"}
                         </button>
                     </form>
+
+                    {/* Existing Images Gallery */}
+                    {existingImages.length > 0 && (
+                        <div className="mt-8 pt-8 border-t border-gray-200">
+                            <h3 className="text-lg font-bold mb-4">الصور الموجودة ({existingImages.length})</h3>
+                            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                                {existingImages.map((img: any) => (
+                                    <div key={img.image_id} className="relative group">
+                                        <img
+                                            src={img.file_url.startsWith('http') ? img.file_url : `https://smartlands-production.up.railway.app${img.file_url}`}
+                                            alt="Land"
+                                            className="w-full h-32 object-cover rounded-xl border border-gray-200"
+                                        />
+
+                                        {/* Action Buttons Container */}
+                                        <div className="absolute top-2 right-2 flex gap-2 opacity-0 group-hover:opacity-100 transition">
+                                            {/* Set as Cover Button */}
+                                            <button
+                                                onClick={() => handleSetCover(img.image_id)}
+                                                disabled={settingCoverId === img.image_id || img.is_cover}
+                                                className={`p-2 rounded-lg transition shadow-lg ${img.is_cover
+                                                        ? 'bg-yellow-500 text-white cursor-default'
+                                                        : 'bg-green-500 text-white hover:bg-green-600 disabled:opacity-50'
+                                                    }`}
+                                                title={img.is_cover ? "الصورة الرئيسية الحالية" : "تعيين كصورة رئيسية"}
+                                            >
+                                                {settingCoverId === img.image_id ? (
+                                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                                ) : (
+                                                    <Star className={`h-4 w-4 ${img.is_cover ? 'fill-current' : ''}`} />
+                                                )}
+                                            </button>
+
+                                            {/* Delete Button */}
+                                            <button
+                                                onClick={() => handleDeleteImage(img.image_id)}
+                                                disabled={deletingImageId === img.image_id}
+                                                className="bg-red-500 text-white p-2 rounded-lg hover:bg-red-600 transition shadow-lg disabled:opacity-50"
+                                                title="حذف الصورة"
+                                            >
+                                                {deletingImageId === img.image_id ? (
+                                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                                ) : (
+                                                    <X className="h-4 w-4" />
+                                                )}
+                                            </button>
+                                        </div>
+
+                                        {img.is_cover && (
+                                            <span className="absolute bottom-2 left-2 bg-green-600 text-white text-xs px-2 py-1 rounded">
+                                                الصورة الرئيسية
+                                            </span>
+                                        )}
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
                 </section>
 
             </div>
-        </main>
+        </main >
     );
 }
