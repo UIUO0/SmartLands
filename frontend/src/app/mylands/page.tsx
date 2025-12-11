@@ -52,11 +52,31 @@ export default function MyLandsPage() {
                 console.log("📦 Lands Data Received:", data);
 
                 if (Array.isArray(data)) {
-                    setLands(data);
+                    // Update: Fetch images for each land if missing, similar to PropertyGrid
+                    const rawList = data;
+                    const landsWithImages = await Promise.all(rawList.map(async (land: any) => {
+                        if (land.image || land.cover_image_url || land.picture_url) return land;
+                        // If no image, try to fetch from /api/lands/{id}/images
+                        try {
+                            const landId = land.land_id || land.id;
+                            if (!landId) return land;
+
+                            const imgRes = await fetch(`/api/lands/${landId}/images`);
+                            if (imgRes.ok) {
+                                const images = await imgRes.json();
+                                const cover = images.find((img: any) => img.is_cover) || images[0];
+                                if (cover) {
+                                    return { ...land, image: cover.file_url };
+                                }
+                            }
+                        } catch (err) {
+                            console.warn("Failed to fetch image for land", land.land_id);
+                        }
+                        return land;
+                    }));
+                    setLands(landsWithImages);
                 } else if (data && Array.isArray(data.items)) {
-                    setLands(data.items);
-                } else if (data && Array.isArray(data.lands)) {
-                    setLands(data.lands);
+                    setLands(data.items); // Should probably apply same logic here if needed
                 } else {
                     setLands([]);
                 }
