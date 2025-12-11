@@ -3,7 +3,7 @@
 import { Sidebar } from "@/components/sidebar"; // تأكد من حالة الحرف S (Sidebar)
 import { Header } from "@/components/header";
 import { useEffect, useState, useCallback } from "react";
-import { Plus, MapPin, Ruler, X, Loader2, Save, Image as ImageIcon } from "lucide-react";
+import { Plus, MapPin, Ruler, X, Loader2, Save, Image as ImageIcon, Edit } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { getAbsoluteImageUrl, handleLogout } from "@/lib/utils";
@@ -275,22 +275,13 @@ export default function MyLandsPage() {
                                         <div className="flex items-center gap-2 border-t border-gray-100 pt-4 mt-2">
                                             <span className="font-bold text-lg text-black flex-1">{Intl.NumberFormat('en-US').format(land.price_amount)} ر.س</span>
 
-                                            <button
-                                                onClick={() => { setSelectedLandId(String(land.land_id)); setIsImageModalOpen(true); }}
-                                                className="p-2 rounded-xl bg-gray-100 hover:bg-gray-200 transition text-[#556b4d]"
-                                                title="إضافة صور"
-                                            >
-                                                <ImageIcon className="h-5 w-5" />
-                                            </button>
-
-                                            <button
-                                                onClick={() => openEditModal(land)}
+                                            <Link
+                                                href={`/mylands/edit/${land.land_id}`}
                                                 className="p-2 rounded-xl bg-blue-50 text-blue-600 hover:bg-blue-100 transition"
                                                 title="تعديل"
                                             >
-                                                <Loader2 className="h-5 w-5 hidden" /> {/* Placeholder for consistent sizing if needed */}
                                                 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" /><path d="m15 5 4 4" /></svg>
-                                            </button>
+                                            </Link>
 
                                             <button
                                                 onClick={() => handleDelete(land.land_id)}
@@ -300,7 +291,7 @@ export default function MyLandsPage() {
                                                 <X className="h-5 w-5" />
                                             </button>
 
-                                            <Link href={`/lands/${land.land_id}`} className="text-sm bg-black text-white px-4 py-2.5 rounded-xl hover:bg-[#333] transition shadow-md">
+                                            <Link href={`/mylands/${land.land_id}`} className="text-sm bg-black text-white px-4 py-2.5 rounded-xl hover:bg-[#333] transition shadow-md">
                                                 التفاصيل
                                             </Link>
                                         </div>

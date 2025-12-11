@@ -281,17 +281,7 @@ export default function LandDetailsPage({ params }: { params: Promise<{ id: stri
               </div>
 
               <button
-                type="submit"
-                disabled={isUpdating}
-                className="w-full bg-black text-white font-bold py-4 rounded-xl hover:bg-[#333] transition flex justify-center items-center gap-2 mt-4"
-              >
-                {isUpdating ? <Loader2 className="animate-spin" /> : <Save className="h-5 w-5" />}
-                حفظ التعديلات
-              </button>
-            </form>
-          </div>
-        </div>
-      )}
+
       </main>
-    );
+            );
   }
