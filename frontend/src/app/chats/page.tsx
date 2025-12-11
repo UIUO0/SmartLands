@@ -13,21 +13,37 @@ export default function ChatsPage() {
     const [loading, setLoading] = useState(true);
     const [loadingMessages, setLoadingMessages] = useState(false);
     const [sending, setSending] = useState(false);
+    const [currentUserId, setCurrentUserId] = useState<number | null>(null);
     const messagesEndRef = useRef<HTMLDivElement>(null);
 
-    // Load conversations
+    // Get current user ID
+    useEffect(() => {
+        async function getCurrentUser() {
+            try {
+                const res = await fetch('/api/users/me');
+                if (res.ok) {
+                    const user = await res.json();
+                    setCurrentUserId(user.user_id);
+                }
+            } catch (e) {
+                console.error("Failed to get current user:", e);
+            }
+        }
+        getCurrentUser();
+    }, []);
+
+    // Load conversations with auto-refresh
     useEffect(() => {
         async function loadConversations() {
             try {
                 const res = await fetch('/api/chats');
                 if (res.ok) {
                     const data = await res.json();
-                    console.log("Conversations response:", data);
                     // Handle paginated response format with items array
                     const convArray = data.items || [];
                     setConversations(convArray);
-                    // Auto-select first conversation
-                    if (convArray.length > 0 && !selectedConversationId) {
+                    // Auto-select first conversation only on initial load
+                    if (convArray.length > 0 && !selectedConversationId && conversations.length === 0) {
                         setSelectedConversationId(convArray[0].conversation_id);
                     }
                 }
@@ -38,10 +54,16 @@ export default function ChatsPage() {
                 setLoading(false);
             }
         }
+
         loadConversations();
+
+        // Auto-refresh every 2 seconds
+        const interval = setInterval(loadConversations, 2000);
+
+        return () => clearInterval(interval);
     }, []);
 
-    // Load messages for selected conversation
+    // Load messages for selected conversation with auto-refresh
     useEffect(() => {
         if (!selectedConversationId) return;
 
@@ -51,9 +73,8 @@ export default function ChatsPage() {
                 const res = await fetch(`/api/chats/${selectedConversationId}/messages`);
                 if (res.ok) {
                     const data = await res.json();
-                    console.log("Messages response:", data);
-                    // Handle different response formats
-                    const msgArray = Array.isArray(data) ? data : (data.messages || []);
+                    // Handle paginated response format
+                    const msgArray = data.items || [];
                     setMessages(msgArray);
                 } else {
                     setMessages([]);
@@ -65,7 +86,13 @@ export default function ChatsPage() {
                 setLoadingMessages(false);
             }
         }
+
         loadMessages();
+
+        // Auto-refresh messages every 2 seconds
+        const interval = setInterval(loadMessages, 2000);
+
+        return () => clearInterval(interval);
     }, [selectedConversationId]);
 
     // Scroll to bottom when messages change
@@ -189,7 +216,7 @@ export default function ChatsPage() {
                                 </div>
 
                                 {/* Messages */}
-                                <div className="flex-1 overflow-y-auto p-6 space-y-6 bg-[#F9FAFB]">
+                                <div className="flex-1 overflow-y-auto p-6 space-y-6 bg-[#F9FAFB] flex flex-col">
                                     {loadingMessages ? (
                                         <div className="flex items-center justify-center h-full">
                                             <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
@@ -199,24 +226,26 @@ export default function ChatsPage() {
                                             <p>لا توجد رسائل. ابدأ المحادثة!</p>
                                         </div>
                                     ) : (
-                                        messages.map((msg) => {
-                                            const isMe = msg.sender_id === activeConversation.sender_id; // Adjust based on your auth
-                                            return (
-                                                <div key={msg.message_id} className={`flex ${isMe ? "justify-end" : "justify-start"}`}>
-                                                    <div className={`max-w-[70%] p-4 rounded-2xl shadow-sm ${isMe
-                                                        ? "bg-black text-white rounded-br-none"
-                                                        : "bg-white text-gray-800 border border-gray-100 rounded-bl-none"
-                                                        }`}>
-                                                        <p className="leading-relaxed">{msg.content_text}</p>
-                                                        <span className={`text-[10px] block mt-2 text-left opacity-70 ${isMe ? "text-gray-300" : "text-gray-400"}`}>
-                                                            {new Date(msg.created_at).toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' })}
-                                                        </span>
+                                        <>
+                                            {messages.map((msg) => {
+                                                const isMe = msg.sender_id === currentUserId;
+                                                return (
+                                                    <div key={msg.message_id} className={`flex ${isMe ? "justify-end" : "justify-start"}`}>
+                                                        <div className={`max-w-[70%] p-4 rounded-2xl shadow-sm ${isMe
+                                                            ? "bg-black text-white rounded-br-none"
+                                                            : "bg-white text-gray-800 border border-gray-100 rounded-bl-none"
+                                                            }`}>
+                                                            <p className="leading-relaxed">{msg.content_text}</p>
+                                                            <span className={`text-[10px] block mt-2 text-left opacity-70 ${isMe ? "text-gray-300" : "text-gray-400"}`}>
+                                                                {new Date(msg.created_at).toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' })}
+                                                            </span>
+                                                        </div>
                                                     </div>
-                                                </div>
-                                            );
-                                        })
+                                                );
+                                            })}
+                                            <div ref={messagesEndRef} />
+                                        </>
                                     )}
-                                    <div ref={messagesEndRef} />
                                 </div>
 
                                 {/* Input Area */}
