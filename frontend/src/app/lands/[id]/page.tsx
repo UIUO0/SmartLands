@@ -3,6 +3,7 @@
 import { useEffect, useState, use } from "react";
 import { useRouter } from "next/navigation";
 import { getAbsoluteImageUrl } from "@/lib/utils";
+import { Trash, Edit, X, Save, Loader2 } from "lucide-react";
 
 type LandDetail = {
   land_id: number;
@@ -14,6 +15,11 @@ type LandDetail = {
   region?: string;
   status?: "available" | "reserved" | "sold";
   owner_id?: number;
+  // Extra fields for edit
+  country?: string;
+  address_line?: string;
+  latitude?: number;
+  longitude?: number;
 };
 
 export default function LandDetailsPage({ params }: { params: Promise<{ id: string }> }) {
@@ -21,20 +27,36 @@ export default function LandDetailsPage({ params }: { params: Promise<{ id: stri
   const router = useRouter();
 
   const [land, setLand] = useState<LandDetail | null>(null);
+  const [currentUser, setCurrentUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [requestStatus, setRequestStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
   const [msg, setMsg] = useState("");
 
-  // 1. جلب تفاصيل الأرض
+  // Edit/Delete State
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [isUpdating, setIsUpdating] = useState(false);
+  const [editFormData, setEditFormData] = useState<Partial<LandDetail>>({});
+
+  // 1. جلب تفاصيل الأرض و المستخدم الحالي
   useEffect(() => {
     async function loadData() {
       try {
         const BASE = process.env.NEXT_PUBLIC_API_URL || "https://smartlands-production.up.railway.app";
+
+        // Fetch Land
         const res = await fetch(`${BASE}/lands/${id}`, { cache: "no-store" });
-
         if (!res.ok) throw new Error(res.status === 404 ? "Land not found" : "Error");
+        const landData = await res.json();
+        setLand(landData);
 
-        setLand(await res.json());
+        // Fetch Current User
+        const userRes = await fetch("/api/users/me");
+        if (userRes.ok) {
+          const userData = await userRes.json();
+          setCurrentUser(userData);
+        }
+
       } catch {
         setMsg("تعذر تحميل بيانات الأرض");
       } finally {
@@ -52,13 +74,12 @@ export default function LandDetailsPage({ params }: { params: Promise<{ id: stri
     setMsg("");
 
     try {
-      // Endpoint حسب التوثيق: POST /lands/{land_id}/request
-      const res = await fetch(`/api/lands/${id}/request`, { // سنحتاج لعمل هذا الروت في الـ API Proxy
+      const res = await fetch(`/api/lands/${id}/request`, {
         method: "POST",
       });
 
       if (res.status === 401) {
-        router.push("/login"); // توجيه لتسجيل الدخول إذا لم يكن مسجلاً
+        router.push("/login");
         return;
       }
 
@@ -75,12 +96,79 @@ export default function LandDetailsPage({ params }: { params: Promise<{ id: stri
     }
   }
 
+  // 3. دالة حذف الأرض
+  async function handleDelete() {
+    if (!confirm("⚠️ هل أنت متأكد من حذف هذه الأرض؟ لا يمكن التراجع عن هذا الإجراء.")) return;
+
+    setIsDeleting(true);
+    try {
+      const res = await fetch(`/api/lands/${id}`, { method: "DELETE" });
+      if (res.ok) {
+        alert("تم حذف العقار بنجاح");
+        router.push("/mylands");
+      } else {
+        alert("فشلت عملية الحذف");
+      }
+    } catch (e) {
+      console.error(e);
+      alert("حدث خطأ أثناء الحذف");
+    } finally {
+      setIsDeleting(false);
+    }
+  }
+
+  // 4. دالة تحديث الأرض
+  async function handleUpdate(e: React.FormEvent) {
+    e.preventDefault();
+    setIsUpdating(true);
+
+    try {
+      const res = await fetch(`/api/lands/${id}`, {
+        method: "PATCH", // Using PATCH as per API
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(editFormData)
+      });
+
+      if (res.ok) {
+        const updatedLand = await res.json();
+        setLand(updatedLand);
+        setIsEditModalOpen(false);
+        alert("✅ تم تحديث بيانات العقار بنجاح!");
+      } else {
+        const err = await res.json();
+        alert("❌ فشل التحديث: " + (err.detail || "خطأ غير معروف"));
+      }
+    } catch (e) {
+      console.error(e);
+      alert("خطأ في الشبكة");
+    } finally {
+      setIsUpdating(false);
+    }
+  }
+
+  // Handle Edit Click
+  const openEditModal = () => {
+    if (!land) return;
+    setEditFormData({
+      title: land.title,
+      description: land.description,
+      price_amount: land.price_amount,
+      area_sq_m: land.area_sq_m,
+      city: land.city,
+      region: land.region,
+      // country: land.country, // If available
+    });
+    setIsEditModalOpen(true);
+  }
+
   if (loading) return <div className="min-h-screen bg-[#F1F3E0] flex items-center justify-center text-[#556b4d] animate-pulse">جارِ التحميل...</div>;
 
   if (!land) return <div className="min-h-screen bg-[#F1F3E0] flex items-center justify-center">لم يتم العثور على الأرض</div>;
 
+  const isOwner = currentUser && land.owner_id === currentUser.id;
+
   return (
-    <main className="min-h-screen w-full bg-[#F1F3E0] text-black font-sans p-6">
+    <main className="min-h-screen w-full bg-[#F1F3E0] text-black font-sans p-6 relative">
       <div className="max-w-4xl mx-auto space-y-6">
 
         <button onClick={() => router.back()} className="text-[#556b4d] font-bold hover:underline mb-4">
@@ -90,16 +178,39 @@ export default function LandDetailsPage({ params }: { params: Promise<{ id: stri
         <article className="bg-[#D2DCB6] rounded-3xl p-8 shadow-sm border border-[#A1BC98]/50">
           {/* رأس الصفحة */}
           <div className="flex flex-col md:flex-row justify-between items-start gap-4 mb-6">
-            <div>
+            <div className="flex-1">
               <h1 className="text-3xl font-bold text-black mb-2">{land.title}</h1>
               <p className="text-[#3a4430] font-medium">📍 {land.city} {land.region && `- ${land.region}`}</p>
             </div>
-            {land.price_amount && (
-              <div className="bg-[#F1F3E0] px-5 py-3 rounded-2xl shadow-sm text-center min-w-[150px]">
-                <p className="text-xs text-gray-500 font-bold uppercase">السعر المطلوب</p>
-                <p className="text-2xl font-bold text-black">{Intl.NumberFormat("ar-SA").format(land.price_amount)} ر.س</p>
-              </div>
-            )}
+
+            <div className="flex flex-col gap-2 items-end">
+              {land.price_amount && (
+                <div className="bg-[#F1F3E0] px-5 py-3 rounded-2xl shadow-sm text-center min-w-[150px]">
+                  <p className="text-xs text-gray-500 font-bold uppercase">السعر المطلوب</p>
+                  <p className="text-2xl font-bold text-black">{Intl.NumberFormat("ar-SA").format(land.price_amount)} ر.س</p>
+                </div>
+              )}
+
+              {isOwner && (
+                <div className="flex gap-2 mt-2">
+                  <button
+                    onClick={openEditModal}
+                    className="bg-blue-600 text-white p-2 rounded-xl hover:bg-blue-700 transition shadow-sm"
+                    title="تعديل العقار"
+                  >
+                    <Edit className="h-5 w-5" />
+                  </button>
+                  <button
+                    onClick={handleDelete}
+                    disabled={isDeleting}
+                    className="bg-red-500 text-white p-2 rounded-xl hover:bg-red-600 transition shadow-sm disabled:opacity-50"
+                    title="حذف العقار"
+                  >
+                    {isDeleting ? <Loader2 className="animate-spin h-5 w-5" /> : <Trash className="h-5 w-5" />}
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
 
 
@@ -128,38 +239,95 @@ export default function LandDetailsPage({ params }: { params: Promise<{ id: stri
             </p>
           </div>
 
-          {/* منطقة الإجراءات Feedback & Actions */}
-          <div className="border-t border-[#A1BC98]/30 pt-6">
+          {/* منطقة الإجراءات Feedback & Actions - للمشتري فقط */}
+          {!isOwner && (
+            <div className="border-t border-[#A1BC98]/30 pt-6">
 
-            {/* رسائل التنبيه */}
-            {msg && (
-              <div className={`p-4 rounded-xl mb-4 text-center font-bold ${requestStatus === 'success' ? 'bg-green-100 text-green-800' : 'bg-red-50 text-red-800'
-                }`}>
-                {msg}
-              </div>
-            )}
-
-            <div className="flex justify-end gap-3">
-              {requestStatus === 'success' ? (
-                <button
-                  onClick={() => router.push("/chats")}
-                  className="bg-black text-white font-bold py-3 px-8 rounded-xl hover:bg-[#333] transition"
-                >
-                  الذهاب للدردشات 💬
-                </button>
-              ) : (
-                <button
-                  onClick={handleRequestBuy}
-                  disabled={requestStatus === 'loading' || land.status !== 'available'}
-                  className="bg-[#A1BC98] hover:bg-[#8ea885] disabled:opacity-50 disabled:cursor-not-allowed text-black font-bold py-3 px-8 rounded-xl transition shadow-sm w-full md:w-auto"
-                >
-                  {requestStatus === 'loading' ? 'جارِ الإرسال...' : 'إرسال طلب شراء 📝'}
-                </button>
+              {/* رسائل التنبيه */}
+              {msg && (
+                <div className={`p-4 rounded-xl mb-4 text-center font-bold ${requestStatus === 'success' ? 'bg-green-100 text-green-800' : 'bg-red-50 text-red-800'
+                  }`}>
+                  {msg}
+                </div>
               )}
+
+              <div className="flex justify-end gap-3">
+                {requestStatus === 'success' ? (
+                  <button
+                    onClick={() => router.push("/chats")}
+                    className="bg-black text-white font-bold py-3 px-8 rounded-xl hover:bg-[#333] transition"
+                  >
+                    الذهاب للدردشات 💬
+                  </button>
+                ) : (
+                  <button
+                    onClick={handleRequestBuy}
+                    disabled={requestStatus === 'loading' || land.status !== 'available'}
+                    className="bg-[#A1BC98] hover:bg-[#8ea885] disabled:opacity-50 disabled:cursor-not-allowed text-black font-bold py-3 px-8 rounded-xl transition shadow-sm w-full md:w-auto"
+                  >
+                    {requestStatus === 'loading' ? 'جارِ الإرسال...' : 'إرسال طلب شراء 📝'}
+                  </button>
+                )}
+              </div>
             </div>
-          </div>
+          )}
         </article>
       </div>
+
+      {/* Edit Modal */}
+      {isEditModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in">
+          <div className="bg-[#F1F3E0] w-full max-w-2xl rounded-3xl p-8 shadow-2xl max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-center mb-6 border-b border-[#A1BC98]/30 pb-4">
+              <h2 className="text-2xl font-bold">تعديل العقار</h2>
+              <button onClick={() => setIsEditModalOpen(false)}><X className="h-6 w-6 hover:text-red-500" /></button>
+            </div>
+
+            <form onSubmit={handleUpdate} className="space-y-4">
+              <div className="grid md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-bold mb-1">عنوان الإعلان</label>
+                  <input type="text" className="w-full p-3 rounded-xl border border-[#A1BC98]"
+                    value={editFormData.title || ""} onChange={e => setEditFormData({ ...editFormData, title: e.target.value })} />
+                </div>
+                <div>
+                  <label className="block text-sm font-bold mb-1">السعر (ر.س)</label>
+                  <input type="number" className="w-full p-3 rounded-xl border border-[#A1BC98]"
+                    value={editFormData.price_amount || ""} onChange={e => setEditFormData({ ...editFormData, price_amount: Number(e.target.value) })} />
+                </div>
+              </div>
+
+              <div className="grid md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-bold mb-1">المساحة (م²)</label>
+                  <input type="number" className="w-full p-3 rounded-xl border border-[#A1BC98]"
+                    value={editFormData.area_sq_m || ""} onChange={e => setEditFormData({ ...editFormData, area_sq_m: Number(e.target.value) })} />
+                </div>
+                <div>
+                  <label className="block text-sm font-bold mb-1">المدينة</label>
+                  <input type="text" className="w-full p-3 rounded-xl border border-[#A1BC98]"
+                    value={editFormData.city || ""} onChange={e => setEditFormData({ ...editFormData, city: e.target.value })} />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-bold mb-1">التفاصيل والوصف</label>
+                <textarea rows={4} className="w-full p-3 rounded-xl border border-[#A1BC98]"
+                  value={editFormData.description || ""} onChange={e => setEditFormData({ ...editFormData, description: e.target.value })} />
+              </div>
+
+              <button
+                type="submit"
+                disabled={isUpdating}
+                className="w-full bg-black text-white font-bold py-4 rounded-xl hover:bg-[#333] transition flex justify-center items-center gap-2 mt-4"
+              >
+                {isUpdating ? <Loader2 className="animate-spin" /> : <Save className="h-5 w-5" />}
+                حفظ التعديلات
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
     </main>
   );
 }
