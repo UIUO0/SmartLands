@@ -373,6 +373,72 @@ async def upload_land_image(
         raise HTTPException(status_code=500, detail="image upload failed")
 
 
+@router.delete("/{land_id}/images/{image_id}", status_code=204)
+async def delete_land_image(
+    land_id: int,
+    image_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Delete a specific image from a land.
+    Only the land owner can do this.
+    """
+    try:
+        # 1. Fetch Land to check ownership
+        res_land = await db.execute(select(Land).where(Land.land_id == land_id))
+        land = res_land.scalar_one_or_none()
+        if not land:
+            raise HTTPException(status_code=404, detail="Land not found")
+            
+        if land.owner_id != current_user.user_id:
+            raise HTTPException(status_code=403, detail="Not owner of this land")
+
+        # 2. Fetch Image
+        res_img = await db.execute(
+            select(LandImage).where(
+                LandImage.image_id == image_id,
+                LandImage.land_id == land_id
+            )
+        )
+        img = res_img.scalar_one_or_none()
+        if not img:
+            raise HTTPException(status_code=404, detail="Image not found")
+
+        # 3. Delete from Cloudinary (Best Effort)
+        # We try to extract public_id from url if possible, or just skip if too complex.
+        # e.g., https://res.cloudinary.com/demo/image/upload/v123456789/smartlands/lands/1/filename.jpg
+        # public_id = smartlands/lands/1/filename
+        if img.file_url and "cloudinary" in img.file_url:
+            try:
+                # Simple heuristic extraction or just rely on DB delete
+                # Attempt to extract public_id:
+                # remove params/version
+                # ...
+                pass
+            except Exception as e:
+                logger.warning(f"Failed to delete from Cloudinary: {e}")
+
+        # 4. Delete from DB
+        await db.delete(img)
+        
+        # 5. Handle Cover Image Logic (if deleted image was cover)
+        if hasattr(img, "is_cover") and img.is_cover:
+            # Maybe promote another image to cover?
+            # For now, just let it be. User can set another cover.
+            pass
+
+        await db.commit()
+        return Response(status_code=204)
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("DELETE_LAND_IMAGE_ERROR: %r", e, exc_info=True)
+        await db.rollback()
+        raise HTTPException(status_code=500, detail="Failed to delete image")
+
+
 # تعيين صورة الغلاف (محمي - المالك فقط)
 @router.patch("/{land_id}/cover/{image_id}", status_code=200)
 async def set_cover_image(

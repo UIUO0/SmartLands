@@ -16,4 +16,5 @@ python-multipart
 sendgrid
 google-auth
 requests
+groq
 #d
