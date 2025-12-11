@@ -3,7 +3,7 @@
 import { useEffect, useState, use } from "react";
 import { useRouter } from "next/navigation";
 import { LandImage } from "@/components/LandImage";
-import { Save, ArrowRight, Loader2, Image as ImageIcon, X } from "lucide-react";
+import { Save, ArrowRight, Loader2, Image as ImageIcon, X, Edit } from "lucide-react";
 import Link from "next/link";
 
 export default function EditLandPage({ params }: { params: Promise<{ id: string }> }) {
