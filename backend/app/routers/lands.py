@@ -506,12 +506,12 @@ Smart Lands Team
         raise HTTPException(status_code=500, detail="Failed to submit buy request")
 
 
-@router.get("/requests/me", response_model=List[LandRequestOut])
-async def my_requests(
+@router.get("/requests/outgoing", response_model=List[LandRequestOut])
+async def list_outgoing_requests_for_user(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """List requests I have sent."""
+    """List requests I have sent (Outgoing)."""
     try:
         res = await db.execute(
             select(LandRequest)
@@ -521,8 +521,27 @@ async def my_requests(
         requests = res.scalars().all()
         return [LandRequestOut.model_validate(r) for r in requests]
     except Exception as e:
-        logger.error("MY_REQUESTS_ERROR: %r", e, exc_info=True)
-        raise HTTPException(status_code=500, detail="Failed to fetch requests")
+        logger.error("OUTGOING_REQUESTS_ERROR: %r", e, exc_info=True)
+        raise HTTPException(status_code=500, detail="Failed to fetch outgoing requests")
+
+
+@router.get("/requests/incoming", response_model=List[LandRequestOut])
+async def list_incoming_requests_for_user(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """List requests I have received (Incoming)."""
+    try:
+        res = await db.execute(
+            select(LandRequest)
+            .where(LandRequest.to_user_id == current_user.user_id)
+            .order_by(LandRequest.created_at.desc())
+        )
+        requests = res.scalars().all()
+        return [LandRequestOut.model_validate(r) for r in requests]
+    except Exception as e:
+        logger.error("INCOMING_REQUESTS_ERROR: %r", e, exc_info=True)
+        raise HTTPException(status_code=500, detail="Failed to fetch incoming requests")
 
 
 @router.post("/requests/{request_id}/accept", response_model=LandRequestOut)
