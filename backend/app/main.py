@@ -236,3 +236,36 @@ if os.getenv("ENVIRONMENT", "production") == "development":
             "jwt_configured": bool(os.getenv("JWT_SECRET")),
         }
     logger.info("🔧 Development mode: Debug info endpoint enabled at /__dev/info")
+
+
+# ===== Temporary Fix Endpoint =====
+@app.get("/fix-enums", tags=["debug"])
+async def fix_enums_endpoint():
+    """Reserved for fixing DB schema issues (run once)"""
+    from sqlalchemy import text
+    from app.db.database import engine
+    
+    results = {}
+    async with engine.begin() as conn:
+        # 1. Lands
+        try:
+            await conn.execute(text("ALTER TABLE lands MODIFY COLUMN status ENUM('available', 'reserved', 'sold', 'archived') NOT NULL DEFAULT 'available';"))
+            results["lands"] = "Fixed"
+        except Exception as e:
+            results["lands"] = str(e)
+
+        # 2. Requests
+        try:
+            await conn.execute(text("ALTER TABLE requests MODIFY COLUMN status ENUM('pending', 'accepted', 'rejected') NOT NULL DEFAULT 'pending';"))
+            results["requests"] = "Fixed"
+        except Exception as e:
+            results["requests"] = str(e)
+
+        # 3. Agreements
+        try:
+            await conn.execute(text("ALTER TABLE agreements MODIFY COLUMN status ENUM('pending', 'completed', 'cancelled') NOT NULL DEFAULT 'pending';"))
+            results["agreements"] = "Fixed"
+        except Exception as e:
+            results["agreements"] = str(e)
+            
+    return results
