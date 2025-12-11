@@ -23,8 +23,8 @@ export default function ChatsPage() {
                 if (res.ok) {
                     const data = await res.json();
                     console.log("Conversations response:", data);
-                    // Handle different response formats
-                    const convArray = Array.isArray(data) ? data : (data.conversations || []);
+                    // Handle paginated response format with items array
+                    const convArray = data.items || [];
                     setConversations(convArray);
                     // Auto-select first conversation
                     if (convArray.length > 0 && !selectedConversationId) {
