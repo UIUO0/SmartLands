@@ -409,7 +409,7 @@ async def send_welcome_email(
         send_email_smtp(user.email, subject, body)
 
 
-async def send_warning_email(
+def send_warning_email(
     user: User,
     report_reason: str,
     use_sendgrid: bool = True
@@ -421,7 +421,7 @@ async def send_warning_email(
         send_email_smtp(user.email, subject, body)
 
 
-async def send_completion_email(
+def send_completion_email(
     user: User,
     other_party_name: str,
     agreement_id: int,

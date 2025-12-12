@@ -39,7 +39,7 @@ class ReportOut(BaseModel):
     report_id: int
     user_reporter_id: int
     user_reported_id: int
-    conversation_id: int
+    conversation_id: Optional[int]
     report_reason: str
     report_status: str
     # created_at: datetime # Optional
