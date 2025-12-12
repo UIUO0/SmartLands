@@ -153,8 +153,9 @@ async def get_messages(
         res_msgs = await db.execute(stmt)
         msgs = res_msgs.scalars().all()
         
-        # If frontend expects chronological order (Oldest first), reverse it here
-        # usually simpler to return Descending (newest at index 0) and let frontend reverse or prepend.
+        # Reverse to get chronological order (Oldest -> Newest)
+        # We queried DESC to get the *latest* N, now we flip them for display.
+        msgs = list(reversed(msgs))
         
         return [ChatMessageOut.model_validate(m) for m in msgs]
 
