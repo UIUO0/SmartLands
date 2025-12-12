@@ -24,6 +24,8 @@ from app.schemas.chat import (
 import cloudinary
 import cloudinary.uploader
 import os
+from app.utils.email import send_completion_email
+from fastapi.concurrency import run_in_threadpool
 
 logger = logging.getLogger("smartlands.chats")
 
@@ -365,6 +367,48 @@ async def agree_to_deal(
         land = res_land.scalar_one_or_none()
         if land:
             land.status = "sold"
+
+        # 4. Send Completion Emails
+        try:
+             # Need to fetch buyer and seller objects if not loaded in conversation
+             # (They might be loaded if we used options(selectinload...))
+             # But let's be safe and ensure we have them.
+             # conv.buyer and conv.seller should be accessible if we lazy load or eager load.
+             # The existing query only eagerly loaded 'agreement'.
+             # Let's fetch users now.
+             
+             stmt_users = select(User).where(User.user_id.in_([conversation_id, conv.buyer_user_id, conv.seller_user_id])) # wait, ids are buyer/seller
+             
+             # Simpler: just get buyer and seller from conv
+             # We need to ensure we have access or fetch them.
+             buyer = conv.buyer
+             seller = conv.seller
+             
+             if not buyer or not seller:
+                  # Fetch if missing (lazy load might fail in async without await?) 
+                  # Async SQLAlchemy requires explicit loading usually.
+                  res_buyer = await db.execute(select(User).where(User.user_id == conv.buyer_user_id))
+                  buyer = res_buyer.scalar_one()
+                  
+                  res_seller = await db.execute(select(User).where(User.user_id == conv.seller_user_id))
+                  seller = res_seller.scalar_one()
+
+             # Send to Buyer (Other party is Seller)
+             if buyer:
+                 await run_in_threadpool(
+                     lambda: send_completion_email(buyer, seller.full_name, agreement.agreement_id, use_sendgrid=True)
+                 )
+             
+             # Send to Seller (Other party is Buyer)
+             if seller:
+                 await run_in_threadpool(
+                     lambda: send_completion_email(seller, buyer.full_name, agreement.agreement_id, use_sendgrid=True)
+                 )
+                 
+             logger.info(f"Completion emails sent for agreement {agreement.agreement_id}")
+
+        except Exception as e:
+             logger.error(f"Failed to send completion emails: {e}")
 
         await db.commit()
         return {"message": "Agreement completed", "status": "completed"}
