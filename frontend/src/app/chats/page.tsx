@@ -80,8 +80,8 @@ export default function ChatsPage() {
                 if (res.ok) {
                     const data = await res.json();
                     console.log("💬 Messages API response:", data);
-                    // Handle paginated response format
-                    const msgArray = data.items || [];
+                    // Handle both direct array and paginated response format
+                    const msgArray = Array.isArray(data) ? data : (data.items || []);
                     console.log("💬 Extracted messages array:", msgArray);
                     setMessages(msgArray);
                 } else {
