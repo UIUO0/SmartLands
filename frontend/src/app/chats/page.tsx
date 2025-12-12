@@ -136,20 +136,32 @@ export default function ChatsPage() {
     const handleReport = async () => {
         if (!reportReason || !selectedConversationId || !currentUserId) return;
 
-        const otherPartyId = activeConversation?.other_party_id || activeConversation?.user_id;
-        if (!otherPartyId) {
-            alert("❌ لا يمكن تحديد المستخدم المبلغ عنه");
-            return;
-        }
-
         setSubmittingReport(true);
         try {
+            // Fetch the buyer user ID for this conversation
+            const buyerRes = await fetch(`/api/chats/${selectedConversationId}/buyer`);
+            if (!buyerRes.ok) {
+                alert("❌ لا يمكن تحديد المستخدم المبلغ عنه");
+                setSubmittingReport(false);
+                return;
+            }
+
+            const buyerData = await buyerRes.json();
+            const reportedUserId = buyerData.buyer_user_id;
+
+            if (!reportedUserId) {
+                alert("❌ لا يمكن تحديد المستخدم المبلغ عنه");
+                setSubmittingReport(false);
+                return;
+            }
+
+            // Submit the report
             const res = await fetch("/api/reports", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
                     user_reporter_id: currentUserId,
-                    user_reported_id: otherPartyId,
+                    user_reported_id: reportedUserId,
                     conversation_id: selectedConversationId,
                     report_reason: reportReason === "other" ? otherReason : reportReason
                 })
