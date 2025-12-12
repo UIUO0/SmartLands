@@ -2,11 +2,34 @@
 
 import { Sidebar } from "@/components/sidebar";
 import { Header } from "@/components/header";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { FileText, MessageSquare, CheckCircle, Clock } from "lucide-react";
+import { useRouter } from "next/navigation";
 
 export default function ReportsPage() {
+    const router = useRouter();
+    const [isAuthenticated, setIsAuthenticated] = useState(false);
+    const [loading, setLoading] = useState(true);
     const [activeTab, setActiveTab] = useState<"my-reports" | "team-responses">("my-reports");
+
+    // Check authentication
+    useEffect(() => {
+        async function checkAuth() {
+            try {
+                const res = await fetch("/api/users/me");
+                if (res.ok) {
+                    setIsAuthenticated(true);
+                } else {
+                    router.push("/login");
+                }
+            } catch (e) {
+                router.push("/login");
+            } finally {
+                setLoading(false);
+            }
+        }
+        checkAuth();
+    }, [router]);
 
     // Dummy data for user's reports
     const myReports = [
@@ -74,6 +97,21 @@ export default function ReportsPage() {
         );
     };
 
+    if (loading) {
+        return (
+            <div className="flex min-h-screen bg-[#F1F3E0] items-center justify-center">
+                <div className="text-center">
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#556b4d] mx-auto mb-4"></div>
+                    <p className="text-gray-600">جارِ التحميل...</p>
+                </div>
+            </div>
+        );
+    }
+
+    if (!isAuthenticated) {
+        return null; // Will redirect in useEffect
+    }
+
     return (
         <div className="flex min-h-screen bg-[#F1F3E0]">
             <Sidebar />
@@ -92,8 +130,8 @@ export default function ReportsPage() {
                             <button
                                 onClick={() => setActiveTab("my-reports")}
                                 className={`pb-3 px-4 font-bold transition ${activeTab === "my-reports"
-                                        ? "text-[#556b4d] border-b-2 border-[#A1BC98]"
-                                        : "text-gray-500 hover:text-gray-700"
+                                    ? "text-[#556b4d] border-b-2 border-[#A1BC98]"
+                                    : "text-gray-500 hover:text-gray-700"
                                     }`}
                             >
                                 بلاغاتي ({myReports.length})
@@ -101,8 +139,8 @@ export default function ReportsPage() {
                             <button
                                 onClick={() => setActiveTab("team-responses")}
                                 className={`pb-3 px-4 font-bold transition ${activeTab === "team-responses"
-                                        ? "text-[#556b4d] border-b-2 border-[#A1BC98]"
-                                        : "text-gray-500 hover:text-gray-700"
+                                    ? "text-[#556b4d] border-b-2 border-[#A1BC98]"
+                                    : "text-gray-500 hover:text-gray-700"
                                     }`}
                             >
                                 ردود الفريق ({teamResponses.length})
