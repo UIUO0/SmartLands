@@ -126,3 +126,34 @@ async def create_report(
         logger.error("CREATE_REPORT_ERROR: %r", e, exc_info=True)
         await db.rollback()
         raise HTTPException(status_code=500, detail="Failed to submit report")
+
+
+@router.get("/sent", response_model=list[ReportOut])
+async def list_sent_reports(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    List reports made by the current user.
+    """
+    try:
+        res = await db.execute(
+            select(Report)
+            .where(Report.user_reporter_id == current_user.user_id)
+            .order_by(Report.created_at.desc())
+        )
+        reports = res.scalars().all()
+        return [
+            ReportOut(
+                report_id=r.report_id,
+                user_reporter_id=r.user_reporter_id,
+                user_reported_id=r.user_reported_id,
+                conversation_id=r.conversation_id,
+                report_reason=r.report_reason,
+                report_status=r.report_status
+            )
+            for r in reports
+        ]
+    except Exception as e:
+        logger.error("LIST_SENT_REPORTS_ERROR: %r", e, exc_info=True)
+        raise HTTPException(status_code=500, detail="Failed to fetch reports")
