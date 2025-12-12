@@ -76,13 +76,16 @@ export function Sidebar() {
 
           {/* الشعار */}
           <div className={`flex items-center gap-3 mb-10 transition-all ${isCollapsed ? "justify-center" : ""}`}>
-            <div className="h-10 w-10 min-w-[2.5rem] bg-black rounded-xl flex items-center justify-center text-white font-bold text-xl shadow-sm">
-              SL
-            </div>
-            {!isCollapsed && (
-              <span className="font-bold text-2xl tracking-tight text-black whitespace-nowrap overflow-hidden">
-                Smart Lands
-              </span>
+            {isCollapsed ? (
+              // شعار صغير عند التصغير
+              <div className="h-10 w-10 min-w-[2.5rem] bg-white rounded-xl flex items-center justify-center shadow-sm overflow-hidden p-1">
+                <img src="/sidebar_logo.png" alt="SL" className="w-full h-full object-contain" />
+              </div>
+            ) : (
+              // شعار كامل
+              <div className="h-20 w-full flex items-center justify-center">
+                <img src="/sidebar_logo.png" alt="Smart Lands" className="h-full object-contain drop-shadow-sm" />
+              </div>
             )}
           </div>
 
