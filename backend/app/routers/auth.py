@@ -25,6 +25,8 @@ from app.core.security import (
 from app.models.user import User
 from app.models.auth_identity import AuthIdentity, AuthProvider
 from app.models.email_verification import EmailVerification
+from app.utils.email import send_welcome_email
+from fastapi.concurrency import run_in_threadpool
 
 # ===== Single Router Definition =====
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -173,6 +175,12 @@ async def signup(
         _set_auth_cookie(response, access_token)
         
         logger.info("User registered successfully: %s (id=%s)", user.email, user.user_id)
+        
+        # Send Welcome Email
+        try:
+             await run_in_threadpool(lambda: send_welcome_email(user, use_sendgrid=True))
+        except Exception as e:
+             logger.error("Failed to send welcome email: %s", e)
         
         return {
             "access_token": access_token,
@@ -327,6 +335,12 @@ async def google_login(
                 db.add(user)
                 await db.flush()  # to get user_id
                 logger.info("Created new user from Google: %s", email)
+
+                # Send Welcome Email (New User)
+                try:
+                     await run_in_threadpool(lambda: send_welcome_email(user, use_sendgrid=True))
+                except Exception as e:
+                     logger.error("Failed to send welcome email (Google): %s", e)
             else:
                 logger.info("Linking Google account to existing user: %s", email)
 

@@ -14,6 +14,13 @@ from app.core.security import get_current_user
 from app.models.user import User
 from app.models.report import Report
 from app.models.chat_message import ChatMessage
+from app.models.chat_conversation import ChatConversation
+from app.models.agreement import Agreement
+from app.models.land import Land
+from app.utils.email import send_warning_email
+from fastapi.concurrency import run_in_threadpool
+from sqlalchemy import select, func
+from sqlalchemy.orm import selectinload
 
 logger = logging.getLogger("smartlands.reports")
 
@@ -139,6 +146,54 @@ async def create_report(
         db.add(report)
         await db.commit()
         await db.refresh(report)
+
+        # 4. Side Effects: Cancel Agreement & Delete Conversation
+        # We do this regardless of validity status as per business rule.
+        try:
+            # Fetch Conversation with Agreement
+            res_conv = await db.execute(
+                select(ChatConversation)
+                .options(selectinload(ChatConversation.agreement))
+                .where(ChatConversation.conversation_id == payload.conversation_id)
+            )
+            conv = res_conv.scalar_one_or_none()
+            
+            if conv:
+                # Cancel Agreement
+                if conv.agreement:
+                    conv.agreement.status = "cancelled"
+                    conv.agreement.cancelled_at = func.now()
+                    
+                    # Set Land to Available
+                    res_land = await db.execute(select(Land).where(Land.land_id == conv.agreement.land_id))
+                    land = res_land.scalar_one_or_none()
+                    if land:
+                        land.status = "available"
+                
+                # Delete Conversation (Cascades to messages usually, or we delete usage)
+                await db.delete(conv)
+                
+                await db.commit()
+                logger.info(f"Report CLEANUP: Cancelled agreement and deleted conversation {payload.conversation_id}")
+        except Exception as e:
+            logger.error(f"Report Side Effect Failed: {e}")
+            # Don't fail the request, the report was submitted.
+
+        # 5. If VALID, Send Warning Email to Reported User
+        if status == "valid":
+             try:
+                # Fetch Reported User to get email
+                res_user = await db.execute(select(User).where(User.user_id == payload.user_reported_id))
+                reported_user = res_user.scalar_one_or_none()
+                
+                if reported_user:
+                     await run_in_threadpool(
+                         lambda: send_warning_email(reported_user, payload.report_reason, use_sendgrid=True)
+                     )
+                     logger.info(f"Warning email sent to user {payload.user_reported_id}")
+                     
+             except Exception as e:
+                 logger.error(f"Failed to send warning email: {e}")
         
         return ReportOut(
             report_id=report.report_id,
