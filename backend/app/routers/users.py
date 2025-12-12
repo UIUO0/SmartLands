@@ -1,5 +1,6 @@
 # app/routers/users.py
 import os
+import logging
 import cloudinary
 import cloudinary.uploader
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
