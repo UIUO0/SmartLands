@@ -239,6 +239,11 @@ export default function ProfilePage() {
                                         البلاغات
                                     </Link>
 
+                                    <Link href="/agreements" className="w-full mt-2 bg-[#A1BC98]/10 hover:bg-[#A1BC98]/20 text-[#556b4d] font-bold py-3.5 px-4 rounded-xl flex items-center justify-center gap-2 transition-all border border-[#A1BC98]/20">
+                                        <FileText className="h-5 w-5" />
+                                        العقود
+                                    </Link>
+
                                     <Link href="/R_Pw" className="w-full mt-2 bg-[#556b4d]/10 hover:bg-[#556b4d]/20 text-[#556b4d] font-bold py-3.5 px-4 rounded-xl flex items-center justify-center gap-2 transition-all border border-[#556b4d]/20">
                                         <Lock className="h-5 w-5" />
                                         تغيير كلمة المرور
