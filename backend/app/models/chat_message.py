@@ -43,7 +43,7 @@ class ChatMessage(Base):
     )
 
     # Relationships
-    conversation = relationship("ChatConversation", backref="messages")
+    conversation = relationship("ChatConversation", back_populates="messages")
     sender = relationship("User", foreign_keys=[sender_user_id])
 
     def __repr__(self) -> str:
