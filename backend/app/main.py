@@ -223,6 +223,8 @@ from app.routers.ai_agent import router as ai_agent_router
 app.include_router(ai_agent_router)
 from app.routers.reports import router as reports_router
 app.include_router(reports_router)
+from app.routers.agreements import router as agreements_router
+app.include_router(agreements_router)
 
 # ===== Root Endpoint =====
 @app.get("/", tags=["root"])
@@ -240,7 +242,8 @@ def read_root():
             "lands": "/lands",
             "chats": "/chats",
             "ai": "/ai",
-            "reports": "/reports"
+            "reports": "/reports",
+            "agreements": "/agreements"
         }
     }
 
