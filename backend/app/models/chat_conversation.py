@@ -46,6 +46,9 @@ class ChatConversation(Base):
     agreement = relationship("Agreement", backref="conversations")
     buyer = relationship("User", foreign_keys=[buyer_user_id], backref="buyer_conversations")
     seller = relationship("User", foreign_keys=[seller_user_id], backref="seller_conversations")
+    
+    # Cascade delete messages when conversation is deleted
+    messages = relationship("ChatMessage", back_populates="conversation", cascade="all, delete-orphan", passive_deletes=True)
 
     def __repr__(self) -> str:
         return f"<ChatConversation id={self.conversation_id} agreement={self.agreement_id}>"
