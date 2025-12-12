@@ -55,7 +55,21 @@ export default function AgreementsPage() {
                 const res = await fetch("/api/agreements");
                 if (res.ok) {
                     const data = await res.json();
-                    setAgreements(Array.isArray(data) ? data : []);
+
+                    let items = [];
+                    if (Array.isArray(data)) {
+                        items = data;
+                    } else if (data && Array.isArray(data.items)) {
+                        items = data.items;
+                    } else if (data && Array.isArray(data.agreements)) {
+                        items = data.agreements;
+                    } else if (data && Array.isArray(data.data)) {
+                        items = data.data;
+                    }
+
+                    setAgreements(items);
+                } else {
+                    console.error("Agreements fetch failed:", await res.text());
                 }
             } catch (e) {
                 console.error("Failed to fetch agreements:", e);
