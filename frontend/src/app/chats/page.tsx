@@ -3,7 +3,7 @@
 import { Sidebar } from "@/components/sidebar";
 import { Header } from "@/components/header";
 import { useState, useEffect, useRef } from "react";
-import { Send, Search, User, MessageCircle, Loader2 } from "lucide-react";
+import { Send, Search, User, MessageCircle, Loader2, Flag, X } from "lucide-react";
 
 export default function ChatsPage() {
     const [conversations, setConversations] = useState<any[]>([]);
@@ -14,6 +14,10 @@ export default function ChatsPage() {
     const [loadingMessages, setLoadingMessages] = useState(false);
     const [sending, setSending] = useState(false);
     const [currentUserId, setCurrentUserId] = useState<number | null>(null);
+    const [showReportModal, setShowReportModal] = useState(false);
+    const [reportReason, setReportReason] = useState("");
+    const [otherReason, setOtherReason] = useState("");
+    const [submittingReport, setSubmittingReport] = useState(false);
     const messagesEndRef = useRef<HTMLDivElement>(null);
 
     // Get current user ID
@@ -129,6 +133,37 @@ export default function ChatsPage() {
 
     const activeConversation = conversations.find(c => c.conversation_id === selectedConversationId);
 
+    const handleReport = async () => {
+        if (!reportReason || !selectedConversationId || !currentUserId) return;
+
+        setSubmittingReport(true);
+        try {
+            const res = await fetch("/api/reports", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    user_reporter_id: currentUserId,
+                    conversation_id: selectedConversationId,
+                    report_reason: reportReason === "other" ? otherReason : reportReason
+                })
+            });
+
+            if (res.ok) {
+                alert("✅ تم إرسال البلاغ بنجاح");
+                setShowReportModal(false);
+                setReportReason("");
+                setOtherReason("");
+            } else {
+                alert("❌ فشل إرسال البلاغ");
+            }
+        } catch (e) {
+            console.error("Report error:", e);
+            alert("❌ خطأ في الاتصال");
+        } finally {
+            setSubmittingReport(false);
+        }
+    };
+
     const handleSendMessage = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!messageInput.trim() || !selectedConversationId) return;
@@ -240,6 +275,13 @@ export default function ChatsPage() {
                                             <span className="text-xs text-gray-500">محادثة #{activeConversation.conversation_id}</span>
                                         </div>
                                     </div>
+                                    <button
+                                        onClick={() => setShowReportModal(true)}
+                                        className="p-2 hover:bg-red-50 rounded-lg transition text-red-600"
+                                        title="إبلاغ عن المحادثة"
+                                    >
+                                        <Flag className="h-5 w-5" />
+                                    </button>
                                 </div>
 
                                 {/* Messages */}
@@ -320,6 +362,90 @@ export default function ChatsPage() {
                     </div>
 
                 </div>
+
+                {/* Report Modal */}
+                {showReportModal && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+                        <div className="bg-white w-full max-w-md rounded-3xl p-6 shadow-2xl">
+                            <div className="flex justify-between items-center mb-6 border-b border-gray-100 pb-4">
+                                <h3 className="text-xl font-bold text-black">إبلاغ عن المحادثة</h3>
+                                <button onClick={() => setShowReportModal(false)} className="p-2 hover:bg-gray-100 rounded-full transition">
+                                    <X className="h-5 w-5 text-gray-700" />
+                                </button>
+                            </div>
+
+                            <div className="space-y-4">
+                                <p className="text-sm text-gray-600">اختر سبب البلاغ:</p>
+
+                                <label className="flex items-center p-3 border border-gray-200 rounded-xl cursor-pointer hover:bg-gray-50 transition">
+                                    <input
+                                        type="radio"
+                                        name="reportReason"
+                                        value="كلام بذيء"
+                                        checked={reportReason === "كلام بذيء"}
+                                        onChange={(e) => setReportReason(e.target.value)}
+                                        className="mr-3"
+                                    />
+                                    <span className="font-medium">كلام بذيء</span>
+                                </label>
+
+                                <label className="flex items-center p-3 border border-gray-200 rounded-xl cursor-pointer hover:bg-gray-50 transition">
+                                    <input
+                                        type="radio"
+                                        name="reportReason"
+                                        value="عدم الجديه"
+                                        checked={reportReason === "عدم الجديه"}
+                                        onChange={(e) => setReportReason(e.target.value)}
+                                        className="mr-3"
+                                    />
+                                    <span className="font-medium">عدم الجديه</span>
+                                </label>
+
+                                <label className="flex items-center p-3 border border-gray-200 rounded-xl cursor-pointer hover:bg-gray-50 transition">
+                                    <input
+                                        type="radio"
+                                        name="reportReason"
+                                        value="other"
+                                        checked={reportReason === "other"}
+                                        onChange={(e) => setReportReason(e.target.value)}
+                                        className="mr-3"
+                                    />
+                                    <span className="font-medium">أخرى</span>
+                                </label>
+
+                                {reportReason === "other" && (
+                                    <textarea
+                                        value={otherReason}
+                                        onChange={(e) => setOtherReason(e.target.value)}
+                                        placeholder="اكتب السبب هنا..."
+                                        rows={3}
+                                        className="w-full p-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-500"
+                                    />
+                                )}
+
+                                <div className="flex gap-3 pt-4">
+                                    <button
+                                        onClick={() => setShowReportModal(false)}
+                                        className="flex-1 py-3 font-bold text-gray-700 bg-gray-100 rounded-xl hover:bg-gray-200 transition"
+                                    >
+                                        إلغاء
+                                    </button>
+                                    <button
+                                        onClick={handleReport}
+                                        disabled={submittingReport || !reportReason || (reportReason === "other" && !otherReason.trim())}
+                                        className="flex-1 py-3 font-bold text-white bg-red-600 rounded-xl hover:bg-red-700 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                                    >
+                                        {submittingReport ? (
+                                            <><Loader2 className="h-5 w-5 animate-spin" /> جارِ الإرسال</>
+                                        ) : (
+                                            <>إرسال البلاغ</>
+                                        )}
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                )}
             </main>
         </div>
     );
