@@ -74,8 +74,17 @@ function LoginForm() {
                 body: JSON.stringify({ id_token: credentialResponse.credential })
               });
               if (r.ok) {
-                router.push(next);
-                router.refresh();
+                const data = await r.json();
+                let targetUrl = next;
+
+                // إذا كان مستخدم جديد، نضيف علامة للرابط
+                if (data.is_new_user) {
+                  const separator = targetUrl.includes("?") ? "&" : "?";
+                  targetUrl += `${separator}first_time=true`;
+                }
+
+                // استخدام window.location للإجبار على تحديث كامل للصفحة (لإصلاح مشاكل الكوكيز)
+                window.location.href = targetUrl;
               } else {
                 alert("Google Login Failed");
               }
