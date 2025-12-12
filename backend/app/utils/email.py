@@ -388,7 +388,8 @@ async def send_verification_code(
 
 
 def send_welcome_email(
-    user: User,
+    email: str,
+    name: str,
     use_sendgrid: bool = True
 ) -> None:
     """
@@ -401,34 +402,36 @@ def send_welcome_email(
     Raises:
         Exception: If email sending fails
     """
-    subject, body = build_welcome_email(user.full_name)
+    subject, body = build_welcome_email(name)
     
     if use_sendgrid:
-        send_email_sendgrid(user.email, subject, body)
+        send_email_sendgrid(email, subject, body)
     else:
-        send_email_smtp(user.email, subject, body)
+        send_email_smtp(email, subject, body)
 
 
 def send_warning_email(
-    user: User,
+    email: str,
+    name: str,
     report_reason: str,
     use_sendgrid: bool = True
 ) -> None:
-    subject, body = build_warning_email(user.full_name, report_reason)
+    subject, body = build_warning_email(name, report_reason)
     if use_sendgrid:
-        send_email_sendgrid(user.email, subject, body)
+        send_email_sendgrid(email, subject, body)
     else:
-        send_email_smtp(user.email, subject, body)
+        send_email_smtp(email, subject, body)
 
 
 def send_completion_email(
-    user: User,
+    email: str,
+    name: str,
     other_party_name: str,
     agreement_id: int,
     use_sendgrid: bool = True
 ) -> None:
-    subject, body = build_completion_email(user.full_name, other_party_name, agreement_id)
+    subject, body = build_completion_email(name, other_party_name, agreement_id)
     if use_sendgrid:
-        send_email_sendgrid(user.email, subject, body)
+        send_email_sendgrid(email, subject, body)
     else:
-        send_email_smtp(user.email, subject, body)
+        send_email_smtp(email, subject, body)
