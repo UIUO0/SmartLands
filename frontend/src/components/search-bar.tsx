@@ -2,6 +2,7 @@
 
 import { Search, MapPin } from "lucide-react"
 import { useSearchParams, usePathname, useRouter } from "next/navigation"
+import { SAUDI_CITIES } from "@/lib/constants"
 
 export function SearchBar() {
   const searchParams = useSearchParams()
@@ -60,9 +61,9 @@ export function SearchBar() {
               className="bg-transparent border-none outline-none text-gray-700 font-medium cursor-pointer w-full pl-6 appearance-none"
             >
               <option value="">All Cities</option>
-              <option value="Riyadh">Riyadh</option>
-              <option value="Jeddah">Jeddah</option>
-              <option value="Dammam">Dammam</option>
+              {SAUDI_CITIES.map(city => (
+                <option key={city} value={city}>{city}</option>
+              ))}
             </select>
           </div>
 

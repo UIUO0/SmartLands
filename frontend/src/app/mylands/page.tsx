@@ -8,6 +8,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { getAbsoluteImageUrl, handleLogout } from "@/lib/utils";
 import { LandImage } from "@/components/LandImage";
+import { SAUDI_CITIES } from "@/lib/constants";
 
 export default function MyLandsPage() {
     const [lands, setLands] = useState<any[]>([]);
@@ -284,8 +285,17 @@ export default function MyLandsPage() {
                                     </div>
                                     <div>
                                         <label className="block text-sm font-bold mb-1">المدينة</label>
-                                        <input required type="text" className="w-full p-3 rounded-xl border border-[#A1BC98]"
-                                            value={formData.city} onChange={e => setFormData({ ...formData, city: e.target.value })} />
+                                        <select
+                                            required
+                                            className="w-full p-3 rounded-xl border border-[#A1BC98] bg-white appearance-none"
+                                            value={formData.city}
+                                            onChange={e => setFormData({ ...formData, city: e.target.value })}
+                                        >
+                                            <option value="" disabled>اختر المدينة</option>
+                                            {SAUDI_CITIES.map(city => (
+                                                <option key={city} value={city}>{city}</option>
+                                            ))}
+                                        </select>
                                     </div>
                                 </div>
 
