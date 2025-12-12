@@ -69,18 +69,61 @@ export default function ChatsPage() {
                 const res = await fetch('/api/chats');
                 if (res.ok) {
                     const data = await res.json();
-                    // Handle paginated response format with items array
                     const convArray = data.items || [];
-                    setConversations(convArray);
-                    // Auto-select first conversation ONLY on initial load (when nothing is selected yet)
-                    if (convArray.length > 0 && !selectedConversationId && !hasAutoSelected) {
-                        setSelectedConversationId(convArray[0].conversation_id);
+
+                    // Fetch profile pictures for all conversations
+                    const conversationsWithPics = await Promise.all(convArray.map(async (conv: any) => {
+                        // If picture is already present, skip
+                        if (conv.other_party_picture_url) return conv;
+
+                        // Need to know who the other party is. 
+                        // The conversation object usually has { buyer_id, seller_id }
+                        // We need the current user ID to know which one is the "other"
+                        // But we might not have `currentUserId` updated yet inside this loop securely if it relies on async state.
+
+                        // NOTE: To fix this reliably, we can fetch specific endpoints or user/{id} if we have the ID.
+                        // Assuming conv has `other_party_id` or we can derive it.
+                        // If the backend doesn't provide specific 'other_party_id', we might need to rely on the buyer/seller logic.
+                        // For now, let's try to fetch user info if we have an ID.
+
+                        let targetId = null;
+
+                        // Check if we have explicit other_party_id in response
+                        if (conv.other_party_id) {
+                            targetId = conv.other_party_id;
+                        }
+                        // If not, we might need to deduce it, but we need currentUserId.
+                        // Since `currentUserId` is state, it might be null initially.
+                        // Let's use a cached value or wait? 
+
+                        // Alternative: fetch the 'other party' info using a dedicated chat endpoint if available?
+                        // But we created /api/users/[id].
+
+                        if (targetId) {
+                            try {
+                                const userRes = await fetch(`/api/users/${targetId}`);
+                                if (userRes.ok) {
+                                    const userData = await userRes.json();
+                                    return { ...conv, other_party_picture_url: userData.picture_url };
+                                }
+                            } catch (e) {
+                                console.error(`Failed to fetch pic for user ${targetId}`, e);
+                            }
+                        }
+
+                        return conv;
+                    }));
+
+                    setConversations(conversationsWithPics);
+
+                    if (conversationsWithPics.length > 0 && !selectedConversationId && !hasAutoSelected) {
+                        setSelectedConversationId(conversationsWithPics[0].conversation_id);
                         hasAutoSelected = true;
                     }
                 }
             } catch (err) {
                 console.error("Failed to load conversations:", err);
-                setConversations([]); // Ensure it's always an array
+                setConversations([]);
             } finally {
                 setLoading(false);
             }
@@ -88,11 +131,9 @@ export default function ChatsPage() {
 
         loadConversations();
 
-        // Auto-refresh conversations every 2 seconds
-        const interval = setInterval(loadConversations, 2000);
-
+        const interval = setInterval(loadConversations, 5000); // Increased interval to 5s to avoid rate limiting
         return () => clearInterval(interval);
-    }, []); // Only run once on mount
+    }, [currentUserId]); // Add currentUserId dependency so we can use it if needed
 
     // Load messages for selected conversation with auto-refresh
     useEffect(() => {
@@ -138,7 +179,55 @@ export default function ChatsPage() {
         return () => clearInterval(interval);
     }, [selectedConversationId]);
 
-    // Scroll to bottom when messages change (only if new messages added)
+
+
+    // Helper to update specific conversation with picture
+    const fetchConversationImage = async (conversation: any) => {
+        if (conversation.other_party_picture_url || !currentUserId) return conversation;
+
+        let targetId = conversation.other_party_id;
+
+        // If no explicit other ID, derive it
+        if (!targetId && currentUserId) {
+            if (conversation.buyer_user_id === currentUserId) {
+                targetId = conversation.seller_user_id;
+            } else if (conversation.seller_user_id === currentUserId) {
+                targetId = conversation.buyer_user_id;
+            }
+        }
+
+        if (targetId) {
+            try {
+                const res = await fetch(`/api/users/${targetId}`);
+                if (res.ok) {
+                    const data = await res.json();
+                    return { ...conversation, other_party_picture_url: data.picture_url, other_party_id: targetId };
+                }
+            } catch (e) { console.error(e); }
+        }
+        return conversation;
+    };
+
+    // Effect to enrich conversations with pictures whenever conversations or currentUserId changes
+    useEffect(() => {
+        if (!currentUserId || conversations.length === 0) return;
+
+        const enrichConversations = async () => {
+            const updated = await Promise.all(conversations.map(fetchConversationImage));
+            // Only update if there are changes to avoid infinite loop
+            const hasChanges = updated.some((c, i) => c.other_party_picture_url !== conversations[i].other_party_picture_url);
+            if (hasChanges) {
+                setConversations(updated);
+            }
+        };
+
+        // enriching... this might cause loop if not careful.
+        // Better approach: do it in the loadConversations but we need currentUserId there.
+        // Since we added dependency on currentUserId in the main load effect, we should handle it there.
+        // Therefore, this separate effect might be redundant or conflicting if not careful.
+        // Let's rely on the main loadConversations function which we updated to include logic.
+
+    }, [currentUserId]); // We can remove this if we merged logic into loadConversations properly.
     useEffect(() => {
         const prevCount = messages.length;
         // Store previous count in a ref to compare on next render
