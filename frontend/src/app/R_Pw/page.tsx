@@ -8,15 +8,15 @@ export default function ResetPasswordPage() {
 
   // 1 = إدخال الإيميل، 2 = إدخال الكود وكلمة المرور الجديدة
   const [step, setStep] = useState<1 | 2>(1);
-  
+
   const [email, setEmail] = useState("");
   const [code, setCode] = useState("");
   const [newPassword, setNewPassword] = useState("");
-  
+
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
-  const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "https://smartlands-production.up.railway.app";
+  const BASE_URL = "/api";
 
   // --- الخطوة 1: إرسال الكود ---
   const handleSendCode = async (e: React.FormEvent) => {
@@ -65,7 +65,7 @@ export default function ResetPasswordPage() {
       }
 
       setMsg({ type: "success", text: "تم تغيير كلمة المرور بنجاح! جاري تحويلك..." });
-      
+
       // توجيه لصفحة الدخول
       setTimeout(() => router.push("/login"), 2000);
 
@@ -81,8 +81,8 @@ export default function ResetPasswordPage() {
       <div className="w-full max-w-md rounded-2xl bg-white p-8 shadow-lg border border-gray-100">
         <h1 className="mb-2 text-2xl font-bold text-center">إعادة تعيين كلمة المرور</h1>
         <p className="mb-6 text-center text-gray-500 text-sm">
-          {step === 1 
-            ? "أدخل بريدك الإلكتروني لاستلام رمز التحقق" 
+          {step === 1
+            ? "أدخل بريدك الإلكتروني لاستلام رمز التحقق"
             : "أدخل الرمز الذي وصلك وكلمة المرور الجديدة"}
         </p>
 
