@@ -11,6 +11,8 @@ from app.core.security import get_current_user
 from app.models.user import User
 from app.models.chat_conversation import ChatConversation
 from app.models.chat_message import ChatMessage
+from app.models.agreement import Agreement
+from app.models.land import Land
 from app.schemas.chat import (
     ChatConversationOut,
     ChatMessageOut,
@@ -322,3 +324,105 @@ async def get_chat_seller(
     except Exception as e:
         logger.error("GET_CHAT_SELLER_ERROR: %r", e, exc_info=True)
         raise HTTPException(status_code=500, detail="Failed to fetch seller id")
+
+
+@router.post("/{conversation_id}/agree", status_code=200)
+async def agree_to_deal(
+    conversation_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Mark the agreement as COMPLETED ("We Agreed").
+    Also marks the Land as SOLD.
+    """
+    try:
+        # 1. Fetch Conversation & Agreement
+        res = await db.execute(
+            select(ChatConversation)
+            .options(selectinload(ChatConversation.agreement))
+            .where(ChatConversation.conversation_id == conversation_id)
+        )
+        conv = res.scalar_one_or_none()
+        
+        if not conv:
+            raise HTTPException(status_code=404, detail="Conversation not found")
+        
+        # Verify participant
+        if conv.buyer_user_id != current_user.user_id and conv.seller_user_id != current_user.user_id:
+             raise HTTPException(status_code=403, detail="Not a participant")
+
+        agreement = conv.agreement
+        if not agreement:
+            raise HTTPException(status_code=404, detail="No agreement associated with this chat")
+
+        # 2. Update Agreement Status
+        agreement.status = "completed"
+        agreement.confirmed_at = func.now()
+
+        # 3. Update Land Status
+        res_land = await db.execute(select(Land).where(Land.land_id == agreement.land_id))
+        land = res_land.scalar_one_or_none()
+        if land:
+            land.status = "sold"
+
+        await db.commit()
+        return {"message": "Agreement completed", "status": "completed"}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("AGREE_DEAL_ERROR: %r", e, exc_info=True)
+        await db.rollback()
+        raise HTTPException(status_code=500, detail="Failed to confirm agreement")
+
+
+@router.post("/{conversation_id}/disagree", status_code=200)
+async def disagree_deal(
+    conversation_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Mark the agreement as CANCELLED ("No Agreement").
+    Also marks the Land as AVAILABLE (re-open listing).
+    """
+    try:
+        # 1. Fetch Conversation & Agreement
+        res = await db.execute(
+            select(ChatConversation)
+            .options(selectinload(ChatConversation.agreement))
+            .where(ChatConversation.conversation_id == conversation_id)
+        )
+        conv = res.scalar_one_or_none()
+        
+        if not conv:
+            raise HTTPException(status_code=404, detail="Conversation not found")
+        
+        # Verify participant
+        if conv.buyer_user_id != current_user.user_id and conv.seller_user_id != current_user.user_id:
+             raise HTTPException(status_code=403, detail="Not a participant")
+
+        agreement = conv.agreement
+        if not agreement:
+            raise HTTPException(status_code=404, detail="No agreement associated with this chat")
+
+        # 2. Update Agreement Status
+        agreement.status = "cancelled"
+        agreement.cancelled_at = func.now()
+
+        # 3. Update Land Status
+        res_land = await db.execute(select(Land).where(Land.land_id == agreement.land_id))
+        land = res_land.scalar_one_or_none()
+        if land:
+            land.status = "available" # Re-open for others
+
+        await db.commit()
+        return {"message": "Agreement cancelled", "status": "cancelled"}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("DISAGREE_DEAL_ERROR: %r", e, exc_info=True)
+        await db.rollback()
+        raise HTTPException(status_code=500, detail="Failed to cancel agreement")
