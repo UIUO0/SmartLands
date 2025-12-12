@@ -16,7 +16,7 @@ export default function ResetPasswordPage() {
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
-  const BASE_URL = "/api";
+  const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "https://smartlands-production.up.railway.app";
 
   // --- الخطوة 1: إرسال الكود ---
   const handleSendCode = async (e: React.FormEvent) => {
