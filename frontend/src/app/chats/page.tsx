@@ -67,9 +67,11 @@ export default function ChatsPage() {
     useEffect(() => {
         if (!selectedConversationId) return;
 
+        let isInitialLoad = true;
+
         async function loadMessages() {
-            // Only show loading on initial load (when messages is empty)
-            if (messages.length === 0) {
+            // Only show loading spinner on the very first load
+            if (isInitialLoad) {
                 setLoadingMessages(true);
             }
 
@@ -87,8 +89,9 @@ export default function ChatsPage() {
                 console.error("Failed to load messages:", e);
                 setMessages([]);
             } finally {
-                if (messages.length === 0) {
+                if (isInitialLoad) {
                     setLoadingMessages(false);
+                    isInitialLoad = false;
                 }
             }
         }
