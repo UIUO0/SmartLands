@@ -2,7 +2,7 @@
 
 import { Sidebar } from "@/components/sidebar";
 import { Header } from "@/components/header";
-import { User, Mail, LogOut, Edit2, X, Save, Loader2, Link as LinkIcon } from "lucide-react";
+import { User, Mail, LogOut, Edit2, X, Save, Loader2, Link as LinkIcon, Lock, FileText } from "lucide-react";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -15,6 +15,9 @@ export default function ProfilePage() {
     const [isEditing, setIsEditing] = useState(false);
     const [editForm, setEditForm] = useState({ full_name: "", picture_url: "" });
     const [isSaving, setIsSaving] = useState(false);
+
+    // Upload state
+    const [uploadingImage, setUploadingImage] = useState(false);
 
     const router = useRouter();
 
@@ -78,6 +81,42 @@ export default function ProfilePage() {
         } catch (e) { console.error(e); }
     };
 
+    const handleImageClick = () => {
+        document.getElementById('profile-image-input')?.click();
+    };
+
+    const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (!e.target.files || !e.target.files[0]) return;
+
+        const file = e.target.files[0];
+        const formData = new FormData();
+        formData.append("file", file);
+
+        setUploadingImage(true);
+        try {
+            const res = await fetch("/api/users/me/profile-picture", {
+                method: "POST",
+                body: formData,
+            });
+
+            if (res.ok) {
+                const updatedUser = await res.json();
+                setUser(updatedUser);
+                setEditForm(prev => ({ ...prev, picture_url: updatedUser.picture_url }));
+                alert("✅ تم تحديث الصورة الشخصية");
+            } else {
+                alert("❌ فشل تحديث الصورة");
+            }
+        } catch (e) {
+            console.error("Upload error:", e);
+            alert("❌ خطأ في الاتصال");
+        } finally {
+            setUploadingImage(false);
+        }
+    };
+
+    // ... (rest of component)
+
     return (
         <div className="flex min-h-screen bg-[#F1F3E0]">
             <Sidebar />
@@ -93,12 +132,26 @@ export default function ProfilePage() {
                             <>
                                 <div className="flex flex-col items-center text-center mb-8">
                                     {/* عرض الصورة */}
-                                    <div className="w-32 h-32 mb-4 bg-[#F1F3E0] rounded-full flex items-center justify-center border-4 border-white overflow-hidden shadow-sm">
-                                        {user.picture_url ? (
-                                            <img src={user.picture_url} alt="Profile" className="w-full h-full object-cover" />
-                                        ) : (
-                                            <User className="h-14 w-14 text-[#A1BC98]" />
-                                        )}
+                                    <div className="relative group cursor-pointer" onClick={handleImageClick}>
+                                        <div className="w-32 h-32 mb-4 bg-[#F1F3E0] rounded-full flex items-center justify-center border-4 border-white overflow-hidden shadow-sm">
+                                            {uploadingImage ? (
+                                                <Loader2 className="h-10 w-10 animate-spin text-[#556b4d]" />
+                                            ) : user.picture_url ? (
+                                                <img src={user.picture_url} alt="Profile" className="w-full h-full object-cover" />
+                                            ) : (
+                                                <User className="h-14 w-14 text-[#A1BC98]" />
+                                            )}
+                                        </div>
+                                        <div className="absolute inset-0 bg-black/30 rounded-full opacity-0 group-hover:opacity-100 transition flex items-center justify-center mb-4">
+                                            <Edit2 className="h-8 w-8 text-white" />
+                                        </div>
+                                        <input
+                                            type="file"
+                                            id="profile-image-input"
+                                            className="hidden"
+                                            accept="image/*"
+                                            onChange={handleImageChange}
+                                        />
                                     </div>
 
                                     <div className="flex items-center gap-2 justify-center mb-1">
@@ -126,10 +179,13 @@ export default function ProfilePage() {
                                     </div>
 
                                     <Link href="/reports" className="w-full mt-4 bg-[#A1BC98]/10 hover:bg-[#A1BC98]/20 text-[#556b4d] font-bold py-3.5 px-4 rounded-xl flex items-center justify-center gap-2 transition-all border border-[#A1BC98]/20">
-                                        <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                                        </svg>
+                                        <FileText className="h-5 w-5" />
                                         البلاغات
+                                    </Link>
+
+                                    <Link href="/R_Pw" className="w-full mt-2 bg-[#556b4d]/10 hover:bg-[#556b4d]/20 text-[#556b4d] font-bold py-3.5 px-4 rounded-xl flex items-center justify-center gap-2 transition-all border border-[#556b4d]/20">
+                                        <Lock className="h-5 w-5" />
+                                        تغيير كلمة المرور
                                     </Link>
 
                                     <button onClick={handleLogout} className="w-full mt-6 bg-red-500/10 hover:bg-red-500/20 text-red-700 font-bold py-3.5 px-4 rounded-xl flex items-center justify-center gap-2 transition-all border border-red-500/20">
@@ -171,21 +227,6 @@ export default function ProfilePage() {
                                         onChange={(e) => setEditForm({ ...editForm, full_name: e.target.value })}
                                         className="w-full p-3.5 rounded-xl border border-[#A1BC98] focus:outline-none focus:ring-2 focus:ring-black bg-white text-black"
                                     />
-                                </div>
-
-                                <div>
-                                    <label className="flex items-center gap-2 text-sm font-bold text-[#556b4d] mb-2">
-                                        <LinkIcon className="h-4 w-4" />
-                                        رابط الصورة الشخصية (URL)
-                                    </label>
-                                    <input
-                                        type="url"
-                                        value={editForm.picture_url}
-                                        onChange={(e) => setEditForm({ ...editForm, picture_url: e.target.value })}
-                                        className="w-full p-3.5 rounded-xl border border-[#A1BC98] focus:outline-none focus:ring-2 focus:ring-black bg-white text-black text-left dir-ltr placeholder:text-gray-400"
-                                        placeholder="https://..."
-                                    />
-                                    <p className="text-xs text-gray-500 mt-1 mr-1">ضع رابطاً مباشراً للصورة.</p>
                                 </div>
 
                                 <div className="flex gap-3 pt-2">
