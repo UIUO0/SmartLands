@@ -56,14 +56,36 @@ async def create_report(
         messages = msgs_res.scalars().all()
         
         chat_transcript = ""
+        reporter_id = current_user.user_id
+        reported_id = payload.user_reported_id
+        
         for m in messages:
-            chat_transcript += f"User {m.sender_user_id}: {m.content_text}\n"
+            role_label = "UNKNOWN"
+            if m.sender_user_id == reporter_id:
+                role_label = f"REPORTER (ID {reporter_id})"
+            elif m.sender_user_id == reported_id:
+                role_label = f"REPORTED_USER (ID {reported_id})"
+            else:
+                role_label = f"OTHER_USER (ID {m.sender_user_id})"
+                
+            chat_transcript += f"[{role_label}]: {m.content_text}\n"
 
         # 2. Call Groq for Analysis
-        system_prompt = """
+        system_prompt = f"""
         You are a content moderator. 
-        Analyze the following chat conversation and the report reason.
-        Determine if the report is "valid" or "invalid" based on toxic behavior, scams, or harassment.
+        You are reviewing a report made by the REPORTER against the REPORTED_USER.
+        
+        Analyze the chat conversation and the report reason.
+        
+        CRITERIA FOR "VALID":
+        - The REPORTED_USER (ID {reported_id}) has violated safety guidelines (harassment, spam, scam, toxicity).
+        - The report reason provided by the REPORTER matches the behavior of the REPORTED_USER.
+        
+        CRITERIA FOR "INVALID":
+        - The REPORTED_USER did nothing wrong.
+        - The REPORTER is the one being toxic or aggressive (False Report).
+        - The conversation is harmless context.
+        
         Reply ONLY with one word: "valid" or "invalid".
         """
         
