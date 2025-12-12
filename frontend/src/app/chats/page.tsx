@@ -329,8 +329,16 @@ export default function ChatsPage() {
                                         onClick={() => setSelectedConversationId(conv.conversation_id)}
                                         className={`w-full flex items-center p-4 rounded-2xl transition hover:bg-[#F9FAFB] ${selectedConversationId === conv.conversation_id ? "bg-[#F1F3E0] border border-[#A1BC98]/50" : ""}`}
                                     >
-                                        <div className="w-12 h-12 rounded-full bg-gray-200 flex items-center justify-center text-gray-500 overflow-hidden">
-                                            <User className="h-6 w-6" />
+                                        <div className="w-12 h-12 rounded-full bg-gray-200 flex items-center justify-center text-gray-500 overflow-hidden shrink-0">
+                                            {conv.other_party_picture_url ? (
+                                                <img
+                                                    src={conv.other_party_picture_url}
+                                                    alt={conv.other_party_name}
+                                                    className="w-full h-full object-cover"
+                                                />
+                                            ) : (
+                                                <User className="h-6 w-6" />
+                                            )}
                                         </div>
                                         <div className="mr-4 flex-1 text-right">
                                             <div className="flex justify-between items-center mb-1">
@@ -356,8 +364,16 @@ export default function ChatsPage() {
                                 {/* Chat Header */}
                                 <div className="p-4 border-b border-[#F1F3E0] flex justify-between items-center bg-white/80 backdrop-blur-sm z-10">
                                     <div className="flex items-center gap-4">
-                                        <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center">
-                                            <User className="h-5 w-5 text-gray-500" />
+                                        <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center overflow-hidden shrink-0">
+                                            {activeConversation.other_party_picture_url ? (
+                                                <img
+                                                    src={activeConversation.other_party_picture_url}
+                                                    alt={activeConversation.other_party_name}
+                                                    className="w-full h-full object-cover"
+                                                />
+                                            ) : (
+                                                <User className="h-5 w-5 text-gray-500" />
+                                            )}
                                         </div>
                                         <div>
                                             <h3 className="font-bold text-lg">{activeConversation.other_party_name || "مستخدم"}</h3>
