@@ -111,10 +111,21 @@ export default function ChatsPage() {
         return () => clearInterval(interval);
     }, [selectedConversationId]);
 
-    // Scroll to bottom when messages change
+    // Scroll to bottom when messages change (only if new messages added)
     useEffect(() => {
-        messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-    }, [messages]);
+        const prevCount = messages.length;
+        // Store previous count in a ref to compare on next render
+        const scrollBehavior = prevCount === 0 ? "auto" : "smooth";
+
+        // Only auto-scroll if we're near the bottom already or if it's the first load
+        const messagesContainer = messagesEndRef.current?.parentElement;
+        if (messagesContainer) {
+            const isNearBottom = messagesContainer.scrollHeight - messagesContainer.scrollTop - messagesContainer.clientHeight < 100;
+            if (isNearBottom || prevCount === 0) {
+                messagesEndRef.current?.scrollIntoView({ behavior: scrollBehavior });
+            }
+        }
+    }, [messages.length]); // Only trigger when message count changes
 
     const activeConversation = conversations.find(c => c.conversation_id === selectedConversationId);
 
