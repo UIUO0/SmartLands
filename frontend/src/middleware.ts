@@ -12,7 +12,7 @@ export function middleware(request: NextRequest) {
   // Define routes that require authentication
   const isProtectedRoute =
     pathname.startsWith("/mylands") ||
-    // Removed /profile - allow guests to see login/signup buttons
+    // Removed /profile and /reports - allow guests to access
     pathname.startsWith("/lands") ||
     pathname.startsWith("/requests") ||
     pathname.startsWith("/transactions") ||
