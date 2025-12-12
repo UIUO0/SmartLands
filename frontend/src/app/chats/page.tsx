@@ -141,19 +141,32 @@ export default function ChatsPage() {
 
         setSubmittingReport(true);
         try {
-            // Fetch the buyer user ID for this conversation
-            const buyerRes = await fetch(`/api/chats/${selectedConversationId}/buyer`);
-            if (!buyerRes.ok) {
+            // Fetch both buyer and seller IDs for this conversation
+            const [buyerRes, sellerRes] = await Promise.all([
+                fetch(`/api/chats/${selectedConversationId}/buyer`),
+                fetch(`/api/chats/${selectedConversationId}/seller`)
+            ]);
+
+            if (!buyerRes.ok || !sellerRes.ok) {
                 alert("❌ لا يمكن تحديد المستخدم المبلغ عنه");
                 setSubmittingReport(false);
                 return;
             }
 
             const buyerData = await buyerRes.json();
-            const reportedUserId = buyerData.buyer_user_id;
+            const sellerData = await sellerRes.json();
 
-            if (!reportedUserId) {
-                alert("❌ لا يمكن تحديد المستخدم المبلغ عنه");
+            const buyerId = buyerData.buyer_user_id;
+            const sellerId = sellerData.seller_user_id;
+
+            // Determine who to report: if current user is buyer, report seller; if seller, report buyer
+            let reportedUserId: number;
+            if (currentUserId === buyerId) {
+                reportedUserId = sellerId;
+            } else if (currentUserId === sellerId) {
+                reportedUserId = buyerId;
+            } else {
+                alert("❌ خطأ في تحديد المستخدم");
                 setSubmittingReport(false);
                 return;
             }
