@@ -178,7 +178,7 @@ async def signup(
         
         # Send Welcome Email
         try:
-             await run_in_threadpool(lambda: send_welcome_email(user, use_sendgrid=True))
+             await run_in_threadpool(lambda: send_welcome_email(user.email, user.full_name, use_sendgrid=True))
         except Exception as e:
              logger.error("Failed to send welcome email: %s", e)
         
@@ -338,7 +338,7 @@ async def google_login(
 
                 # Send Welcome Email (New User)
                 try:
-                     await run_in_threadpool(lambda: send_welcome_email(user, use_sendgrid=True))
+                     await run_in_threadpool(lambda: send_welcome_email(user.email, user.full_name, use_sendgrid=True))
                 except Exception as e:
                      logger.error("Failed to send welcome email (Google): %s", e)
             else:

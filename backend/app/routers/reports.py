@@ -188,7 +188,7 @@ async def create_report(
                 
                 if reported_user:
                      await run_in_threadpool(
-                         lambda: send_warning_email(reported_user, payload.report_reason, use_sendgrid=True)
+                         lambda: send_warning_email(reported_user.email, reported_user.full_name, payload.report_reason, use_sendgrid=True)
                      )
                      logger.info(f"Warning email sent to user {payload.user_reported_id}")
                      
