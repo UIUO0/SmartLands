@@ -39,8 +39,15 @@ export default function LandDetailsPage({ params }: { params: Promise<{ id: stri
         // Fetch Land
         const res = await fetch(`${BASE}/lands/${id}`, { cache: "no-store" });
         if (!res.ok) throw new Error(res.status === 404 ? "Land not found" : "Error");
-        const landData = await res.json();
-        setLand(landData);
+        const rawData = await res.json();
+        console.log("🏞️ Land Data Raw:", rawData);
+
+        let validLand = rawData;
+        if (rawData.data) validLand = rawData.data;
+        else if (rawData.land) validLand = rawData.land;
+        else if (rawData.item) validLand = rawData.item;
+
+        setLand(validLand);
 
       } catch {
         setMsg("تعذر تحميل بيانات الأرض");

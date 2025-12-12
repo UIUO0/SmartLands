@@ -76,13 +76,16 @@ export function Sidebar() {
 
           {/* الشعار */}
           <div className={`flex items-center gap-3 mb-10 transition-all ${isCollapsed ? "justify-center" : ""}`}>
-            <div className="h-10 w-10 min-w-[2.5rem] bg-black rounded-xl flex items-center justify-center text-white font-bold text-xl shadow-sm">
-              SL
-            </div>
-            {!isCollapsed && (
-              <span className="font-bold text-2xl tracking-tight text-black whitespace-nowrap overflow-hidden">
-                Smart Lands
-              </span>
+            {isCollapsed ? (
+              // شعار صغير عند التصغير
+              <div className="h-10 w-10 min-w-[2.5rem] bg-white rounded-xl flex items-center justify-center shadow-sm overflow-hidden p-1">
+                <img src="/sidebar_logo.png" alt="SL" className="w-full h-full object-contain" />
+              </div>
+            ) : (
+              // شعار كامل
+              <div className="h-20 w-full flex items-center justify-center">
+                <img src="/sidebar_logo.png" alt="Smart Lands" className="h-full object-contain drop-shadow-sm" />
+              </div>
             )}
           </div>
 
@@ -112,31 +115,17 @@ export function Sidebar() {
                 </Link>
               )
             })}
-
-            {/* زر تواصل معنا */}
-            <button
-              onClick={() => {
-                navigator.clipboard.writeText("sandNocks@gmail.com");
-                alert("✅ تم نسخ البريد الإلكتروني: sandNocks@gmail.com");
-              }}
-              className={`
-                    w-full flex items-center gap-4 px-4 py-3.5 rounded-xl transition-all duration-200 font-medium text-gray-800 hover:bg-[#A1BC98]/50 hover:text-black
-                    ${isCollapsed ? "justify-center px-0 w-12 h-12 mx-auto" : ""}
-                `}
-              title={isCollapsed ? "تواصل معنا" : ""}
-            >
-              <div className="h-6 w-6 flex items-center justify-center">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-6 w-6"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22 6 12 13 2 6"></polyline></svg>
-              </div>
-              {!isCollapsed && (
-                <span className="whitespace-nowrap overflow-hidden">تواصل معنا</span>
-              )}
-            </button>
           </nav>
+
+          {/* Contact Info Text */}
+          <div className={`py-4 transition-all duration-300 ${isCollapsed ? "hidden" : "block"}`}>
+            <p className="text-xs text-center text-gray-500 mb-1">تواصل معنا</p>
+            <p className="text-xs text-center font-bold text-gray-700 select-all font-mono">sandNocks@gmail.com</p>
+          </div>
 
           {/* تسجيل الخروج (مشروط) */}
           {isLoggedIn && (
-            <div className={`mt-auto pt-6 border-t border-[#A1BC98]/30 w-full`}>
+            <div className={`mt-auto pt-2 border-t border-[#A1BC98]/30 w-full`}>
               <button
                 onClick={handleLogout}
                 className={`
