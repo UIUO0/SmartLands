@@ -218,7 +218,7 @@ export default function EditLandPage({ params }: { params: Promise<{ id: string 
             <div className="max-w-4xl mx-auto space-y-8">
 
                 <Link href={`/mylands/${id}`} className="inline-flex items-center text-[#556b4d] font-bold hover:underline">
-                    <ArrowRight className="h-5 w-5 ml-2" /> إلغاء وعودة للتفاصيل
+                    <ArrowRight className="h-5 w-5 ml-2" /> عودة
                 </Link>
 
                 {/* Edit Form */}
@@ -328,8 +328,8 @@ export default function EditLandPage({ params }: { params: Promise<{ id: string 
                                                 onClick={() => handleSetCover(img.image_id)}
                                                 disabled={settingCoverId === img.image_id || img.is_cover}
                                                 className={`p-2 rounded-lg transition shadow-lg ${img.is_cover
-                                                        ? 'bg-yellow-500 text-white cursor-default'
-                                                        : 'bg-green-500 text-white hover:bg-green-600 disabled:opacity-50'
+                                                    ? 'bg-yellow-500 text-white cursor-default'
+                                                    : 'bg-green-500 text-white hover:bg-green-600 disabled:opacity-50'
                                                     }`}
                                                 title={img.is_cover ? "الصورة الرئيسية الحالية" : "تعيين كصورة رئيسية"}
                                             >
