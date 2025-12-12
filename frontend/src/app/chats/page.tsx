@@ -42,6 +42,8 @@ export default function ChatsPage() {
 
     // Load conversations with auto-refresh
     useEffect(() => {
+        let hasAutoSelected = false;
+
         async function loadConversations() {
             try {
                 const res = await fetch('/api/chats');
@@ -50,13 +52,14 @@ export default function ChatsPage() {
                     // Handle paginated response format with items array
                     const convArray = data.items || [];
                     setConversations(convArray);
-                    // Auto-select first conversation only on initial load
-                    if (convArray.length > 0 && !selectedConversationId && conversations.length === 0) {
+                    // Auto-select first conversation ONLY on initial load (when nothing is selected yet)
+                    if (convArray.length > 0 && !selectedConversationId && !hasAutoSelected) {
                         setSelectedConversationId(convArray[0].conversation_id);
+                        hasAutoSelected = true;
                     }
                 }
-            } catch (e) {
-                console.error("Failed to load conversations:", e);
+            } catch (err) {
+                console.error("Failed to load conversations:", err);
                 setConversations([]); // Ensure it's always an array
             } finally {
                 setLoading(false);
@@ -65,11 +68,11 @@ export default function ChatsPage() {
 
         loadConversations();
 
-        // Auto-refresh every 2 seconds
+        // Auto-refresh conversations every 2 seconds
         const interval = setInterval(loadConversations, 2000);
 
         return () => clearInterval(interval);
-    }, []);
+    }, []); // Only run once on mount
 
     // Load messages for selected conversation with auto-refresh
     useEffect(() => {
