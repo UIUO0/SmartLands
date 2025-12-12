@@ -18,7 +18,27 @@ export default function ChatsPage() {
     const [reportReason, setReportReason] = useState("");
     const [otherReason, setOtherReason] = useState("");
     const [submittingReport, setSubmittingReport] = useState(false);
+    const [isSeller, setIsSeller] = useState(false);
     const messagesEndRef = useRef<HTMLDivElement>(null);
+
+    // Check if current user is seller when conversation changes
+    useEffect(() => {
+        if (!selectedConversationId || !currentUserId) return;
+
+        async function checkSellerStatus() {
+            try {
+                const res = await fetch(`/api/chats/${selectedConversationId}/seller`);
+                if (res.ok) {
+                    const data = await res.json();
+                    setIsSeller(data.seller_user_id === currentUserId);
+                }
+            } catch (e) {
+                console.error("Failed to check seller status:", e);
+                setIsSeller(false);
+            }
+        }
+        checkSellerStatus();
+    }, [selectedConversationId, currentUserId]);
 
     // Get current user ID
     useEffect(() => {
@@ -229,6 +249,40 @@ export default function ChatsPage() {
         }
     };
 
+    const handleAgree = async () => {
+        if (!selectedConversationId) return;
+        if (!confirm("هل أنت متأكد من إتمام الاتفاق؟ سيتم وضع علامة 'تم البيع' على العقار.")) return;
+
+        try {
+            const res = await fetch(`/api/chats/${selectedConversationId}/agree`, { method: "POST" });
+            if (res.ok) {
+                alert("✅ تم تأكيد الاتفاق وتحديث حالة العقار");
+            } else {
+                alert("❌ فشل تأكيد الاتفاق");
+            }
+        } catch (e) {
+            console.error("Agree error:", e);
+            alert("❌ خطأ في الاتصال");
+        }
+    };
+
+    const handleDisagree = async () => {
+        if (!selectedConversationId) return;
+        if (!confirm("هل أنت متأكد من إلغاء الاتفاق؟ سيتم إعادة عرض العقار للبيع.")) return;
+
+        try {
+            const res = await fetch(`/api/chats/${selectedConversationId}/disagree`, { method: "POST" });
+            if (res.ok) {
+                alert("✅ تم إلغاء الاتفاق");
+            } else {
+                alert("❌ فشل إلغاء الاتفاق");
+            }
+        } catch (e) {
+            console.error("Disagree error:", e);
+            alert("❌ خطأ في الاتصال");
+        }
+    };
+
     if (loading) {
         return (
             <div className="flex min-h-screen bg-[#F1F3E0]">
@@ -310,13 +364,35 @@ export default function ChatsPage() {
                                             <span className="text-xs text-gray-500">محادثة #{activeConversation.conversation_id}</span>
                                         </div>
                                     </div>
-                                    <button
-                                        onClick={() => setShowReportModal(true)}
-                                        className="p-2 hover:bg-red-50 rounded-lg transition text-red-600"
-                                        title="إبلاغ عن المحادثة"
-                                    >
-                                        <Flag className="h-5 w-5" />
-                                    </button>
+
+                                    <div className="flex items-center gap-3">
+                                        {isSeller && (
+                                            <div className="flex items-center gap-2 ml-4">
+                                                <span className="text-sm font-bold text-gray-700 ml-2">بشر اتفقتوا ؟</span>
+                                                <button
+                                                    onClick={handleAgree}
+                                                    className="px-4 py-2 bg-green-500 text-white rounded-xl hover:bg-green-600 transition font-bold text-sm"
+                                                >
+                                                    اتفقنا
+                                                </button>
+                                                <button
+                                                    onClick={handleDisagree}
+                                                    className="px-4 py-2 bg-red-500 text-white rounded-xl hover:bg-red-600 transition font-bold text-sm"
+                                                >
+                                                    ما اتفقتنا
+                                                </button>
+                                                <div className="w-px h-8 bg-gray-200 mx-2"></div>
+                                            </div>
+                                        )}
+
+                                        <button
+                                            onClick={() => setShowReportModal(true)}
+                                            className="p-2 hover:bg-red-50 rounded-lg transition text-red-600"
+                                            title="إبلاغ عن المحادثة"
+                                        >
+                                            <Flag className="h-5 w-5" />
+                                        </button>
+                                    </div>
                                 </div>
 
                                 {/* Messages */}
