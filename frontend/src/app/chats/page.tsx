@@ -71,40 +71,46 @@ export default function ChatsPage() {
                     const data = await res.json();
                     const convArray = data.items || [];
 
+                    console.log("🔄 Raw conversations:", convArray);
+                    console.log("👤 Current User ID for matching:", currentUserId);
+
                     // Fetch profile pictures for all conversations
                     const conversationsWithPics = await Promise.all(convArray.map(async (conv: any) => {
-                        // If picture is already present, skip
-                        if (conv.other_party_picture_url) return conv;
+                        // If picture is already present, return
+                        if (conv.other_party_picture_url) {
+                            console.log(`✅ Pic exists for chat ${conv.conversation_id}`);
+                            return conv;
+                        }
 
                         // Need to know who the other party is. 
-                        // The conversation object usually has { buyer_id, seller_id }
-                        // We need the current user ID to know which one is the "other"
-                        // But we might not have `currentUserId` updated yet inside this loop securely if it relies on async state.
+                        let targetId = conv.other_party_id;
 
-                        // NOTE: To fix this reliably, we can fetch specific endpoints or user/{id} if we have the ID.
-                        // Assuming conv has `other_party_id` or we can derive it.
-                        // If the backend doesn't provide specific 'other_party_id', we might need to rely on the buyer/seller logic.
-                        // For now, let's try to fetch user info if we have an ID.
-
-                        let targetId = null;
-
-                        // Check if we have explicit other_party_id in response
-                        if (conv.other_party_id) {
-                            targetId = conv.other_party_id;
+                        // If no explicit other ID, derive it
+                        if (!targetId && currentUserId) {
+                            if (conv.buyer_user_id === currentUserId) {
+                                targetId = conv.seller_user_id;
+                            } else if (conv.seller_user_id === currentUserId) {
+                                targetId = conv.buyer_user_id;
+                            }
+                            console.log(`🧩 Derived targetId ${targetId} for chat ${conv.conversation_id} (Me: ${currentUserId}, Buyer: ${conv.buyer_user_id}, Seller: ${conv.seller_user_id})`);
+                        } else if (!targetId) {
+                            console.log(`⚠️ Cannot derive targetId for chat ${conv.conversation_id} - CurrentUser missing?`);
                         }
-                        // If not, we might need to deduce it, but we need currentUserId.
-                        // Since `currentUserId` is state, it might be null initially.
-                        // Let's use a cached value or wait? 
-
-                        // Alternative: fetch the 'other party' info using a dedicated chat endpoint if available?
-                        // But we created /api/users/[id].
 
                         if (targetId) {
                             try {
+                                console.log(`🔍 Fetching user ${targetId} info...`);
                                 const userRes = await fetch(`/api/users/${targetId}`);
                                 if (userRes.ok) {
                                     const userData = await userRes.json();
-                                    return { ...conv, other_party_picture_url: userData.picture_url };
+                                    console.log(`📸 Got pic for user ${targetId}:`, userData.picture_url);
+                                    return {
+                                        ...conv,
+                                        other_party_picture_url: userData.picture_url,
+                                        other_party_id: targetId // Update this too for reference
+                                    };
+                                } else {
+                                    console.error(`❌ Failed to fetch user ${targetId}: ${userRes.status}`);
                                 }
                             } catch (e) {
                                 console.error(`Failed to fetch pic for user ${targetId}`, e);
@@ -129,9 +135,17 @@ export default function ChatsPage() {
             }
         }
 
-        loadConversations();
+        if (currentUserId) {
+            loadConversations();
+        } else {
+            // Logic to load initially even if user is not set, but we won't get pics yet
+            // Actually, better to wait for currentUserId to avoid double calls causing flickering
+            // But we need to show SOMETHING.
+            // Let's allow loading raw list first, then re-load when user is set.
+            loadConversations();
+        }
 
-        const interval = setInterval(loadConversations, 5000); // Increased interval to 5s to avoid rate limiting
+        const interval = setInterval(loadConversations, 5000);
         return () => clearInterval(interval);
     }, [currentUserId]); // Add currentUserId dependency so we can use it if needed
 
