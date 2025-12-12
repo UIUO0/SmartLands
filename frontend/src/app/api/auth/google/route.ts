@@ -40,7 +40,7 @@ export async function POST(req: Request) {
       path: "/",
     });
 
-    return NextResponse.json({ success: true });
+    return NextResponse.json({ success: true, is_new_user: data.is_new_user });
 
   } catch (error: any) {
     console.error("❌ Server Proxy Error:", error.message);
