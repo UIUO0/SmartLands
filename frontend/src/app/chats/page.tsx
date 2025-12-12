@@ -23,7 +23,11 @@ export default function ChatsPage() {
                 const res = await fetch('/api/users/me');
                 if (res.ok) {
                     const user = await res.json();
+                    console.log("👤 Current user data:", user);
+                    console.log("👤 Setting currentUserId to:", user.user_id);
                     setCurrentUserId(user.user_id);
+                } else {
+                    console.error("❌ Failed to get current user, status:", res.status);
                 }
             } catch (e) {
                 console.error("Failed to get current user:", e);
@@ -239,8 +243,17 @@ export default function ChatsPage() {
                                         </div>
                                     ) : (
                                         <>
-                                            {messages.map((msg) => {
-                                                const isMe = msg.sender_id === currentUserId;
+                                            {messages.map((msg, index) => {
+                                                const isMe = msg.sender_user_id === currentUserId;
+                                                // Debug logging (only for first message to avoid spam)
+                                                if (index === 0) {
+                                                    console.log("🔍 Message sender check:", {
+                                                        sender_user_id: msg.sender_user_id,
+                                                        currentUserId: currentUserId,
+                                                        isMe: isMe,
+                                                        types: `sender: ${typeof msg.sender_user_id}, current: ${typeof currentUserId}`
+                                                    });
+                                                }
                                                 return (
                                                     <div key={msg.message_id} className={`flex ${isMe ? "justify-end" : "justify-start"}`}>
                                                         <div className={`max-w-[70%] p-4 rounded-2xl shadow-sm ${isMe
