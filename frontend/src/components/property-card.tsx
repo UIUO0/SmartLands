@@ -1,15 +1,37 @@
 "use client"
 
 import { Loader2, MapPin, Ruler, Square, ArrowRight } from "lucide-react"
-import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { getAbsoluteImageUrl } from "@/lib/utils"
 import type { Property } from "@/types/property"
+import { useEffect, useState } from "react"
 
 interface PropertyCardProps {
   property: Property
 }
 
 export function PropertyCard({ property }: PropertyCardProps) {
+  const router = useRouter();
+  const [currentUserId, setCurrentUserId] = useState<number | null>(null);
+  const [loadingUser, setLoadingUser] = useState(true);
+
+  useEffect(() => {
+    async function fetchCurrentUser() {
+      try {
+        const res = await fetch("/api/users/me");
+        if (res.ok) {
+          const user = await res.json();
+          setCurrentUserId(user.user_id);
+        }
+      } catch (e) {
+        console.error("Failed to get current user:", e);
+      } finally {
+        setLoadingUser(false);
+      }
+    }
+    fetchCurrentUser();
+  }, []);
+
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat('en-SA', {
       style: 'currency',
@@ -17,6 +39,31 @@ export function PropertyCard({ property }: PropertyCardProps) {
       maximumFractionDigits: 0,
     }).format(price)
   }
+
+  const handleViewDetails = async () => {
+    // Fetch the land details to check ownership
+    try {
+      const res = await fetch(`/api/lands/${property.id}`);
+      if (res.ok) {
+        const land = await res.json();
+        const ownerId = land.owner_id || land.owner_user_id || land.user_id;
+
+        // If current user owns this land, go to edit page
+        if (currentUserId && ownerId === currentUserId) {
+          router.push(`/mylands/edit/${property.id}`);
+        } else {
+          // Otherwise, go to public details page
+          router.push(`/lands/${property.id}`);
+        }
+      } else {
+        // Fallback to public page if fetch fails
+        router.push(`/lands/${property.id}`);
+      }
+    } catch (e) {
+      console.error("Failed to check ownership:", e);
+      router.push(`/lands/${property.id}`);
+    }
+  };
 
   return (
     <div className="group bg-card rounded-3xl overflow-hidden border border-border shadow-sm hover:shadow-xl transition-all h-full flex flex-col">
@@ -54,13 +101,20 @@ export function PropertyCard({ property }: PropertyCardProps) {
           </div>
         </div>
 
-        {/* 👇 هنا الإصلاح: تحويل الزر لرابط يأخذ ID الأرض */}
-        <Link
-          href={`/lands/${property.id}`}
-          className="w-full mt-3 bg-black text-white text-sm font-bold py-3 rounded-xl hover:bg-gray-800 transition-colors flex items-center justify-center gap-2 group-hover:gap-3"
+        {/* Fixed: Check ownership and redirect accordingly */}
+        <button
+          onClick={handleViewDetails}
+          disabled={loadingUser}
+          className="w-full mt-3 bg-black text-white text-sm font-bold py-3 rounded-xl hover:bg-gray-800 transition-colors flex items-center justify-center gap-2 group-hover:gap-3 disabled:opacity-50"
         >
-          View Details <ArrowRight className="h-4 w-4" />
-        </Link>
+          {loadingUser ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <>
+              View Details <ArrowRight className="h-4 w-4" />
+            </>
+          )}
+        </button>
       </div>
     </div>
   )

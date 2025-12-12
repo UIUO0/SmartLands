@@ -51,18 +51,24 @@ export default function MyLandsPage() {
                     const rawList = data;
                     const landsWithImages = await Promise.all(rawList.map(async (land: any) => {
                         // Check for image in various fields
-                        if (land.image || land.image_url || land.cover_image_url || land.picture_url || (land.cover_image && land.cover_image.file_url)) return land;
+                        if (land.image || land.image_url || land.cover_image_url || land.picture_url || (land.cover_image && land.cover_image.file_url)) {
+                            console.log(`✅ Land ${land.land_id} has image:`, land.image || land.image_url || land.cover_image_url);
+                            return land;
+                        }
 
                         // If no image, try to fetch from /api/lands/{id}/images
                         try {
                             const landId = land.land_id || land.id;
                             if (!landId) return land;
 
+                            console.log(`🔍 Fetching images for land ${landId}...`);
                             const imgRes = await fetch(`/api/lands/${landId}/images`);
                             if (imgRes.ok) {
                                 const images = await imgRes.json();
+                                console.log(`📸 Images for land ${landId}:`, images);
                                 const cover = images.find((img: any) => img.is_cover) || images[0];
                                 if (cover) {
+                                    console.log(`🖼️ Using cover image:`, cover.file_url);
                                     return { ...land, image: cover.file_url };
                                 }
                             }
