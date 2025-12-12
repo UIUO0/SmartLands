@@ -79,10 +79,13 @@ export default function ChatsPage() {
                 const res = await fetch(`/api/chats/${selectedConversationId}/messages`);
                 if (res.ok) {
                     const data = await res.json();
+                    console.log("💬 Messages API response:", data);
                     // Handle paginated response format
                     const msgArray = data.items || [];
+                    console.log("💬 Extracted messages array:", msgArray);
                     setMessages(msgArray);
                 } else {
+                    console.error("❌ Messages API failed with status:", res.status);
                     setMessages([]);
                 }
             } catch (e) {
