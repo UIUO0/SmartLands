@@ -136,6 +136,12 @@ export default function ChatsPage() {
     const handleReport = async () => {
         if (!reportReason || !selectedConversationId || !currentUserId) return;
 
+        const otherPartyId = activeConversation?.other_party_id || activeConversation?.user_id;
+        if (!otherPartyId) {
+            alert("❌ لا يمكن تحديد المستخدم المبلغ عنه");
+            return;
+        }
+
         setSubmittingReport(true);
         try {
             const res = await fetch("/api/reports", {
@@ -143,6 +149,7 @@ export default function ChatsPage() {
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
                     user_reporter_id: currentUserId,
+                    user_reported_id: otherPartyId,
                     conversation_id: selectedConversationId,
                     report_reason: reportReason === "other" ? otherReason : reportReason
                 })
