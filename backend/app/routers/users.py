@@ -1,7 +1,10 @@
 # app/routers/users.py
-import logging
+import os
+import cloudinary
+import cloudinary.uploader
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from app.schemas.user import SendCodeRequest
-from fastapi import APIRouter, Depends, HTTPException
+# from fastapi import APIRouter, Depends, HTTPException # Removed duplicate import line
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi.concurrency import run_in_threadpool
@@ -195,3 +198,54 @@ Smart Lands Team
             status_code=500,
             detail="Failed to send verification code",
         )
+
+
+@router.post("/me/profile-picture", response_model=UserOut)
+async def upload_profile_picture(
+    file: UploadFile = File(...),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Upload profile picture to Cloudinary and update user.picture_url.
+    """
+    try:
+        data = await file.read()
+        if not data:
+            raise HTTPException(status_code=400, detail="Empty file")
+
+        if not cloudinary.config().api_key and not os.getenv("CLOUDINARY_API_KEY"):
+            logging.error("CLOUDINARY_CONFIG_ERROR: API Key is missing.")
+            raise HTTPException(
+                status_code=500, 
+                detail="Server configuration error: Cloudinary not configured"
+            )
+
+        # Upload to Cloudinary
+        folder = f"smartlands/users/{current_user.user_id}"
+        result = await run_in_threadpool(
+            cloudinary.uploader.upload,
+            data,
+            folder=folder,
+            resource_type="image",
+            overwrite=True, # Replace old picture
+            public_id="profile_pic" # Fixed name so it overwrites easily
+        )
+        
+        secure_url = result.get("secure_url")
+        if not secure_url:
+             raise HTTPException(status_code=500, detail="Cloudinary upload failed")
+
+        # Update User
+        current_user.picture_url = secure_url
+        await db.commit()
+        await db.refresh(current_user)
+        
+        return UserOut.model_validate(current_user)
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logging.error("UPLOAD_PROFILE_PIC_ERROR: %r", e, exc_info=True)
+        await db.rollback()
+        raise HTTPException(status_code=500, detail="Failed to upload profile picture")
