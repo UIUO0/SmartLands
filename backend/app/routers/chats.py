@@ -270,5 +270,30 @@ async def upload_attachment(
         raise HTTPException(status_code=500, detail="Failed to upload attachment")
 
 
-# Helper for running sync upload in threadpool
-from fastapi.concurrency import run_in_threadpool
+@router.get("/{conversation_id}/buyer", response_model=dict)
+async def get_chat_buyer(
+    conversation_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Get the buyer_user_id for a specific conversation.
+    """
+    try:
+        res = await db.execute(select(ChatConversation).where(ChatConversation.conversation_id == conversation_id))
+        conv = res.scalar_one_or_none()
+        
+        if not conv:
+            raise HTTPException(status_code=404, detail="Conversation not found")
+            
+        # Optional: Security check (is user participant?)
+        # if conv.buyer_user_id != current_user.user_id and conv.seller_user_id != current_user.user_id:
+        #     raise HTTPException(status_code=403, detail="Not a participant")
+
+        return {"buyer_user_id": conv.buyer_user_id}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("GET_CHAT_BUYER_ERROR: %r", e, exc_info=True)
+        raise HTTPException(status_code=500, detail="Failed to fetch buyer id")
