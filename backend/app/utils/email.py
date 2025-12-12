@@ -205,6 +205,51 @@ Smart Lands Team
     return subject, body
 
 
+def build_warning_email(user_name: str, report_reason: str) -> Tuple[str, str]:
+    """
+    Build warning email for reported users
+    """
+    subject = "Smart Lands - Account Warning"
+    
+    body = f"""Hello {user_name},
+
+We are writing to inform you that your account has been reported for violation of our community guidelines.
+
+Reason: {report_reason}
+
+Our AI moderation system has flagged this activity as potentially harmful or inappropriate.
+Please review our terms of service and ensure your future interactions comply with our safety guidelines.
+Repeated violations may result in account suspension.
+
+If you believe this is a mistake, please contact support.
+
+Best regards,
+Smart Lands Safety Team
+"""
+    return subject, body
+
+
+def build_completion_email(user_name: str, other_party_name: str, agreement_id: int) -> Tuple[str, str]:
+    """
+    Build completion email for successful deals
+    """
+    subject = "Smart Lands - Deal Completed!"
+    
+    body = f"""Hello {user_name},
+
+Congratulations! Your deal with {other_party_name} has been successfully completed.
+
+Agreement ID: {agreement_id}
+Status: Completed
+
+Thank you for using Smart Lands for your real estate transactions. We hope you had a great experience.
+
+Best regards,
+Smart Lands Team
+"""
+    return subject, body
+
+
 # ===== Email Sending Functions =====
 
 def send_email_smtp(to_email: str, subject: str, body: str) -> None:
@@ -358,6 +403,31 @@ async def send_welcome_email(
     """
     subject, body = build_welcome_email(user.full_name)
     
+    if use_sendgrid:
+        send_email_sendgrid(user.email, subject, body)
+    else:
+        send_email_smtp(user.email, subject, body)
+
+
+def send_warning_email(
+    user: User,
+    report_reason: str,
+    use_sendgrid: bool = True
+) -> None:
+    subject, body = build_warning_email(user.full_name, report_reason)
+    if use_sendgrid:
+        send_email_sendgrid(user.email, subject, body)
+    else:
+        send_email_smtp(user.email, subject, body)
+
+
+def send_completion_email(
+    user: User,
+    other_party_name: str,
+    agreement_id: int,
+    use_sendgrid: bool = True
+) -> None:
+    subject, body = build_completion_email(user.full_name, other_party_name, agreement_id)
     if use_sendgrid:
         send_email_sendgrid(user.email, subject, body)
     else:
