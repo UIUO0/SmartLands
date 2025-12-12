@@ -78,13 +78,18 @@ async def create_report(
         Analyze the chat conversation and the report reason.
         
         CRITERIA FOR "VALID":
-        - The REPORTED_USER (ID {reported_id}) has violated safety guidelines (harassment, spam, scam, toxicity).
-        - The report reason provided by the REPORTER matches the behavior of the REPORTED_USER.
+        - The REPORTED_USER (ID {reported_id}) MUST be the one who violated the rules.
+        - The REPORTED_USER sent messages containing harassment, spam, scam, or toxicity.
         
         CRITERIA FOR "INVALID":
-        - The REPORTED_USER did nothing wrong.
-        - The REPORTER is the one being toxic or aggressive (False Report).
-        - The conversation is harmless context.
+        - If the REPORTED_USER did nothing wrong, it is INVALID.
+        - If the REPORTER is the one sending the toxic/bad messages, the report is INVALID (False Report).
+        - If both are toxic, but the reporter started it, it is INVALID.
+        
+        CRITICAL RULE:
+        - IGNORE toxicity from the REPORTER when deciding if the report is valid. 
+        - ONLY punish the REPORTED_USER. 
+        - If the REPORTER is the bad actor, the report is INVALID.
         
         Reply ONLY with one word: "valid" or "invalid".
         """
