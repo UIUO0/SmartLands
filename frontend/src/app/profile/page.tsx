@@ -19,6 +19,14 @@ export default function ProfilePage() {
     // Upload state
     const [uploadingImage, setUploadingImage] = useState(false);
 
+    // Change Password State
+    const [showChangePwModal, setShowChangePwModal] = useState(false);
+    const [pwStep, setPwStep] = useState<1 | 2>(1);
+    const [pwCode, setPwCode] = useState("");
+    const [newPassword, setNewPassword] = useState("");
+    const [sendingCode, setSendingCode] = useState(false);
+    const [resettingPw, setResettingPw] = useState(false);
+
     const router = useRouter();
 
     useEffect(() => {
@@ -113,9 +121,57 @@ export default function ProfilePage() {
         } finally {
             setUploadingImage(false);
         }
+        // ... (rest of component: handleImageChange ends here)
     };
 
-    // ... (rest of component)
+    const handleSendCode = async () => {
+        setSendingCode(true);
+        try {
+            const res = await fetch("/api/users/me/send-code", { method: "POST" });
+            if (res.ok) {
+                alert("✅ تم إرسال رمز التحقق إلى بريدك الإلكتروني");
+                setPwStep(2);
+            } else {
+                alert("❌ فشل إرسال الرمز");
+            }
+        } catch (e) {
+            console.error("Send code error:", e);
+            alert("❌ خطأ في الاتصال");
+        } finally {
+            setSendingCode(false);
+        }
+    };
+
+    const handleResetPassword = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setResettingPw(true);
+        try {
+            const res = await fetch("/api/auth/reset-password", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    code: pwCode,
+                    new_password: newPassword
+                })
+            });
+
+            if (res.ok) {
+                alert("✅ تم تغيير كلمة المرور بنجاح");
+                setShowChangePwModal(false);
+                setPwStep(1);
+                setPwCode("");
+                setNewPassword("");
+            } else {
+                const data = await res.json();
+                alert(`❌ فشل تغيير كلمة المرور: ${data.detail || "خطأ غير معروف"}`);
+            }
+        } catch (e) {
+            console.error("Reset password error:", e);
+            alert("❌ خطأ في الاتصال");
+        } finally {
+            setResettingPw(false);
+        }
+    };
 
     return (
         <div className="flex min-h-screen bg-[#F1F3E0]">
@@ -241,6 +297,76 @@ export default function ProfilePage() {
                                     </button>
                                 </div>
                             </form>
+                        </div>
+                    </div>
+                )}
+                {/* === نافذة تغيير كلمة المرور (Modal) === */}
+                {showChangePwModal && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+                        <div className="bg-[#F1F3E0] w-full max-w-md rounded-3xl p-6 shadow-2xl scale-100 animate-in zoom-in-95 duration-200 border border-[#A1BC98]">
+                            <div className="flex justify-between items-center mb-6 border-b border-[#A1BC98]/30 pb-4">
+                                <h3 className="text-xl font-bold text-black">تغيير كلمة المرور</h3>
+                                <button onClick={() => setShowChangePwModal(false)} className="p-2 hover:bg-black/10 rounded-full transition">
+                                    <X className="h-6 w-6 text-gray-700" />
+                                </button>
+                            </div>
+
+                            {pwStep === 1 ? (
+                                <div className="text-center space-y-6">
+                                    <div className="bg-white/50 p-4 rounded-2xl border border-[#A1BC98]/30 text-right">
+                                        <p className="text-gray-700 text-sm mb-2">لأمان حسابك، سيتم إرسال رمز تحقق إلى بريدك الإلكتروني:</p>
+                                        <p className="font-bold text-[#556b4d] dir-ltr">{user.email}</p>
+                                    </div>
+                                    <button
+                                        onClick={handleSendCode}
+                                        disabled={sendingCode}
+                                        className="w-full py-3.5 font-bold text-white bg-black rounded-xl hover:bg-[#333] transition disabled:opacity-70 flex items-center justify-center gap-2"
+                                    >
+                                        {sendingCode ? <Loader2 className="h-5 w-5 animate-spin" /> : <Mail className="h-5 w-5" />}
+                                        {sendingCode ? "جاري الإرسال..." : "إرسال رمز التحقق"}
+                                    </button>
+                                </div>
+                            ) : (
+                                <form onSubmit={handleResetPassword} className="space-y-4">
+                                    <div>
+                                        <label className="block text-sm font-bold text-[#556b4d] mb-2">رمز التحقق (Code)</label>
+                                        <input
+                                            type="text"
+                                            required
+                                            value={pwCode}
+                                            onChange={(e) => setPwCode(e.target.value)}
+                                            className="w-full p-3.5 rounded-xl border border-[#A1BC98] focus:outline-none focus:ring-2 focus:ring-black bg-white text-black"
+                                            placeholder="أدخل الرمز الذي وصلك"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-bold text-[#556b4d] mb-2">كلمة المرور الجديدة</label>
+                                        <input
+                                            type="password"
+                                            required
+                                            value={newPassword}
+                                            onChange={(e) => setNewPassword(e.target.value)}
+                                            className="w-full p-3.5 rounded-xl border border-[#A1BC98] focus:outline-none focus:ring-2 focus:ring-black bg-white text-black"
+                                            placeholder="أدخل كلمة المرور الجديدة"
+                                        />
+                                    </div>
+                                    <button
+                                        type="submit"
+                                        disabled={resettingPw}
+                                        className="w-full py-3.5 font-bold text-white bg-black rounded-xl hover:bg-[#333] transition disabled:opacity-70 flex items-center justify-center gap-2 mt-2"
+                                    >
+                                        {resettingPw ? <Loader2 className="h-5 w-5 animate-spin" /> : <Lock className="h-5 w-5" />}
+                                        {resettingPw ? "جاري التغيير..." : "حفظ كلمة المرور"}
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => setPwStep(1)}
+                                        className="w-full text-sm text-gray-500 hover:text-black mt-2"
+                                    >
+                                        إعادة إرسال الرمز
+                                    </button>
+                                </form>
+                            )}
                         </div>
                     </div>
                 )}
