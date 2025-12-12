@@ -396,13 +396,13 @@ async def agree_to_deal(
              # Send to Buyer (Other party is Seller)
              if buyer:
                  await run_in_threadpool(
-                     lambda: send_completion_email(buyer, seller.full_name, agreement.agreement_id, use_sendgrid=True)
+                     lambda: send_completion_email(buyer.email, buyer.full_name, seller.full_name, agreement.agreement_id, use_sendgrid=True)
                  )
              
              # Send to Seller (Other party is Buyer)
              if seller:
                  await run_in_threadpool(
-                     lambda: send_completion_email(seller, buyer.full_name, agreement.agreement_id, use_sendgrid=True)
+                     lambda: send_completion_email(seller.email, seller.full_name, buyer.full_name, agreement.agreement_id, use_sendgrid=True)
                  )
                  
              logger.info(f"Completion emails sent for agreement {agreement.agreement_id}")
