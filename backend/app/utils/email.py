@@ -387,7 +387,7 @@ async def send_verification_code(
     return ev
 
 
-async def send_welcome_email(
+def send_welcome_email(
     user: User,
     use_sendgrid: bool = True
 ) -> None:
