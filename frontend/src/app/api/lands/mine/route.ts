@@ -11,7 +11,7 @@ export async function GET() {
   // Endpoint حسب التوثيق: GET /lands/me/mine
   const res = await fetch(`${API_URL}/lands/me/mine`, {
     headers: {
-      "Authorization": `Bearer ${token}`,
+      "Cookie": `${COOKIE_NAME}=${token}`,
       "Accept": "application/json",
     },
     cache: "no-store",

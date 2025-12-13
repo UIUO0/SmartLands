@@ -25,7 +25,7 @@ export async function forwardToBackend(
   const headers = new Headers(req.headers);
 
   // ضف الهيدر حق التوثيق إذا فيه توكن
-  if (token) headers.set("authorization", `Bearer ${token}`);
+  if (token) headers.set("Cookie", `${COOKIE_NAME}=${token}`);
 
   // تأكد من الـ content-type إذا كان موجود بالأصل
   const ct = req.headers.get("content-type");

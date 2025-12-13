@@ -16,7 +16,7 @@ export async function GET() {
   const res = await fetch(`${API_URL}/users/me`, {
     method: "GET",
     headers: {
-      "Authorization": `Bearer ${token}`,
+      "Cookie": `${COOKIE_NAME}=${token}`,
       "Accept": "application/json",
     },
     cache: "no-store",
@@ -39,7 +39,7 @@ export async function PATCH(req: NextRequest) {
     const res = await fetch(`${API_URL}/users/me`, {
       method: "PATCH",
       headers: {
-        "Authorization": `Bearer ${token}`,
+        "Cookie": `${COOKIE_NAME}=${token}`,
         "Content-Type": "application/json",
         "Accept": "application/json",
       },
