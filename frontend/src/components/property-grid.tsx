@@ -70,6 +70,22 @@ export function PropertyGrid() {
           }));
 
           setLands(landsWithImages);
+
+          // Client-side filtering as backup (if backend ignores size params)
+          const minArea = Number(searchParams.get('min_area')) || 0;
+          const maxArea = Number(searchParams.get('max_area')) || Infinity;
+
+          if (minArea > 0 || maxArea !== Infinity) {
+            const filtered = landsWithImages.filter(land => {
+              const area = land.area_sq_m || land.area || 0;
+              if (minArea > 0 && area < minArea) return false;
+              if (maxArea !== Infinity && area > maxArea) return false;
+              return true;
+            });
+            setLands(filtered);
+          } else {
+            setLands(landsWithImages);
+          }
         } else {
           setLands([]);
         }
