@@ -24,7 +24,7 @@ export async function POST(
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "Authorization": `Bearer ${token}`, // <--- هذا هو السطر الأهم للتصحيح
+        "Cookie": `${COOKIE_NAME}=${token}`, // <--- هذا هو السطر الأهم للتصحيح
         "Accept": "application/json",
       },
     });
@@ -41,7 +41,7 @@ export async function POST(
 
     if (!backendRes.ok) {
       return NextResponse.json(
-        data || { message: "فشل الطلب" }, 
+        data || { message: "فشل الطلب" },
         { status: backendRes.status }
       );
     }
@@ -52,7 +52,7 @@ export async function POST(
   } catch (error) {
     console.error("Buy Request Error:", error);
     return NextResponse.json(
-      { message: "حدث خطأ في السيرفر" }, 
+      { message: "حدث خطأ في السيرفر" },
       { status: 500 }
     );
   }
