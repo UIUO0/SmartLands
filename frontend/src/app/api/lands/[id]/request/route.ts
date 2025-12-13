@@ -24,7 +24,7 @@ export async function POST(
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "Cookie": `${COOKIE_NAME}=${token}`, // <--- هذا هو السطر الأهم للتصحيح
+        "Authorization": `Bearer ${token}`, // <--- هذا هو السطر الأهم للتصحيح
         "Accept": "application/json",
       },
     });
