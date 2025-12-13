@@ -37,6 +37,13 @@ export default function ProfilePage() {
         try {
             // نستخدم الـ API Proxy الذي عدلناه سابقاً (GET /api/users/me)
             const res = await fetch("/api/users/me");
+
+            if (res.status === 401) {
+                setUser(null);
+                setLoading(false);
+                return;
+            }
+
             if (res.ok) {
                 const data = await res.json();
                 setUser(data);
