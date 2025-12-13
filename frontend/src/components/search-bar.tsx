@@ -1,29 +1,30 @@
 "use client"
 
+
 import { Search, MapPin } from "lucide-react"
 import { useSearchParams, usePathname, useRouter } from "next/navigation"
 import { SAUDI_CITIES } from "@/lib/constants"
+import { CitySelector } from "@/components/city-selector"
 
 export function SearchBar() {
   const searchParams = useSearchParams()
   const pathname = usePathname()
   const { replace } = useRouter()
 
-  // دالة البحث: تتحدث مع الـ URL
+  // Local state for delay debounce or direct control could be better, 
+  // but for simplicity we will trigger on change or blur.
+  // Using direct URL updates for now to keep it simple as per previous pattern.
+
   const handleSearch = (term: string) => {
     const params = new URLSearchParams(searchParams);
-
     if (term) {
-      params.set('q', term); // إضافة كلمة البحث حسب توثيق الباك إند
+      params.set('q', term);
     } else {
       params.delete('q');
     }
-
-    // تحديث الرابط بدون إعادة تحميل الصفحة
     replace(`${pathname}?${params.toString()}`);
   }
 
-  // فلتر المدينة (اختياري)
   const handleCityChange = (city: string) => {
     const params = new URLSearchParams(searchParams);
     if (city && city !== "All Cities") {
@@ -34,40 +35,70 @@ export function SearchBar() {
     replace(`${pathname}?${params.toString()}`);
   }
 
+  const handleAreaChange = (type: 'min' | 'max', value: string) => {
+    const params = new URLSearchParams(searchParams);
+    const key = type === 'min' ? 'min_area' : 'max_area';
+
+    if (value) {
+      params.set(key, value);
+    } else {
+      params.delete(key);
+    }
+    replace(`${pathname}?${params.toString()}`);
+  }
+
   return (
     <div className="bg-white rounded-2xl p-2 sm:p-3 border border-primary/30 shadow-sm mb-8">
-      <div className="flex flex-col md:flex-row gap-2">
+      <div className="flex flex-col xl:flex-row gap-2">
 
-        {/* حقل البحث النصي */}
+        {/* Search Input */}
         <div className="flex-1 flex items-center bg-secondary/30 rounded-xl px-4 py-3 transition-colors hover:bg-secondary/50 focus-within:bg-secondary/50 focus-within:ring-1 focus-within:ring-primary/50">
-          <Search className="h-5 w-5 text-gray-400 mr-3" />
+          <Search className="h-5 w-5 text-gray-400 mr-3 shrink-0" />
           <input
             type="text"
             placeholder="Search lands..."
-            className="bg-transparent border-none outline-none w-full text-gray-900 placeholder:text-gray-400"
-            // نأخذ القيمة الحالية من الرابط
+            className="bg-transparent border-none outline-none w-full text-gray-900 placeholder:text-gray-400 min-w-[100px]"
             defaultValue={searchParams.get('q')?.toString()}
             onChange={(e) => handleSearch(e.target.value)}
           />
         </div>
 
-        {/* قائمة المدن */}
-        <div className="flex gap-2">
-          <div className="hidden sm:flex items-center bg-secondary/30 rounded-xl px-4 py-3 min-w-[140px] cursor-pointer hover:bg-secondary/50 relative">
-            <MapPin className="h-5 w-5 text-gray-500 mr-2 absolute left-3 pointer-events-none" />
-            <select
-              onChange={(e) => handleCityChange(e.target.value)}
-              defaultValue={searchParams.get('city')?.toString()}
-              className="bg-transparent border-none outline-none text-gray-700 font-medium cursor-pointer w-full pl-6 appearance-none"
-            >
-              <option value="">All Cities</option>
-              {SAUDI_CITIES.map(city => (
-                <option key={city} value={city}>{city}</option>
-              ))}
-            </select>
+        {/* Size Filters */}
+        <div className="flex gap-2 shrink-0">
+          <div className="flex items-center bg-secondary/30 rounded-xl px-4 py-3 w-[120px] transition-colors hover:bg-secondary/50 focus-within:bg-secondary/50 focus-within:ring-1 focus-within:ring-primary/50">
+            <span className="text-gray-400 text-xs mr-2 font-medium">Min</span>
+            <input
+              type="number"
+              placeholder="M²"
+              className="bg-transparent border-none outline-none w-full text-gray-900 placeholder:text-gray-400 text-sm"
+              defaultValue={searchParams.get('min_area')?.toString()}
+              onChange={(e) => handleAreaChange('min', e.target.value)}
+            />
+          </div>
+          <div className="flex items-center bg-secondary/30 rounded-xl px-4 py-3 w-[120px] transition-colors hover:bg-secondary/50 focus-within:bg-secondary/50 focus-within:ring-1 focus-within:ring-primary/50">
+            <span className="text-gray-400 text-xs mr-2 font-medium">Max</span>
+            <input
+              type="number"
+              placeholder="M²"
+              className="bg-transparent border-none outline-none w-full text-gray-900 placeholder:text-gray-400 text-sm"
+              defaultValue={searchParams.get('max_area')?.toString()}
+              onChange={(e) => handleAreaChange('max', e.target.value)}
+            />
+          </div>
+        </div>
+
+        {/* City & Button */}
+        <div className="flex gap-2 shrink-0">
+          <div className="w-[180px]">
+            <CitySelector
+              value={searchParams.get('city') || ""}
+              onChange={handleCityChange}
+              placeholder="All Cities"
+              className="" // Custom wrapper classes if needed
+            />
           </div>
 
-          <button className="bg-primary text-black font-semibold px-8 py-3 rounded-xl hover:bg-primary/90 transition-transform active:scale-95 shadow-sm">
+          <button className="bg-primary text-black font-semibold px-6 py-3 rounded-xl hover:bg-primary/90 transition-transform active:scale-95 shadow-sm whitespace-nowrap">
             Search
           </button>
         </div>
