@@ -11,6 +11,10 @@ export function Header() {
     async function checkNotifications() {
       try {
         const res = await fetch("/api/requests/incoming");
+        if (res.status === 401) {
+          // User is not logged in, just ignore
+          return;
+        }
         if (res.ok) {
           const data = await res.json();
           // Adjust logic based on actual API response structure
