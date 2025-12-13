@@ -18,10 +18,21 @@ export function CitySelector({ value, onChange, className = "", placeholder = "S
 
     // Filter cities based on search query
     const filteredCities = useMemo(() => {
-        if (!query) return SAUDI_CITIES;
-        return SAUDI_CITIES.filter((city) =>
-            city.toLowerCase().includes(query.toLowerCase())
-        );
+        const allCitiesOption = "All Cities";
+        let cities = SAUDI_CITIES;
+
+        if (query) {
+            cities = SAUDI_CITIES.filter((city) =>
+                city.toLowerCase().includes(query.toLowerCase())
+            );
+        }
+
+        // Always show "All Cities" if it matches query or query is empty
+        if (!query || allCitiesOption.toLowerCase().includes(query.toLowerCase())) {
+            return [allCitiesOption, ...cities];
+        }
+
+        return cities;
     }, [query]);
 
     // Handle click outside to close dropdown
