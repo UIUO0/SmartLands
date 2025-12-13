@@ -19,7 +19,7 @@ export async function GET(req: NextRequest) {
       method: "GET",
       headers: {
         "Content-Type": "application/json",
-        ...(token && { "Cookie": `${COOKIE_NAME}=${token}` }),
+        ...(token && { "Authorization": `Bearer ${token}` }),
       },
       cache: "no-store",
     });
@@ -49,7 +49,7 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const res = await fetch(`${BACKEND_URL}/lands`, {
       method: "POST",
-      headers: { "Content-Type": "application/json", "Cookie": `${COOKIE_NAME}=${token}` },
+      headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
       body: JSON.stringify(body),
     });
     if (!res.ok) {

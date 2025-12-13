@@ -50,7 +50,7 @@ export async function PATCH(
       method: "PATCH",
       headers: {
         "Content-Type": "application/json",
-        "Cookie": `${COOKIE_NAME}=${token}`,
+        "Authorization": `Bearer ${token}`,
       },
       body: JSON.stringify(body),
     });
@@ -80,7 +80,7 @@ export async function DELETE(
   try {
     const res = await fetch(`${BACKEND_URL}/lands/${id}`, {
       method: "DELETE",
-      headers: { "Cookie": `${COOKIE_NAME}=${token}` },
+      headers: { "Authorization": `Bearer ${token}` },
     });
 
     if (!res.ok) return NextResponse.json({ error: "Delete failed" }, { status: res.status });
