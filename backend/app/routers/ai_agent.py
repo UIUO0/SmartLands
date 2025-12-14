@@ -128,11 +128,11 @@ async def chat_with_ai(
         context_data = await gather_context(db, current_user)
         context_json = json.dumps(context_data, ensure_ascii=False)
 
-        # 2. Construct System Prompt
+        # 2. Construct System Instructions
         system_instructions = f"""
 # Role & Persona
 أنت المساعد الذكي والمحبوب لمنصة "Smart Lands".
-- أسلوبك: بشوش، خدوم، وتتحدث العربية باللهجة السعودية الودودة (مثلاً: "يا هلا"، "أبشر"، "تحت أمرك").
+- أسلوبك: بشوش، خدوم، وتتحدث العربية باللهجة السعودية الودودة.
 - هدفك: مساعدة المستخدم بناءً على البيانات المتاحة لك.
 
 # Security & Data Access Rules
@@ -146,22 +146,73 @@ async def chat_with_ai(
 {context_json}
 """
         
-        # 3. Call Gemini
-        # Gemini handles system instructions best if prepended or via specific API if supported.
-        # We'll prepend it to the user message or use it as context.
-        # For simple chat completion, passing it as prompt is effective.
+        # 3. Fetch History (Last 20 messages)
+        from app.models.ai_chat_message import AIChatMessage
         
-        full_prompt = f"{system_instructions}\n\nUSER MESSAGE: {payload.message}"
+        history_res = await db.execute(
+            select(AIChatMessage)
+            .where(AIChatMessage.user_id == current_user.user_id)
+            .order_by(AIChatMessage.created_at.desc())
+            .limit(20)
+        )
+        # Reverse to chronological order (Oldest -> Newest)
+        past_messages_objs = history_res.scalars().all()[::-1]
         
-        response = model.generate_content(full_prompt)
+        history_for_gemini = []
+        for msg in past_messages_objs:
+            history_for_gemini.append({
+                "role": "user" if msg.role == "user" else "model",
+                "parts": [msg.content]
+            })
+
+        # 4. Start Chat Session
+        chat_session = model.start_chat(history=history_for_gemini)
         
-        if response.text:
-            return {"response": response.text}
+        # 5. Send Message (with system instruction as context logic or separate call if needed)
+        # Note: Flash model supports system instruction in 'generate_content'.
+        # For 'start_chat', we can pass system instruction if model was configured with it, 
+        # OR we prepend it to the first message if history is empty, 
+        # OR we just rely on the model 'remembering' it if we pass it dynamically.
+        # However, start_chat keeps its own history object.
+        # "system_instruction" can be set on GenerativeModel init.
+        
+        # Better approach for maintaining context + system instruction with persistent history:
+        # Re-instantiate model with system_instruction for this request (or generally).
+        # We can't re-instantiate cleanly per request if we want to update the global model.
+        # But we can create a temporary model instance with system_instruction.
+        
+        if GOOGLE_API_KEY:
+            request_model = genai.GenerativeModel(
+                'gemini-2.5-flash',
+                system_instruction=system_instructions
+            )
+            chat = request_model.start_chat(history=history_for_gemini)
+            response = chat.send_message(payload.message)
+            response_text = response.text
         else:
-            return {"response": "عذراً، لم أستطع فهم طلبك."}
+             response_text = "Service Unavailable"
+
+        # 6. Save User Message
+        user_msg_db = AIChatMessage(
+            user_id=current_user.user_id,
+            role="user",
+            content=payload.message
+        )
+        db.add(user_msg_db)
+        
+        # 7. Save AI Response
+        ai_msg_db = AIChatMessage(
+            user_id=current_user.user_id,
+            role="model",
+            content=response_text
+        )
+        db.add(ai_msg_db)
+        
+        await db.commit()
+
+        return {"response": response_text}
 
     except Exception as e:
         logger.error("AI_AGENT_ERROR: %r", e, exc_info=True)
-        # Safe error exposure for debugging
         raise HTTPException(status_code=500, detail=f"AI Error: {str(e)}")
 
