@@ -8,7 +8,7 @@ from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
-from openai import OpenAI
+import google.generativeai as genai
 
 from app.db.database import get_db
 from app.core.security import get_current_user
@@ -21,16 +21,16 @@ logger = logging.getLogger("smartlands.ai")
 
 router = APIRouter(prefix="/ai", tags=["ai"])
 
-# Initialize OpenRouter Client (via OpenAI SDK)
-# WARNING: Ideally this should be in os.environ["OPENROUTER_API_KEY"]
-# For now, we use the provided key if env var is missing, but best practice is env var.
-# OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY", "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")
-OPENROUTER_API_KEY = "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"
-
-client = OpenAI(
-    base_url="https://openrouter.ai/api/v1",
-    api_key=OPENROUTER_API_KEY,
-)
+# Configure Gemini
+GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
+if GOOGLE_API_KEY:
+    genai.configure(api_key=GOOGLE_API_KEY)
+    # Initialize the model (using recommended flash model for general use)
+    # Using 'gemini-2.5-flash' as verified working model
+    model = genai.GenerativeModel('gemini-2.5-flash')
+else:
+    logger.warning("GOOGLE_API_KEY is not set. AI features will fail.")
+    model = None
 
 class AIRequest(BaseModel):
     message: str
@@ -41,13 +41,10 @@ class AIResponse(BaseModel):
 async def gather_context(db: AsyncSession, current_user: User) -> List[Any]:
     """
     Gathers permissible data snapshot for the AI context.
-    1. Public Data: All Lands (simplified), All Owners (simplified emails).
-    2. Private Data: Agreements & Chats where user is a participant.
     """
     snapshot = []
 
     # 1. Lands (Public)
-    # We select key fields to avoid token overflow
     lands_res = await db.execute(select(Land))
     lands = lands_res.scalars().all()
     
@@ -65,7 +62,6 @@ async def gather_context(db: AsyncSession, current_user: User) -> List[Any]:
     snapshot.extend(lands_data)
 
     # 2. Owners/Users (Public - Email/Name)
-    # Be careful with privacy. User approved: "Email for any user".
     users_res = await db.execute(select(User))
     users = users_res.scalars().all()
     
@@ -79,7 +75,7 @@ async def gather_context(db: AsyncSession, current_user: User) -> List[Any]:
         })
     snapshot.extend(users_data)
 
-    # 3. Agreements (Restricted to current user)
+    # 3. Agreements (Restricted)
     agreements_res = await db.execute(
         select(Agreement).where(
             (Agreement.buyer_user_id == current_user.user_id) | 
@@ -98,8 +94,7 @@ async def gather_context(db: AsyncSession, current_user: User) -> List[Any]:
             "created_at": str(a.created_at)
         })
 
-    # 4. Chats (Restricted to current user)
-    # Just listing conversation metadata, not full history to save tokens
+    # 4. Chats (Restricted)
     chats_res = await db.execute(
         select(ChatConversation).where(
             (ChatConversation.buyer_user_id == current_user.user_id) | 
@@ -125,62 +120,48 @@ async def chat_with_ai(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
+    if not model:
+        raise HTTPException(status_code=500, detail="AI service not configured (Missing Key)")
+
     try:
         # 1. Gather Context
         context_data = await gather_context(db, current_user)
         context_json = json.dumps(context_data, ensure_ascii=False)
 
         # 2. Construct System Prompt
-        system_prompt = f"""
+        system_instructions = f"""
 # Role & Persona
 أنت المساعد الذكي والمحبوب لمنصة "Smart Lands".
 - أسلوبك: بشوش، خدوم، وتتحدث العربية باللهجة السعودية الودودة (مثلاً: "يا هلا"، "أبشر"، "تحت أمرك").
-- هدفك: مساعدة المستخدم بناءً على البيانات المتاحة لك، دون ذكر أنك تقرأ من "قاعدة بيانات" أو "نص". تصرف وكأنك تعرف هذه المعلومات طبيعياً.
+- هدفك: مساعدة المستخدم بناءً على البيانات المتاحة لك.
 
-# Security & Data Access Rules (IMPORTANT)
-لديك صلاحية الوصول لنسخة لحظية من قاعدة البيانات. يجب عليك الالتزام الصارم بقواعد الخصوصية التالية بناءً على معرف المستخدم (User ID) الخاص بالمرسل:
-
-1. البيانات العامة (مسموح لك ذكرها لأي أحد):
-   - جميع معلومات الأراضي (Lands).
-   - معلومات الملاك (Owners).
-   - البريد الإلكتروني (Email) لأي مستخدم.
-
-2. البيانات الخاصة (حساسة جداً - Restricted):
-   - العقود (Agreements).
-   - المحادثات (Chats).
-   شرط الوصول: لا تتحدث عن أي عقد أو محادثة إلا إذا كان الـ User ID الخاص بالمرسل طرفاً فيها. إذا سأل المستخدم عن عقود أو محادثات لا تخصه، اعتذر بلطافة وقل أنك لا تملك صلاحية للإطلاع عليها.
+# Security & Data Access Rules
+1. البيانات العامة: الأراضي والمستخدمين (مسموح ذكرها).
+2. البيانات الخاصة: العقود والمحادثات (ممنوع ذكرها إلا إذا كان المستخدم {current_user.user_id} طرفاً فيها).
 
 # Current Context
-- المرسل الحالي (User ID): {current_user.user_id}
-- الاسم: {current_user.full_name}
+- المرسل: {current_user.full_name} (ID: {current_user.user_id})
 
 # Database Snapshot
 {context_json}
 """
-
-        # 3. Call OpenRouter (via OpenAI SDK)
-        chat_completion = client.chat.completions.create(
-            messages=[
-                {
-                    "role": "system",
-                    "content": system_prompt,
-                },
-                {
-                    "role": "user",
-                    "content": payload.message,
-                }
-            ],
-            model="mistralai/devstral-2512:free",
-            temperature=0.7,
-            max_tokens=1024,
-            top_p=1,
-            stop=None,
-            stream=False,
-        )
-
-        response_text = chat_completion.choices[0].message.content
-        return {"response": response_text}
+        
+        # 3. Call Gemini
+        # Gemini handles system instructions best if prepended or via specific API if supported.
+        # We'll prepend it to the user message or use it as context.
+        # For simple chat completion, passing it as prompt is effective.
+        
+        full_prompt = f"{system_instructions}\n\nUSER MESSAGE: {payload.message}"
+        
+        response = model.generate_content(full_prompt)
+        
+        if response.text:
+            return {"response": response.text}
+        else:
+            return {"response": "عذراً، لم أستطع فهم طلبك."}
 
     except Exception as e:
         logger.error("AI_AGENT_ERROR: %r", e, exc_info=True)
+        # Safe error exposure for debugging
         raise HTTPException(status_code=500, detail=f"AI Error: {str(e)}")
+

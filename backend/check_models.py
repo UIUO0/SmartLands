@@ -1,7 +1,7 @@
 import urllib.request
 import json
 
-KEY = "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"
+KEY = "sk-or-v1-JUNKJUNKJUNK"
 
 def list_models():
     url = "https://openrouter.ai/api/v1/models"
