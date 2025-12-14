@@ -181,4 +181,4 @@ async def chat_with_ai(
 
     except Exception as e:
         logger.error("AI_AGENT_ERROR: %r", e, exc_info=True)
-        raise HTTPException(status_code=500, detail="AI service temporarily unavailable")
+        raise HTTPException(status_code=500, detail=f"AI Error: {str(e)}")
