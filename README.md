@@ -84,4 +84,4 @@ uvicorn app.main:app --reload
 
 محمد سمير العجلان (Mohammed Sameer Al-ajlan)
 
-نواف ربيع شهبل (Nawaf Rabea Shahbal)
+نواف ربيع شحبل (Nawaf Rabea Shahbal)
