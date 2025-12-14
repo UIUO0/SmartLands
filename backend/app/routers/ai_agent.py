@@ -26,9 +26,18 @@ router = APIRouter(prefix="/ai", tags=["ai"])
 # For now, we use the provided key if env var is missing, but best practice is env var.
 # OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY", "REDACTED")
 OPENROUTER_API_KEY = "REDACTED"
+
+# DEBUG LOGGING
+masked_key = OPENROUTER_API_KEY[:10] + "..." if OPENROUTER_API_KEY else "None"
+logger.info(f"AI_AGENT_INIT: BaseURL='https://openrouter.ai/api/v1', KeyPrefix='{masked_key}'")
+
 client = OpenAI(
     base_url="https://openrouter.ai/api/v1",
     api_key=OPENROUTER_API_KEY,
+    default_headers={
+        "HTTP-Referer": "http://localhost:3000", # Optional but good practice
+        "X-Title": "Smart Lands Helper",
+    }
 )
 
 class AIRequest(BaseModel):
