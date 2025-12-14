@@ -27,17 +27,9 @@ router = APIRouter(prefix="/ai", tags=["ai"])
 # OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY", "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")
 OPENROUTER_API_KEY = "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"
 
-# DEBUG LOGGING
-masked_key = OPENROUTER_API_KEY[:10] + "..." if OPENROUTER_API_KEY else "None"
-logger.info(f"AI_AGENT_INIT: BaseURL='https://openrouter.ai/api/v1', KeyPrefix='{masked_key}'")
-
 client = OpenAI(
     base_url="https://openrouter.ai/api/v1",
     api_key=OPENROUTER_API_KEY,
-    default_headers={
-        "HTTP-Referer": "http://localhost:3000", # Optional but good practice
-        "X-Title": "Smart Lands Helper",
-    }
 )
 
 class AIRequest(BaseModel):
@@ -126,16 +118,6 @@ async def gather_context(db: AsyncSession, current_user: User) -> List[Any]:
         })
 
     return snapshot
-
-@router.get("/debug_config")
-async def debug_config():
-    """Temporary endpoint to verify runtime configuration"""
-    return {
-        "base_url": str(client.base_url),
-        "key_prefix": OPENROUTER_API_KEY[:10] + "..." if OPENROUTER_API_KEY else "None",
-        "key_length": len(OPENROUTER_API_KEY) if OPENROUTER_API_KEY else 0,
-        "default_headers": client.default_headers
-    }
 
 @router.post("/chat", response_model=AIResponse)
 async def chat_with_ai(
