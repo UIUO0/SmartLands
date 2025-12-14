@@ -4,6 +4,7 @@ from datetime import datetime
 
 from sqlalchemy import String, Text, Integer, ForeignKey, DateTime, text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy.dialects.mysql import BIGINT
 
 from app.db.database import Base
 
@@ -13,7 +14,7 @@ class AIChatMessage(Base):
     message_id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     
     user_id: Mapped[int] = mapped_column(
-        Integer,
+        BIGINT(unsigned=True),
         ForeignKey("users.user_id", ondelete="CASCADE"),
         nullable=False,
         index=True
