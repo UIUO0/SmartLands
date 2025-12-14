@@ -24,7 +24,8 @@ router = APIRouter(prefix="/ai", tags=["ai"])
 # Initialize OpenRouter Client (via OpenAI SDK)
 # WARNING: Ideally this should be in os.environ["OPENROUTER_API_KEY"]
 # For now, we use the provided key if env var is missing, but best practice is env var.
-OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY", "REDACTED")
+# OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY", "REDACTED")
+OPENROUTER_API_KEY = "REDACTED"
 client = OpenAI(
     base_url="https://openrouter.ai/api/v1",
     api_key=OPENROUTER_API_KEY,
