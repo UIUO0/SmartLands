@@ -1,5 +1,8 @@
 import os
 import logging
+from dotenv import load_dotenv
+
+load_dotenv()
 from contextlib import asynccontextmanager
 from sqlalchemy import text
 
