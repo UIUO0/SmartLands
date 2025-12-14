@@ -18,6 +18,7 @@ from app.db.database import ping_database
 from app.routers.lands import router as lands_router
 from app.routers.auth import router as auth_router
 from app.routers.users import router as users_router
+from app.models.ai_chat_message import AIChatMessage # Register model
 
 # ===== Logging Configuration =====
 logging.basicConfig(
