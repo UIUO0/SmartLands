@@ -127,6 +127,16 @@ async def gather_context(db: AsyncSession, current_user: User) -> List[Any]:
 
     return snapshot
 
+@router.get("/debug_config")
+async def debug_config():
+    """Temporary endpoint to verify runtime configuration"""
+    return {
+        "base_url": str(client.base_url),
+        "key_prefix": OPENROUTER_API_KEY[:10] + "..." if OPENROUTER_API_KEY else "None",
+        "key_length": len(OPENROUTER_API_KEY) if OPENROUTER_API_KEY else 0,
+        "default_headers": client.default_headers
+    }
+
 @router.post("/chat", response_model=AIResponse)
 async def chat_with_ai(
     payload: AIRequest,
