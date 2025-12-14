@@ -8,7 +8,7 @@ from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
-from groq import Groq
+from openai import OpenAI
 
 from app.db.database import get_db
 from app.core.security import get_current_user
@@ -21,11 +21,14 @@ logger = logging.getLogger("smartlands.ai")
 
 router = APIRouter(prefix="/ai", tags=["ai"])
 
-# Initialize Groq Client
-# WARNING: Ideally this should be in os.environ["GROQ_API_KEY"]
+# Initialize OpenRouter Client (via OpenAI SDK)
+# WARNING: Ideally this should be in os.environ["OPENROUTER_API_KEY"]
 # For now, we use the provided key if env var is missing, but best practice is env var.
-GROQ_API_KEY = os.getenv("GROQ_API_KEY", "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")
-client = Groq(api_key=GROQ_API_KEY)
+OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY", "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")
+client = OpenAI(
+    base_url="https://openrouter.ai/api/v1",
+    api_key=OPENROUTER_API_KEY,
+)
 
 class AIRequest(BaseModel):
     message: str
@@ -153,7 +156,7 @@ async def chat_with_ai(
 {context_json}
 """
 
-        # 3. Call Groq
+        # 3. Call OpenRouter (via OpenAI SDK)
         chat_completion = client.chat.completions.create(
             messages=[
                 {
@@ -165,7 +168,7 @@ async def chat_with_ai(
                     "content": payload.message,
                 }
             ],
-            model="llama-3.1-8b-instant", # Updated from decommissioned model
+            model="mistralai/devstral-2512:free",
             temperature=0.7,
             max_tokens=1024,
             top_p=1,
