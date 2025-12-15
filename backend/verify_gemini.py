@@ -4,7 +4,7 @@ import os
 # We can rely on the env var or hardcode for safety in this script
 # os.environ["GOOGLE_API_KEY"] is likely set if I launch it right. 
 # But I'll read from .env if needed or just use the key I know.
-KEY = "AIzaSyDAXdygtbhlY0oYkx2KS_OR7k9ITGleq-k"
+KEY = "AIzaSyBmhEXeLfmClcYFUt6Y3Z5B2ou07QnVz8E"
 genai.configure(api_key=KEY)
 
 def test_gemini():

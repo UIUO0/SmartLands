@@ -9,6 +9,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
 import google.generativeai as genai
+from google.api_core.exceptions import ResourceExhausted
 
 from app.db.database import get_db
 from app.core.security import get_current_user
@@ -212,6 +213,12 @@ async def chat_with_ai(
 
         return {"response": response_text}
 
+    except ResourceExhausted as e:
+        logger.warning(f"AI Rate Limit Exceeded: {e}")
+        raise HTTPException(
+            status_code=429,
+            detail="AI service is currently busy (Rate Limit Exceeded). Please try again in a minute."
+        )
     except Exception as e:
         logger.error("AI_AGENT_ERROR: %r", e, exc_info=True)
         raise HTTPException(status_code=500, detail=f"AI Error: {str(e)}")
