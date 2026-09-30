@@ -26,9 +26,13 @@ logger = logging.getLogger("smartlands.reports")
 
 router = APIRouter(prefix="/reports", tags=["reports"])
 
-# Initialize Groq Client
-GROQ_API_KEY = os.getenv("GROQ_API_KEY", "REDACTED")
-client = Groq(api_key=GROQ_API_KEY)
+# Initialize Groq Client (key comes from the environment only)
+GROQ_API_KEY = os.getenv("GROQ_API_KEY")
+if GROQ_API_KEY:
+    client = Groq(api_key=GROQ_API_KEY)
+else:
+    logger.warning("GROQ_API_KEY is not set. Report analysis will fail.")
+    client = None
 
 class ReportCreate(BaseModel):
     user_reported_id: int

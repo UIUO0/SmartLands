@@ -1,87 +1,117 @@
-# 🌍 Smart Lands - Next-Gen Real Estate Platform
+# 🌍 Smart Lands
 
-![Project Status](https://img.shields.io/badge/Status-Under%20Development-green)
 ![Python](https://img.shields.io/badge/Python-3.9+-blue.svg)
-![TypeScript](https://img.shields.io/badge/TypeScript-5.0+-blue.svg)
-![FastAPI](https://img.shields.io/badge/FastAPI-0.100+-teal.svg)
+![FastAPI](https://img.shields.io/badge/FastAPI-async-teal.svg)
 ![Next.js](https://img.shields.io/badge/Next.js-16-black.svg)
+![TypeScript](https://img.shields.io/badge/TypeScript-5-blue.svg)
 
-**Smart Lands** هي منصة عقارية ذكية تهدف إلى رقمنة وتسهيل عمليات بيع وشراء الأراضي بالكامل. توفر المنصة بيئة آمنة للتواصل بين البائع والمشتري، مع دمج تقنيات الذكاء الاصطناعي (AI) للمساعدة الشخصية والرقابة على المحتوى.
+**Smart Lands** is a full-stack real-estate marketplace for buying and selling land. It gives buyers and sellers a secure channel to negotiate, and uses AI for a personal assistant and for automated content moderation.
 
----
-
-## 🚀 المميزات الرئيسية (Key Features)
-
-* **🛒 دورة شراء ذكية:** تحول تلقائي لحالة الأرض (`Available` → `Reserved` → `Sold`) بناءً على سير العمل.
-* **🤖 مساعد ذكي (AI Agent):** مساعد شخصي مدمج (يعتمد على Llama 3 عبر Groq) يتحدث باللهجة السعودية ويجيب على استفسارات المستخدمين بناءً على بيانات النظام.
-* **💬 نظام محادثة فوري:** قناة تواصل آمنة بين البائع والمشتري تُفتح تلقائياً عند قبول العرض، مع أزرار لإتمام الصفقة (Agree) أو إلغائها.
-* **🛡️ نظام رقابة آلي:** تحليل المحادثات باستخدام الذكاء الاصطناعي لكشف الاحتيال أو الإساءة واتخاذ إجراءات تلقائية.
-* **📝 عقود رقمية:** إنشاء عقود مبدئية (Agreements) تلقائياً لضمان جدية الأطراف.
-* **🔐 أمان عالي:** نظام مصادقة قوي يدعم البريد الإلكتروني و Google OAuth مع تخزين آمن للبيانات.
+**Smart Lands** منصة عقارية متكاملة لبيع وشراء الأراضي، توفّر قناة آمنة للتواصل بين البائع والمشتري، وتستخدم الذكاء الاصطناعي في المساعد الشخصي وفي الرقابة الآلية على المحادثات.
 
 ---
 
-## 🛠️ التقنيات المستخدمة (Tech Stack)
+## ✨ Features
 
-### Backend (الخلفية)
-* **Framework:** FastAPI
-* **Database:** MySQL with SQLAlchemy ORM
-* **Migration:** Alembic
-* **AI & LLM:** Groq API (Llama 3 Model)
-* **Image Storage:** Cloudinary
-* **Email Service:** SendGrid
-* **Authentication:** PyJWT & Passlib (OAuth2)
+- **Land listings** – full CRUD, multiple images (Cloudinary), city/location filtering.
+- **Purchase workflow** – buyers send requests, owners accept or reject; a land moves through `Available → Reserved → Sold` automatically.
+- **Buyer/seller chat** – a private conversation opens when a request is accepted, with Agree / Disagree actions to close the deal.
+- **Digital agreements** – a preliminary agreement is generated for each deal.
+- **AI assistant** – a Saudi-dialect assistant (Google Gemini) that answers using the user's own permitted data (lands, deals, chats).
+- **AI moderation** – user reports are analysed against the chat transcript by Llama 3 on Groq (`valid` / `invalid`), with automatic warning emails.
+- **Authentication** – email + password (bcrypt, JWT in HTTP-only cookies), Google OAuth, email verification and password reset.
 
-### Frontend (الواجهة الأمامية)
-* **Framework:** Next.js 16 (App Router)
-* **Language:** TypeScript
-* **Styling:** Tailwind CSS
-* **Icons:** Lucide React
-* **Auth:** @react-oauth/google
+## 🏗️ Architecture
 
----
+```
+┌────────────────────┐   HTTPS / cookies   ┌──────────────────────┐
+│ Next.js 16 (React) │ ──────────────────► │ FastAPI (async)      │
+│ App Router, Tailwind│   /api route proxy  │ SQLAlchemy 2 + MySQL │
+└────────────────────┘                     └─────┬────────┬───────┘
+                                                 │        │
+                       Cloudinary (images) ◄─────┘        ├──► Google Gemini (assistant)
+                       SendGrid / SMTP (email) ◄──────────┼──► Groq / Llama 3 (moderation)
+                                                          └──► Google OAuth
+```
 
-## 🏗️ هيكلية النظام (Architecture)
+## 🛠️ Tech Stack
 
-يعتمد النظام على معمارية **Client-Server** مفصولة:
-1.  **إدارة المستخدمين:** تسجيل دخول آمن، استعادة كلمة المرور، وإدارة البروفايل.
-2.  **إدارة الأراضي:** عمليات CRUD كاملة، رفع صور، وتحديد المواقع.
-3.  **محرك الطلبات:** إدارة طلبات الشراء وقبولها أو رفضها من قبل المالك.
-4.  **نظام التقارير:** تقديم بلاغات يتم فحصها بواسطة الـ AI لتحديد صحتها (Valid/Invalid).
+| Layer | Technology |
+|---|---|
+| Backend | FastAPI, SQLAlchemy (async), MySQL (`asyncmy`), Pydantic, PyJWT, Passlib |
+| AI | Google Gemini (`gemini-2.5-flash`), Groq (`llama-3.1-8b-instant`) |
+| Frontend | Next.js 16 (App Router), React 19, TypeScript, Tailwind CSS 4, `@react-oauth/google` |
+| Services | Cloudinary, SendGrid, Google OAuth |
+| Deployment | Railway (API, `Procfile`), Vercel (web) |
 
----
+## 📁 Project Structure
 
-## ⚙️ دليل التثبيت والتشغيل (Installation Guide)
+```
+SmartLands/
+├── backend/
+│   ├── app/
+│   │   ├── core/        # security, JWT, password hashing
+│   │   ├── db/          # async engine & session
+│   │   ├── models/      # SQLAlchemy models
+│   │   ├── routers/     # auth, users, lands, chats, agreements, reports, ai_agent
+│   │   ├── schemas/     # Pydantic schemas
+│   │   ├── utils/       # email, error helpers
+│   │   └── main.py      # app factory, CORS, lifespan checks
+│   ├── init_db.py       # creates tables
+│   └── .env.example
+└── frontend/
+    ├── src/app/         # pages + /api route handlers
+    ├── src/components/
+    └── src/lib/
+```
 
-تأكد من وجود **Python 3.9+** و **Node.js 18+** و **MySQL** مثبتة على جهازك.
+## ⚙️ Getting Started
 
-### 1️⃣ إعداد وتشغيل الخلفية (Backend)
+Requirements: **Python 3.9+**, **Node.js 18+**, **MySQL**.
+
+### 1. Backend
 
 ```bash
 cd backend
-
-# إنشاء بيئة افتراضية
 python -m venv venv
-
-# تفعيل البيئة (Windows)
-venv\Scripts\activate
-# تفعيل البيئة (Mac/Linux)
-source venv/bin/activate
-
-# تثبيت المكتبات المطلوبة
+source venv/bin/activate        # Windows: venv\Scripts\activate
 pip install -r requirements.txt
 
-# إعداد متغيرات البيئة (أنشئ ملف .env بناءً على المثال أدناه)
-# ثم شغل السيرفر
-uvicorn app.main:app --reload
+cp .env.example .env            # then fill in your own values
+python init_db.py               # create tables
+uvicorn app.main:app --reload   # http://localhost:8000
+```
 
-👥 فريق العمل (The Team)
-سعد عبدالعزيز الشهري (Saad Abdulaziz Al-shehri)
+Interactive API docs are served at `http://localhost:8000/docs`.
 
-فيصل عبدالله الشهري (Faisal Abdullah Al-shehri)
+### 2. Frontend
 
-عباس عبدالعزيز الثنيان (Abbas Abdulaziz Al-thunayan)
+```bash
+cd frontend
+cp .env.example .env.local
+npm install
+npm run dev                     # http://localhost:3000
+```
 
-محمد سمير العجلان (Mohammed Sameer Al-ajlan)
+### Environment variables
 
-نواف ربيع شحبل (Nawaf Rabea Shahbal)
+| Variable | Required | Purpose |
+|---|---|---|
+| `DATABASE_URL` | ✅ | MySQL connection string (async driver) |
+| `JWT_SECRET` | ✅ | Secret used to sign tokens |
+| `GOOGLE_API_KEY` | AI | Gemini assistant |
+| `GROQ_API_KEY` | AI | Report moderation |
+| `GOOGLE_CLIENT_ID` | OAuth | Google sign-in |
+| `CLOUDINARY_*` | Images | Image uploads |
+| `SENDGRID_API_KEY` | Email | Verification & warning emails |
+| `ALLOWED_ORIGINS` | – | Comma-separated CORS origins |
+
+> Secrets are read from the environment only. Never commit `.env`; use `.env.example` as a template.
+
+## 👥 Team
+
+- Saad Abdulaziz Al-Shehri
+- Faisal Abdullah Al-Shehri
+- Abbas Abdulaziz Al-Thunayan
+- Mohammed Sameer Al-Ajlan
+- Nawaf Rabea Shahbal
