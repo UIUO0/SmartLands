@@ -17,8 +17,9 @@
 - **Purchase workflow** – buyers send requests, owners accept or reject; a land moves through `Available → Reserved → Sold` automatically.
 - **Buyer/seller chat** – a private conversation opens when a request is accepted, with Agree / Disagree actions to close the deal.
 - **Digital agreements** – a preliminary agreement is generated for each deal.
-- **AI assistant** – a Saudi-dialect assistant (Google Gemini) that answers using the user's own permitted data (lands, deals, chats).
-- **AI moderation** – user reports are analysed against the chat transcript by Llama 3 on Groq (`valid` / `invalid`), with automatic warning emails.
+- **AI assistant** – a Saudi-dialect assistant that answers using the user's own permitted data (lands, deals, chats).
+- **AI moderation** – user reports are analysed against the chat transcript by an LLM (`valid` / `invalid`), with automatic warning emails.
+- **Provider-agnostic AI** – works with any OpenAI-compatible API (OpenAI, Groq, Gemini, OpenRouter, or a local Ollama) through three env variables; no vendor SDK is required.
 - **Authentication** – email + password (bcrypt, JWT in HTTP-only cookies), Google OAuth, email verification and password reset.
 
 ## 🏗️ Architecture
@@ -29,8 +30,8 @@
 │ App Router, Tailwind│   /api route proxy  │ SQLAlchemy 2 + MySQL │
 └────────────────────┘                     └─────┬────────┬───────┘
                                                  │        │
-                       Cloudinary (images) ◄─────┘        ├──► Google Gemini (assistant)
-                       SendGrid / SMTP (email) ◄──────────┼──► Groq / Llama 3 (moderation)
+                       Cloudinary (images) ◄─────┘        ├──► Any OpenAI-compatible LLM
+                       SendGrid / SMTP (email) ◄──────────┤    (assistant + moderation)
                                                           └──► Google OAuth
 ```
 
@@ -39,7 +40,7 @@
 | Layer | Technology |
 |---|---|
 | Backend | FastAPI, SQLAlchemy (async), MySQL (`asyncmy`), Pydantic, PyJWT, Passlib |
-| AI | Google Gemini (`gemini-2.5-flash`), Groq (`llama-3.1-8b-instant`) |
+| AI | Any OpenAI-compatible chat API via `httpx` (configurable provider/model) |
 | Frontend | Next.js 16 (App Router), React 19, TypeScript, Tailwind CSS 4, `@react-oauth/google` |
 | Services | Cloudinary, SendGrid, Google OAuth |
 | Deployment | Railway (API, `Procfile`), Vercel (web) |
@@ -55,7 +56,7 @@ SmartLands/
 │   │   ├── models/      # SQLAlchemy models
 │   │   ├── routers/     # auth, users, lands, chats, agreements, reports, ai_agent
 │   │   ├── schemas/     # Pydantic schemas
-│   │   ├── utils/       # email, error helpers
+│   │   ├── utils/       # email, llm client, error helpers
 │   │   └── main.py      # app factory, CORS, lifespan checks
 │   ├── init_db.py       # creates tables
 │   └── .env.example
@@ -99,12 +100,15 @@ npm run dev                     # http://localhost:3000
 |---|---|---|
 | `DATABASE_URL` | ✅ | MySQL connection string (async driver) |
 | `JWT_SECRET` | ✅ | Secret used to sign tokens |
-| `GOOGLE_API_KEY` | AI | Gemini assistant |
-| `GROQ_API_KEY` | AI | Report moderation |
+| `LLM_MODEL` | AI | Model name, e.g. `gpt-4o-mini`, `llama-3.1-8b-instant`, `gemini-2.5-flash` |
+| `LLM_BASE_URL` | AI | Provider's OpenAI-compatible base URL (see `.env.example`) |
+| `LLM_API_KEY` | AI | Provider key (optional for a local Ollama) |
 | `GOOGLE_CLIENT_ID` | OAuth | Google sign-in |
 | `CLOUDINARY_*` | Images | Image uploads |
 | `SENDGRID_API_KEY` | Email | Verification & warning emails |
 | `ALLOWED_ORIGINS` | – | Comma-separated CORS origins |
+
+> The app runs without any AI configuration; assistant and moderation endpoints simply report that the AI service is not configured (reports stay `pending`).
 
 > Secrets are read from the environment only. Never commit `.env`; use `.env.example` as a template.
 

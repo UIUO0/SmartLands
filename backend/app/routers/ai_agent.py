@@ -8,11 +8,10 @@ from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
-import google.generativeai as genai
-from google.api_core.exceptions import ResourceExhausted
 
 from app.db.database import get_db
 from app.core.security import get_current_user
+from app.utils import llm
 from app.models.user import User
 from app.models.land import Land
 from app.models.agreement import Agreement
@@ -22,16 +21,8 @@ logger = logging.getLogger("smartlands.ai")
 
 router = APIRouter(prefix="/ai", tags=["ai"])
 
-# Configure Gemini
-GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
-if GOOGLE_API_KEY:
-    genai.configure(api_key=GOOGLE_API_KEY)
-    # Initialize the model (using recommended flash model for general use)
-    # Using 'gemini-2.5-flash' as verified working model
-    model = genai.GenerativeModel('gemini-2.5-flash')
-else:
-    logger.warning("GOOGLE_API_KEY is not set. AI features will fail.")
-    model = None
+if not llm.is_configured():
+    logger.warning("LLM is not configured (set LLM_MODEL and LLM_API_KEY). AI features will fail.")
 
 class AIRequest(BaseModel):
     message: str
@@ -121,8 +112,8 @@ async def chat_with_ai(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    if not model:
-        raise HTTPException(status_code=500, detail="AI service not configured (Missing Key)")
+    if not llm.is_configured():
+        raise HTTPException(status_code=503, detail="AI service is not configured")
 
     try:
         # 1. Gather Context
@@ -159,39 +150,16 @@ async def chat_with_ai(
         # Reverse to chronological order (Oldest -> Newest)
         past_messages_objs = history_res.scalars().all()[::-1]
         
-        history_for_gemini = []
+        messages = [{"role": "system", "content": system_instructions}]
         for msg in past_messages_objs:
-            history_for_gemini.append({
-                "role": "user" if msg.role == "user" else "model",
-                "parts": [msg.content]
+            messages.append({
+                "role": "user" if msg.role == "user" else "assistant",
+                "content": msg.content,
             })
+        messages.append({"role": "user", "content": payload.message})
 
-        # 4. Start Chat Session
-        chat_session = model.start_chat(history=history_for_gemini)
-        
-        # 5. Send Message (with system instruction as context logic or separate call if needed)
-        # Note: Flash model supports system instruction in 'generate_content'.
-        # For 'start_chat', we can pass system instruction if model was configured with it, 
-        # OR we prepend it to the first message if history is empty, 
-        # OR we just rely on the model 'remembering' it if we pass it dynamically.
-        # However, start_chat keeps its own history object.
-        # "system_instruction" can be set on GenerativeModel init.
-        
-        # Better approach for maintaining context + system instruction with persistent history:
-        # Re-instantiate model with system_instruction for this request (or generally).
-        # We can't re-instantiate cleanly per request if we want to update the global model.
-        # But we can create a temporary model instance with system_instruction.
-        
-        if GOOGLE_API_KEY:
-            request_model = genai.GenerativeModel(
-                'gemini-2.5-flash',
-                system_instruction=system_instructions
-            )
-            chat = request_model.start_chat(history=history_for_gemini)
-            response = chat.send_message(payload.message)
-            response_text = response.text
-        else:
-             response_text = "Service Unavailable"
+        # 4. Ask the configured model
+        response_text = await llm.chat(messages)
 
         # 6. Save User Message
         user_msg_db = AIChatMessage(
@@ -213,7 +181,7 @@ async def chat_with_ai(
 
         return {"response": response_text}
 
-    except ResourceExhausted as e:
+    except llm.LLMRateLimited as e:
         logger.warning(f"AI Rate Limit Exceeded: {e}")
         raise HTTPException(
             status_code=429,

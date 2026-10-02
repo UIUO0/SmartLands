@@ -7,7 +7,6 @@ from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from groq import Groq
 
 from app.db.database import get_db
 from app.core.security import get_current_user
@@ -18,6 +17,7 @@ from app.models.chat_conversation import ChatConversation
 from app.models.agreement import Agreement
 from app.models.land import Land
 from app.utils.email import send_warning_email
+from app.utils import llm
 from fastapi.concurrency import run_in_threadpool
 from sqlalchemy import select, func
 from sqlalchemy.orm import selectinload
@@ -25,14 +25,6 @@ from sqlalchemy.orm import selectinload
 logger = logging.getLogger("smartlands.reports")
 
 router = APIRouter(prefix="/reports", tags=["reports"])
-
-# Initialize Groq Client (key comes from the environment only)
-GROQ_API_KEY = os.getenv("GROQ_API_KEY")
-if GROQ_API_KEY:
-    client = Groq(api_key=GROQ_API_KEY)
-else:
-    logger.warning("GROQ_API_KEY is not set. Report analysis will fail.")
-    client = None
 
 class ReportCreate(BaseModel):
     user_reported_id: int
@@ -81,7 +73,7 @@ async def create_report(
                 
             chat_transcript += f"[{role_label}]: {m.content_text}\n"
 
-        # 2. Call Groq for Analysis
+        # 2. Ask the configured LLM for analysis
         system_prompt = f"""
         You are a content moderator. 
         You are reviewing a report made by the REPORTER against the REPORTED_USER.
@@ -113,16 +105,14 @@ async def create_report(
         """
 
         try:
-            chat_completion = client.chat.completions.create(
-                messages=[
+            analysis_result = (await llm.chat(
+                [
                     {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": user_prompt}
+                    {"role": "user", "content": user_prompt},
                 ],
-                model="llama-3.1-8b-instant",
                 temperature=0,
-                max_tokens=10
-            )
-            analysis_result = chat_completion.choices[0].message.content.strip().lower()
+                max_tokens=10,
+            )).lower()
             
             # Extract valid/invalid
             if "valid" in analysis_result and "invalid" not in analysis_result:
@@ -132,10 +122,10 @@ async def create_report(
             else:
                 # Fallback
                 status = "pending"
-                logger.warning(f"Groq returned unclear report status: {analysis_result}")
+                logger.warning(f"LLM returned unclear report status: {analysis_result}")
 
         except Exception as e:
-            logger.error(f"Groq Analysis Failed: {e}")
+            logger.error(f"LLM analysis failed: {e}")
             status = "pending"
 
         # 3. Save Report
